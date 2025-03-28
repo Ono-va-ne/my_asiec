@@ -1,7 +1,7 @@
-// Файл: lib/news_card.dart
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Для форматирования даты/времени
+// import 'package:intl/intl.dart'; // Для форматирования даты/времени
 import 'models/vk_post.dart'; // Импортируем модель
+import 'package:url_launcher/url_launcher.dart';
 
 class NewsCard extends StatelessWidget {
   final VkPost post;
@@ -9,68 +9,101 @@ class NewsCard extends StatelessWidget {
   const NewsCard({super.key, required this.post});
 
   // Хелпер для форматирования даты
-  String _formatDateTime(DateTime dt) {
-     final now = DateTime.now();
-     final difference = now.difference(dt);
+  // String _formatDateTime(DateTime dt) {
+  //    final now = DateTime.now();
+  //    final difference = now.difference(dt);
 
-     if (difference.inDays == 0 && dt.day == now.day) {
-        return 'Сегодня в ${DateFormat('HH:mm').format(dt)}';
-     } else if (difference.inDays == 1 || (difference.inDays == 0 && dt.day == now.day -1)) {
-        return 'Вчера в ${DateFormat('HH:mm').format(dt)}';
-     } else if (dt.year == now.year) {
-        // Используем русскую локаль для названия месяца
-        return '${DateFormat('d MMMM в HH:mm', 'ru_RU').format(dt)}';
-     } else {
-        return '${DateFormat('d MMMM yyyy в HH:mm', 'ru_RU').format(dt)}';
-     }
+  //    if (difference.inDays == 0 && dt.day == now.day) {
+  //       return 'Сегодня в ${DateFormat('HH:mm').format(dt)}';
+  //    } else if (difference.inDays == 1 || (difference.inDays == 0 && dt.day == now.day -1)) {
+  //       return 'Вчера в ${DateFormat('HH:mm').format(dt)}';
+  //    } else if (dt.year == now.year) {
+  //       // Используем русскую локаль для названия месяца
+  //       return '${DateFormat('d MMMM в HH:mm', 'ru_RU').format(dt)}';
+  //    } else {
+  //       return '${DateFormat('d MMMM yyyy в HH:mm', 'ru_RU').format(dt)}';
+  //    }
+  // }
+
+  // @override
+  Future<void> _launchVKPostUrl(BuildContext context) async {
+    // Формируем стандартную ссылку на пост VK
+    final url = 'https://vk.com/wall${post.ownerId}_${post.id}';
+    final uri = Uri.parse(url);
+
+    try {
+      // Пытаемся открыть ссылку. LaunchMode.externalApplication
+      // попытается открыть приложение VK, если оно установлено,
+      // иначе откроет браузер.
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // Если по какой-то причине не можем открыть (редко)
+        _showSnackBar(context, 'Не удалось открыть ссылку: $url');
+      }
+    } catch (e) {
+       print("Ошибка при открытии ссылки VK: $e");
+      _showSnackBar(context, 'Произошла ошибка при открытии ссылки');
+    }
   }
+
+  // Хелпер для показа SnackBar (для сообщений об ошибках)
+  void _showSnackBar(BuildContext context, String message) {
+     ScaffoldMessenger.of(context).showSnackBar(
+       SnackBar(
+         content: Text(message),
+         duration: Duration(seconds: 3),
+       ),
+     );
+  }
+
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-      elevation: 2.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+      // ... (настройки Card и Padding) ...
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- Дата поста ---
-            Text(
-              _formatDateTime(post.date),
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12.0,
-              ),
-            ),
-            SizedBox(height: 8.0),
+            // ... (Дата, Текст, Картинки) ...
 
-            // --- Текст поста ---
-            if (post.text.isNotEmpty) // Показываем текст, только если он есть
-              Text(
-                post.text,
-                style: TextStyle(fontSize: 14.0, height: 1.4), // Немного увеличим межстрочный интервал
-              ),
-            if (post.text.isNotEmpty) SizedBox(height: 12.0),
-
-            // --- Изображения ---
-            if (post.imageUrls.isNotEmpty)
-              _buildImageGrid(context, post.imageUrls),
-            if (post.imageUrls.isNotEmpty) SizedBox(height: 12.0),
-
-            // --- Разделитель и Статистика (Лайки/Комменты/Репосты) ---
+            // --- Обновленная нижняя строка ---
             Divider(height: 1.0),
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.start, // Выравниваем влево
+                // mainAxisAlignment: MainAxisAlignment.start, // Убираем или меняем
                 children: [
+                  // Статистика слева
                   _buildStatIcon(Icons.favorite_border, post.likesCount),
                   SizedBox(width: 16.0),
                   _buildStatIcon(Icons.chat_bubble_outline, post.commentsCount),
-                   SizedBox(width: 16.0),
+                  SizedBox(width: 16.0),
                   _buildStatIcon(Icons.repeat, post.repostsCount),
+
+                  // --- Заполнитель, чтобы раздвинуть элементы ---
+                  Spacer(),
+
+                  // --- Кнопка/ссылка "Открыть в VK" справа ---
+                  TextButton(
+                      onPressed: () => _launchVKPostUrl(context), // Вызываем метод открытия ссылки
+                      style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Уменьшаем отступы
+                          minimumSize: Size(0, 30), // Уменьшаем минимальную высоту
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Убираем лишнее пространство для тапа
+                          foregroundColor: Colors.blue // Цвет текста кнопки
+                      ),
+                      child: Row( // Иконка + Текст
+                           mainAxisSize: MainAxisSize.min, // Чтобы Row не растягивался
+                           children: [
+                              Icon(Icons.open_in_new, size: 16.0), // Иконка "открыть в"
+                              SizedBox(width: 4.0),
+                              Text('Открыть в VK', style: TextStyle(fontSize: 13.0)),
+                           ],
+                      )
+                  )
                 ],
               ),
             ),

@@ -1,5 +1,6 @@
 class VkPost {
   final int id; // Уникальный ID поста
+  final int ownerId;
   final String text; // Текст поста
   final DateTime date; // Дата публикации
   final List<String> imageUrls; // Список URL картинок
@@ -9,6 +10,7 @@ class VkPost {
 
   VkPost({
     required this.id,
+    required this.ownerId,
     required this.text,
     required this.date,
     this.imageUrls = const [], // По умолчанию пустой список

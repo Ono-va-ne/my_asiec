@@ -1,4 +1,29 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+     <queries>
+        <!-- Позволяет проверять, какие приложения могут открывать веб-ссылки -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <!-- Опционально, но может помочь: Явно разрешить проверку приложения VK -->
+        <!-- Узнай точный package name приложения VK, если он нужен -->
+        <!-- <package android:name="com.vkontakte.android" /> -->
+        <!-- Если используешь launchUrl с 'tel', 'sms', 'mailto' схемами, добавь их тоже -->
+        <!--
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="sms" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+         -->
+    </queries>
     <application
         android:label="my_asiec_lite"
         android:name="${applicationName}"

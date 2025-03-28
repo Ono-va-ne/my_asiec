@@ -9,11 +9,14 @@ class VkApiService {
     // Имитируем задержку сети
     await Future.delayed(Duration(milliseconds: 800));
 
+    const groupId = -201142801;
+
     // Возвращаем заранее подготовленный список постов (Mock Data)
     // Замени этот список на более реалистичный, если хочешь
     return [
       VkPost(
-        id: 1,
+        id: 5687,
+        ownerId: groupId,
         text: '''🌟 Приглашаем на День открытых дверей в Алтайский промышленно-экономический колледж! 🌟
 
 📅 Дата: 29 марта
@@ -37,6 +40,7 @@ class VkApiService {
       ),
       VkPost(
         id: 2,
+        ownerId: groupId,
         text: 'Студенты группы 9ОИБ231 заняли первое место на олимпиаде по программированию! 🏆 Поздравляем ребят и их наставника!\n\n#АПЭК #Победа #Программирование',
         date: DateTime.now().subtract(Duration(days: 1)),
         likesCount: 45,
@@ -49,6 +53,7 @@ class VkApiService {
       ),
       VkPost(
         id: 3,
+        ownerId: groupId,
         text: 'Фотоотчет с прошедшего Дня открытых дверей. Спасибо всем, кто пришел!\nБольше фото в альбоме: [ссылка]', // VK ссылки можно будет сделать кликабельными позже
         date: DateTime.now().subtract(Duration(days: 2, hours: 3)),
         likesCount: 30,
@@ -61,6 +66,7 @@ class VkApiService {
       ),
        VkPost(
         id: 4,
+        ownerId: groupId,
         text: 'Обновленное меню в столовой на эту неделю. Приятного аппетита!',
         date: DateTime.now().subtract(Duration(days: 3)),
         likesCount: 22,

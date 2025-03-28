@@ -3,6 +3,7 @@ import 'package:my_asiec_lite/models/schedule_card.dart';
 // import 'package:my_asiec_lite/models/schedule_entry.dart';
 // import 'package:my_asiec_lite/models/parser_schedule.dart';
 import 'package:my_asiec_lite/models/daily_schedule.dart';
+import 'package:my_asiec_lite/models/group_info.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 
@@ -25,17 +26,172 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  List<GroupInfo> _availableGroups = []; // Список доступных групп
+  GroupInfo? _selectedGroup; // Выбранная группа (может быть null сначала)
+
   // --- Константы для запроса (остаются как были) ---
   final String _scheduleApiUrl = 'https://asiec.ru/ras/ras.php'; // ЗАМЕНИ!
-  final String _groupId = '3afb102a-1ea1-11ed-abe0-00155d879809%0A'; // ЗАМЕНИ!
+  // final String _groupId = '3afb102a-1ea1-11ed-abe0-00155d879809%0A'; // ЗАМЕНИ!
   final String _rasType = 'GRUP';
   final String _dostup = 'true';
 
   @override
   void initState() {
     super.initState();
+     _initializeGroups(); // Инициализируем список групп
+    // Загружаем расписание для выбранной группы и сегодняшней даты
+    if (_selectedGroup != null) {
+        _loadScheduleData(_startDate, _endDate, _selectedGroup!);
+    } else {
+        // Обработка случая, если не удалось выбрать группу по умолчанию
+        setState(() {
+            _isLoading = false;
+            _errorMessage = "Не выбрана группа по умолчанию.";
+        });
+    }
     // Загружаем расписание для СЕГОДНЯШНЕЙ даты при первом запуске
-    _loadScheduleData(_startDate, _endDate);
+    _loadScheduleData(_startDate, _endDate, _selectedGroup!);
+  }
+
+   void _initializeGroups() {
+    // ВАЖНО: Замени этот список на реальные группы и их ID!
+    // В будущем этот метод может загружать группы из API
+    _availableGroups = const [
+      GroupInfo(id: '3afb102a-1ea1-11ed-abe0-00155d879809', name: '9ОИБ231'), // Твой пример
+      GroupInfo(id: 'GROUP_ID_2', name: '11Б221'),
+      GroupInfo(id: 'GROUP_ID_3', name: '9ИС231'),
+      GroupInfo(id: 'GROUP_ID_4', name: '9ПД231'),
+      // Добавь другие группы...
+    ];
+    // Устанавливаем выбранную группу по умолчанию (например, первую в списке)
+    if (_availableGroups.isNotEmpty) {
+      // Ищем группу '9ОИБ231' по умолчанию или берем первую
+      _selectedGroup = _availableGroups.firstWhere(
+           (g) => g.id == '3afb102a-1ea1-11ed-abe0-00155d879809',
+           orElse: () => _availableGroups.first, // Если не нашли, берем первую
+      );
+    } else {
+        _selectedGroup = null; // На случай, если список пуст
+    }
+    print("Доступные группы инициализированы. Выбрана: $_selectedGroup");
+  }
+
+  // --- Форматирование дат (остаются как были) ---
+  // ... _formatDateForApi, _formatDateRangeForDisplay ...
+
+  // --- Функция вызова DateRangePicker (остается как была) ---
+  // ... _selectDateRange ...
+  // Важно: внутри _selectDateRange, вызов _loadScheduleData теперь должен передавать _selectedGroup!
+  Future<void> _selectDateRange(BuildContext context) async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
+      firstDate: DateTime(_startDate.year - 1), // Год назад от текущей даты начала
+      lastDate: DateTime(_endDate.year + 1),   // Год вперед от текущей даты конца
+      locale: const Locale('ru', 'RU'), // Локализация для пикера
+      helpText: 'Выберите диапазон дат',
+      cancelText: 'Отмена',
+      confirmText: 'Выбрать',
+      saveText: 'Выбрать',
+      builder: (context, child) { // Опционально: кастомизация темы пикера
+          return Theme(
+            data: ThemeData.light().copyWith( // Или ThemeData.dark()
+              colorScheme: ColorScheme.light( // Или ColorScheme.dark()
+                 primary: Colors.blue, // Основной цвет
+                 onPrimary: Colors.white, // Цвет текста на основном цвете
+              )
+            ),
+            child: child!,
+          );
+      }
+    );
+    if (picked != null) {
+      final newStartDate = DateTime(picked.start.year, picked.start.month, picked.start.day);
+      final newEndDate = DateTime(picked.end.year, picked.end.month, picked.end.day);
+       if (newStartDate != _startDate || newEndDate != _endDate) {
+           if (_selectedGroup != null) { // Проверяем, выбрана ли группа
+             _loadScheduleData(newStartDate, newEndDate, _selectedGroup!);
+           } else {
+               // Можно показать ошибку или ничего не делать
+               print("Невозможно загрузить расписание: группа не выбрана");
+               _showSnackBar(context, "Сначала выберите группу");
+           }
+       }
+    }
+  }
+
+  // --- Хелпер для показа SnackBar ---
+  void _showSnackBar(BuildContext context, String message) {
+     ScaffoldMessenger.of(context).showSnackBar(
+       SnackBar(content: Text(message), duration: Duration(seconds: 2)),
+     );
+  }
+
+  // --- Парсинг даты из HTML (остается) ---
+  // ... _parseDateFromHtml ...
+
+  // --- Обновленная функция загрузки данных ---
+  // Теперь принимает выбранную группу как параметр
+  Future<void> _loadScheduleData(DateTime startDate, DateTime endDate, GroupInfo group) async {
+     // Проверяем mounted перед первым setState
+     if (!mounted) return;
+     setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      // Отображаем текущий диапазон и группу + "Загрузка..."
+      _scheduleDateDisplay = '${_formatDateRangeForDisplay(_startDate, _endDate)} (Загрузка...)';
+      _dailySchedules = [];
+    });
+
+    final String startDateString = _formatDateForApi(startDate);
+    final String endDateString = _formatDateForApi(endDate);
+
+    final Map<String, String> body = {
+      'dostup': _dostup,
+      'gruppa': group.id, // <-- Используем ID выбранной группы
+      'calendar': startDateString,
+      'calendar2': endDateString,
+      'ras': _rasType,
+    };
+
+    print("Отправка запроса для группы ${group.name} ($startDateString - $endDateString)");
+
+    try {
+      final response = await http.post(
+        Uri.parse(_scheduleApiUrl),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: body,
+      ); // Запрос как раньше, но с ID группы
+
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        // ... (парсинг HTML как раньше) ...
+        final parsedData = parseScheduleHtmlMultiDay(response.body);
+
+        if (!mounted) return;
+        setState(() {
+          _startDate = startDate;
+          _endDate = endDate;
+          // _selectedGroup уже должен быть правильным, т.к. мы его передали
+          _dailySchedules = parsedData;
+          _scheduleDateDisplay = '${_formatDateRangeForDisplay(_startDate, _endDate)}'; // Обновляем отображение
+          _isLoading = false;
+        });
+      } else { /* ... обработка ошибки сервера ... */ }
+    } catch (e) {
+       if (!mounted) return;
+       setState(() {
+         // Сохраняем даты и группу
+         _startDate = startDate;
+         _endDate = endDate;
+         // _selectedGroup не меняем при ошибке
+         _scheduleDateDisplay = '${_formatDateRangeForDisplay(_startDate, _endDate)}';
+         _errorMessage = 'Не удалось загрузить расписание для группы ${group.name}: $e';
+         _isLoading = false;
+       });
+       print("Ошибка при загрузке расписания для группы ${group.id}: $e");
+    }
   }
 
   // --- Форматирование дат (остаются или немного адаптируются) ---
@@ -69,167 +225,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
-  // --- Функция вызова DateRangePicker ---
-  Future<void> _selectDateRange(BuildContext context) async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
-      firstDate: DateTime(_startDate.year - 1), // Год назад от текущей даты начала
-      lastDate: DateTime(_endDate.year + 1),   // Год вперед от текущей даты конца
-      locale: const Locale('ru', 'RU'), // Локализация для пикера
-      helpText: 'Выберите диапазон дат',
-      cancelText: 'Отмена',
-      confirmText: 'Выбрать',
-      saveText: 'Выбрать',
-      builder: (context, child) { // Опционально: кастомизация темы пикера
-          return Theme(
-            data: ThemeData.light().copyWith( // Или ThemeData.dark()
-              colorScheme: ColorScheme.light( // Или ColorScheme.dark()
-                 primary: Colors.blue, // Основной цвет
-                 onPrimary: Colors.white, // Цвет текста на основном цвете
-              )
-            ),
-            child: child!,
-          );
-      }
-    );
-
-    // Если пользователь выбрал диапазон
-    if (picked != null) {
-      // Сбрасываем время на полночь для корректного сравнения и запросов
-      final newStartDate = DateTime(picked.start.year, picked.start.month, picked.start.day);
-      final newEndDate = DateTime(picked.end.year, picked.end.month, picked.end.day);
-
-       // Проверяем, изменился ли диапазон перед загрузкой
-       if (newStartDate != _startDate || newEndDate != _endDate) {
-          print("Выбран новый диапазон: $newStartDate - $newEndDate");
-          // Обновляем состояние и запускаем загрузку
-          // setState тут не нужен, т.к. _loadScheduleData его вызовет
-          _loadScheduleData(newStartDate, newEndDate);
-       } else {
-           print("Диапазон не изменился.");
-       }
-    }
-  }
-
-  // --- Функция парсинга даты из HTML (остается как есть) ---
-  // DateTime? _parseDateFromHtml(String? htmlDateString) {
-  //     // ... (код как в предыдущем примере) ...
-  //     if (htmlDateString == null || !htmlDateString.contains(',')) return null;
-  //     try {
-  //         final datePart = htmlDateString.split(',').last.trim(); // "15.10.2024"
-  //         return DateFormat('dd.MM.yyyy').parseStrict(datePart);
-  //     } catch (e) {
-  //         print("Не удалось распознать дату из HTML: '$htmlDateString'. Ошибка: $e");
-  //         return null;
-  //     }
-  // }
-
-
-  // --- Обновленная функция загрузки данных ---
-  Future<void> _loadScheduleData(DateTime startDate, DateTime endDate) async {
-    // Вызов setState в начале - БЕЗОПАСЕН, т.к. тут еще нет await
-    // Но для единообразия можно и его обернуть, хотя это не обязательно
-    if (mounted) { // <-- Можно добавить для единообразия
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-        _scheduleDateDisplay = '${_formatDateRangeForDisplay(_startDate, _endDate)} (Загрузка...)';
-        _dailySchedules = [];
-      });
-    } else { // <-- Если уже unmounted в самом начале, просто выходим
-        return;
-    }
-
-
-    final String startDateString = _formatDateForApi(startDate);
-    final String endDateString = _formatDateForApi(endDate);
-
-    final Map<String, String> body = {
-      'dostup': _dostup,
-      'gruppa': _groupId,
-      'calendar': startDateString,
-      'calendar2': endDateString, // Используем endDate
-      'ras': _rasType,
-    };
-    
-    print("Отправка запроса на $_scheduleApiUrl с датами: $startDateString - $endDateString");
-
-    try {
-      // Асинхронная операция
-      final response = await http.post(
-        Uri.parse(_scheduleApiUrl),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: body,
-      );
-
-      // --- ВОТ ЗДЕСЬ НУЖНА ПРОВЕРКА ---
-      // Прежде чем вызывать setState после await, проверяем mounted
-      if (!mounted) return; // Если виджет уже убран, просто выходим из функции
-
-      print("Ответ получен. Статус: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        final htmlContent = response.body;
-        final parsedData = parseScheduleHtmlMultiDay(htmlContent); // Вызов парсера
-
-        // --- И ЗДЕСЬ ПРОВЕРКА ПЕРЕД setState ---
-        if (!mounted) return;
-        setState(() {
-          _startDate = startDate;
-          _endDate = endDate;
-          _dailySchedules = parsedData;
-          _scheduleDateDisplay = _formatDateRangeForDisplay(_startDate, _endDate);
-          _isLoading = false;
-        });
-      } else {
-        // Если статус не 200, ошибка будет поймана в catch ниже
-        throw Exception('Ошибка сервера: ${response.statusCode}');
-      }
-    } catch (e) {
-      print("Ошибка при загрузке/парсинге расписания: $e");
-
-      // --- И ЗДЕСЬ ПРОВЕРКА ПЕРЕД setState ---
-      if (!mounted) return; // Проверяем перед обновлением состояния с ошибкой
-      setState(() {
-         _startDate = startDate; // Сохраняем запрошенные даты
-         _endDate = endDate;
-         _scheduleDateDisplay = _formatDateRangeForDisplay(_startDate, _endDate); // Показываем их
-         _errorMessage = 'Не удалось загрузить расписание: $e';
-         _isLoading = false;
-      });
-    }
-  }
-  // Вспомогательная функция для парсинга даты из строки HTML (например, "Вторник, 15.10.2024")
-  // DateTime? _parseDateFromHtml(String? htmlDateString) {
-  //     if (htmlDateString == null || !htmlDateString.contains(',')) return null;
-  //     try {
-  //         final datePart = htmlDateString.split(',').last.trim(); // "15.10.2024"
-  //         // Используем DateFormat для парсинга строки в DateTime
-  //         return DateFormat('dd.MM.yyyy').parseStrict(datePart);
-  //     } catch (e) {
-  //         print("Не удалось распознать дату из HTML: '$htmlDateString'. Ошибка: $e");
-  //         return null;
-  //     }
-  // }
-
-  // Функции для переключения дней (будут вызываться кнопками)
-  // void _goToPreviousDay() {
-  //     final previousDay = _currentDate.subtract(Duration(days: 1));
-  //     _loadScheduleData(previousDay);
-  // }
-
-  // void _goToNextDay() {
-  //     final nextDay = _currentDate.add(Duration(days: 1));
-  //     _loadScheduleData(nextDay);
-  // }
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Расписание'),
+        title: Text('Расписание ${_selectedGroup?.name ?? ""}'),
         // ... (настройки AppBar)
       ),
       body: Column(
@@ -267,7 +267,53 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ),
           ),
 
-          // --- Убрали стрелочки навигации ---
+           if (_availableGroups.isNotEmpty) // Показываем, только если есть группы
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 0.0), // Уменьшаем вертикальный отступ
+              child: DropdownButtonHideUnderline( // Убираем стандартное подчеркивание
+                 child: Container( // Оборачиваем в контейнер для фона и скругления
+                   padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+                   decoration: BoxDecoration(
+                       color: Colors.white, // Или цвет из темы
+                       borderRadius: BorderRadius.circular(8.0),
+                       border: Border.all(color: Colors.grey.shade300) // Легкая граница
+                   ),
+                   child: DropdownButton<GroupInfo>(
+                    value: _selectedGroup, // Текущее выбранное значение
+                    isExpanded: true,      // Растягиваем на всю ширину
+                    icon: Icon(Icons.group_outlined, color: Colors.black54), // Иконка справа
+                    hint: Text('Выберите группу'), // Подсказка, если _selectedGroup == null
+                    onChanged: _isLoading ? null : (GroupInfo? newValue) { // Блокируем во время загрузки
+                      if (newValue != null && newValue != _selectedGroup) {
+                        print("Выбрана новая группа: ${newValue.name}");
+                        setState(() {
+                          _selectedGroup = newValue; // Обновляем выбранную группу
+                        });
+                        // Загружаем данные для новой группы и текущего диапазона дат
+                        _loadScheduleData(_startDate, _endDate, newValue);
+                      }
+                    },
+                    items: _availableGroups
+                        .map<DropdownMenuItem<GroupInfo>>((GroupInfo group) {
+                      return DropdownMenuItem<GroupInfo>(
+                        value: group, // Значение элемента - сам объект GroupInfo
+                        child: Text(
+                           group.name, // Отображаемый текст - имя группы
+                           overflow: TextOverflow.ellipsis, // Многоточие для длинных названий
+                        ),
+                      );
+                    }).toList(), // Преобразуем итератор в список
+                  ),
+                 ),
+              ),
+            )
+          else // Если список групп пуст (например, не загрузился)
+             Padding(
+                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                 child: Text('Список групп недоступен', style: TextStyle(color: Colors.red))
+             ),
+
+           SizedBox(height: 8.0), // Небольшой отступ после дропдауна
 
           // Тело экрана: загрузка, ошибка или список
           Expanded(
@@ -285,19 +331,43 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return Center(child: CircularProgressIndicator());
     }
 
-    if (_errorMessage != null) {
-      return Center( /* ... код отображения ошибки с кнопкой Повторить ... */ );
+if (_errorMessage != null) {
+       return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                   //_errorMessage!, // Используем сообщение об ошибке как есть
+                   'Не удалось загрузить расписание для группы ${_selectedGroup?.name ?? "N/A"}.',
+                  style: TextStyle(color: Colors.red, fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
+                 Text( // Показываем саму ошибку ниже
+                   _errorMessage!, // Тут само исключение
+                   style: TextStyle(color: Colors.red.shade300, fontSize: 12),
+                   textAlign: TextAlign.center,
+                 ),
+                SizedBox(height: 16),
+                ElevatedButton(
+                    onPressed: _selectedGroup == null ? null : () => _loadScheduleData(_startDate, _endDate, _selectedGroup!),
+                    child: Text('Повторить попытку')
+                )
+              ],
+            ),
+          ),
+       );
     }
-
-    if (_dailySchedules.isEmpty) {
+     if (_dailySchedules.isEmpty) {
       return Center(
         child: Text(
-          'Нет данных на выбранный период',
+          'Нет данных на выбранный период для группы ${_selectedGroup?.name ?? ""}', // Добавили группу
+          textAlign: TextAlign.center,
           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
         ),
       );
     }
-
     // Используем ListView для отображения дней и их пар
     return ListView.builder(
         padding: const EdgeInsets.only(bottom: 16.0), // Отступ снизу списка
@@ -353,28 +423,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 }
 
-// --- Точка входа main() и класс MyApp ---
-// Не забудь добавить их, как в первом примере,
-// а также определения ScheduleEntry, ScheduleCard и parseScheduleHtml
-// Важно: Для использования DateFormat('d MMMM', 'ru_RU') может потребоваться
-// инициализация локали. Добавь в начало функции main():
-
-/*
-import 'package:flutter/material.dart';
-import 'package:intl/date_symbol_data_local.dart'; // Для инициализации локали
-
-void main() async { // main теперь async
-  // Инициализируем данные локализации для русского языка перед запуском приложения
-  // Это нужно для правильного отображения названий месяцев и дней недели
-  WidgetsFlutterBinding.ensureInitialized(); // Обязательно перед асинхронными операциями до runApp
-  await initializeDateFormatting('ru_RU', null);
-
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  // ... (как раньше)
-    home: ScheduleScreen(),
-  // ...
-}
-*/
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    throw UnimplementedError();
+  }
