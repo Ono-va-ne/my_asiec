@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:my_asiec_lite/models/schedule_card.dart';
-import 'package:my_asiec_lite/models/schedule_entry.dart';
-import 'package:my_asiec_lite/models/parser_schedule.dart';
+// import 'package:my_asiec_lite/models/schedule_entry.dart';
+// import 'package:my_asiec_lite/models/parser_schedule.dart';
+import 'package:my_asiec_lite/models/daily_schedule.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 
@@ -16,131 +17,107 @@ class ScheduleScreen extends StatefulWidget {
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
-  List<ScheduleEntry> _scheduleItems = [];
-  String _scheduleDateDisplay = 'Загрузка...'; // Дата для отображения
-  DateTime _currentDate = DateTime.now(); // Текущая выбранная дата
+  // --- Состояние ---
+  List<DailySchedule> _dailySchedules = []; // Теперь храним список расписаний по дням
+  DateTime _startDate = DateTime.now(); // Дата начала диапазона
+  DateTime _endDate = DateTime.now();   // Дата конца диапазона
+  String _scheduleDateDisplay = 'Загрузка...'; // Строка для отображения диапазона
   bool _isLoading = true;
   String? _errorMessage;
 
-  // --- Константы для запроса ---
-  // ВАЖНО: Замени 'YOUR_SCHEDULE_API_URL' на реальный URL сервера
-  final String _scheduleApiUrl = 'https://www.asiec.ru/ras/ras.php';
-  // ВАЖНО: Замени 'YOUR_GROUP_ID' на реальный ID группы
-  final String _groupId = '71d4f045-3cc0-11ee-9626-00155d879809'; // Твой пример ID
+  // --- Константы для запроса (остаются как были) ---
+  final String _scheduleApiUrl = 'https://asiec.ru/ras/ras.php'; // ЗАМЕНИ!
+  final String _groupId = '3afb102a-1ea1-11ed-abe0-00155d879809%0A'; // ЗАМЕНИ!
   final String _rasType = 'GRUP';
   final String _dostup = 'true';
-  // --- ---
 
   @override
   void initState() {
     super.initState();
     // Загружаем расписание для СЕГОДНЯШНЕЙ даты при первом запуске
-    _loadScheduleData(_currentDate);
+    _loadScheduleData(_startDate, _endDate);
   }
 
-  // Функция для форматирования даты в YYYY-MM-DD
+  // --- Форматирование дат (остаются или немного адаптируются) ---
   String _formatDateForApi(DateTime date) {
-    // Используем пакет intl для надежного форматирования
     return DateFormat('yyyy-MM-dd').format(date);
-    // Альтернатива без intl (менее надежна для разных локалей):
-    // return date.toIso8601String().substring(0, 10);
   }
 
-  // Функция для форматирования даты для отображения (например, "15 Октября")
-  String _formatDateForDisplay(DateTime date) {
-    // Убедись, что локаль настроена для русского языка
-    // Это можно сделать глобально в main.dart: initializeDateFormatting('ru_RU', null);
-    // Или явно указать локаль здесь:
-    // final russianLocale = await initializeDateFormatting('ru_RU', null); // может потребоваться async
+  // Новая функция для форматирования диапазона для отображения
+  String _formatDateRangeForDisplay(DateTime start, DateTime end) {
+    final ruLocale = 'ru_RU';
     try {
-      // Пробуем использовать DateFormat для красивого вывода
-       return DateFormat('d MMMM', 'ru_RU').format(date); // 'ru_RU' для русских названий месяцев
-    } catch (e) {
-       // Если форматирование не сработало (например, локаль не найдена),
-       // возвращаем простой формат
-       print("Ошибка форматирования даты для отображения: $e. Используем резервный формат.");
-       return DateFormat('dd.MM.yyyy').format(date);
-    }
-  }
-
-
-  // Асинхронная функция для загрузки и парсинга
-  Future<void> _loadScheduleData(DateTime dateToLoad) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _scheduleDateDisplay = 'Загрузка...'; // Показываем загрузку даты
-    });
-
-    // Форматируем дату для API
-    final String dateString = _formatDateForApi(dateToLoad);
-
-    // Готовим тело POST-запроса
-    final Map<String, String> body = {
-      'dostup': _dostup,
-      'gruppa': _groupId,
-      'calendar': dateString,
-      'calendar2': dateString, // Так как нужен только один день
-      'ras': _rasType,
-    };
-
-    print("Отправка запроса на $_scheduleApiUrl с телом: $body"); // Для отладки
-
-    try {
-      // Отправляем POST-запрос
-      final response = await http.post(
-        Uri.parse(_scheduleApiUrl),
-        headers: {
-          // Сервер ожидает данные в формате формы
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: body,
-      );
-
-      print("Ответ получен. Статус: ${response.statusCode}"); // Для отладки
-
-      // Проверяем статус ответа
-      if (response.statusCode == 200) {
-        // Успех! Получаем HTML как строку
-        final htmlContent = response.body;
-
-        // Парсим HTML (твоя функция parseScheduleHtml)
-        final parsedData = parseScheduleHtml(htmlContent);
-
-        // Обновляем состояние экрана
-        setState(() {
-          _currentDate = dateToLoad; // Сохраняем дату, для которой загрузили
-          _scheduleItems = parsedData.entries;
-          // Пытаемся взять дату из HTML, если она там есть и в ожидаемом формате
-          // Иначе используем запрошенную дату
-          final parsedHtmlDate = _parseDateFromHtml(parsedData.date); // Новая функция ниже
-          _scheduleDateDisplay = _formatDateForDisplay(parsedHtmlDate ?? dateToLoad);
-
-          _isLoading = false;
-        });
-      } else {
-        // Ошибка сервера
-        print("Ошибка сервера: ${response.statusCode}, Тело: ${response.body}"); // Для отладки
-        throw Exception('Ошибка сервера: ${response.statusCode}');
+      // Если даты совпадают, показываем одну дату
+      if (start.year == end.year && start.month == end.month && start.day == end.day) {
+        return DateFormat('d MMMM yyyy', ruLocale).format(start); // Добавим год для ясности
+      }
+      // Если даты в одном месяце и году
+      else if (start.year == end.year && start.month == end.month) {
+         return '${DateFormat('d', ruLocale).format(start)} - ${DateFormat('d MMMM yyyy', ruLocale).format(end)}';
+      }
+      // Если даты в одном году, но разных месяцах
+      else if (start.year == end.year) {
+          return '${DateFormat('d MMMM', ruLocale).format(start)} - ${DateFormat('d MMMM yyyy', ruLocale).format(end)}';
+      }
+      // Иначе показываем полный диапазон
+      else {
+        return '${DateFormat('d MMMM yyyy', ruLocale).format(start)} - ${DateFormat('d MMMM yyyy', ruLocale).format(end)}';
       }
     } catch (e) {
-      // Ошибка сети или парсинга
-      print("Ошибка при загрузке/парсинге расписания: $e"); // Для отладки
-      setState(() {
-        _errorMessage = 'Не удалось загрузить расписание: $e';
-        _isLoading = false;
-         // Отображаем запрошенную дату, даже если загрузка не удалась
-        _scheduleDateDisplay = _formatDateForDisplay(dateToLoad);
-      });
+      print("Ошибка форматирования диапазона дат: $e");
+      return '${DateFormat('dd.MM.yyyy').format(start)} - ${DateFormat('dd.MM.yyyy').format(end)}';
     }
   }
 
-  // Вспомогательная функция для парсинга даты из строки HTML (например, "Вторник, 15.10.2024")
+  // --- Функция вызова DateRangePicker ---
+  Future<void> _selectDateRange(BuildContext context) async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
+      firstDate: DateTime(_startDate.year - 1), // Год назад от текущей даты начала
+      lastDate: DateTime(_endDate.year + 1),   // Год вперед от текущей даты конца
+      locale: const Locale('ru', 'RU'), // Локализация для пикера
+      helpText: 'Выберите диапазон дат',
+      cancelText: 'Отмена',
+      confirmText: 'Выбрать',
+      saveText: 'Выбрать',
+      builder: (context, child) { // Опционально: кастомизация темы пикера
+          return Theme(
+            data: ThemeData.light().copyWith( // Или ThemeData.dark()
+              colorScheme: ColorScheme.light( // Или ColorScheme.dark()
+                 primary: Colors.blue, // Основной цвет
+                 onPrimary: Colors.white, // Цвет текста на основном цвете
+              )
+            ),
+            child: child!,
+          );
+      }
+    );
+
+    // Если пользователь выбрал диапазон
+    if (picked != null) {
+      // Сбрасываем время на полночь для корректного сравнения и запросов
+      final newStartDate = DateTime(picked.start.year, picked.start.month, picked.start.day);
+      final newEndDate = DateTime(picked.end.year, picked.end.month, picked.end.day);
+
+       // Проверяем, изменился ли диапазон перед загрузкой
+       if (newStartDate != _startDate || newEndDate != _endDate) {
+          print("Выбран новый диапазон: $newStartDate - $newEndDate");
+          // Обновляем состояние и запускаем загрузку
+          // setState тут не нужен, т.к. _loadScheduleData его вызовет
+          _loadScheduleData(newStartDate, newEndDate);
+       } else {
+           print("Диапазон не изменился.");
+       }
+    }
+  }
+
+  // --- Функция парсинга даты из HTML (остается как есть) ---
   DateTime? _parseDateFromHtml(String? htmlDateString) {
+      // ... (код как в предыдущем примере) ...
       if (htmlDateString == null || !htmlDateString.contains(',')) return null;
       try {
           final datePart = htmlDateString.split(',').last.trim(); // "15.10.2024"
-          // Используем DateFormat для парсинга строки в DateTime
           return DateFormat('dd.MM.yyyy').parseStrict(datePart);
       } catch (e) {
           print("Не удалось распознать дату из HTML: '$htmlDateString'. Ошибка: $e");
@@ -148,16 +125,91 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       }
   }
 
-  // Функции для переключения дней (будут вызываться кнопками)
-  void _goToPreviousDay() {
-      final previousDay = _currentDate.subtract(Duration(days: 1));
-      _loadScheduleData(previousDay);
+
+  // --- Обновленная функция загрузки данных ---
+  Future<void> _loadScheduleData(DateTime startDate, DateTime endDate) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      // Показываем предыдущий диапазон + "Загрузка..." пока не загрузится новый
+      _scheduleDateDisplay = '${_formatDateRangeForDisplay(_startDate, _endDate)} (Загрузка...)';
+      _dailySchedules = []; // Очищаем предыдущие данные
+    });
+
+    final String startDateString = _formatDateForApi(startDate);
+    final String endDateString = _formatDateForApi(endDate);
+
+    final Map<String, String> body = {
+      'dostup': _dostup,
+      'gruppa': _groupId,
+      'calendar': startDateString,
+      'calendar2': endDateString, // Используем endDate
+      'ras': _rasType,
+    };
+
+    print("Отправка запроса на $_scheduleApiUrl с датами: $startDateString - $endDateString; полный запрос: $body");
+
+    try {
+      final response = await http.post(
+        Uri.parse(_scheduleApiUrl),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: body,
+      );
+
+      print("Ответ получен. Статус: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final htmlContent = response.body;
+
+        // --- ВАЖНО: Используем обновленный парсер ---
+        final parsedData = parseScheduleHtmlMultiDay(htmlContent); // Имя новой функции парсера
+
+        setState(() {
+          _startDate = startDate; // Обновляем даты в состоянии
+          _endDate = endDate;
+          _dailySchedules = parsedData; // Сохраняем сгруппированные данные
+          _scheduleDateDisplay = _formatDateRangeForDisplay(_startDate, _endDate); // Обновляем отображаемый диапазон
+          _isLoading = false;
+        });
+      } else {
+        throw Exception('Ошибка сервера: ${response.statusCode}');
+      }
+    } catch (e) {
+      print("Ошибка при загрузке/парсинге расписания: $e");
+      setState(() {
+         // Сохраняем запрошенные даты, даже если ошибка
+         _startDate = startDate;
+         _endDate = endDate;
+         _scheduleDateDisplay = _formatDateRangeForDisplay(_startDate, _endDate); // Показываем запрошенный диапазон
+         _errorMessage = 'Не удалось загрузить расписание: $e';
+         _isLoading = false;
+      });
+    }
   }
 
-  void _goToNextDay() {
-      final nextDay = _currentDate.add(Duration(days: 1));
-      _loadScheduleData(nextDay);
-  }
+  // Вспомогательная функция для парсинга даты из строки HTML (например, "Вторник, 15.10.2024")
+  // DateTime? _parseDateFromHtml(String? htmlDateString) {
+  //     if (htmlDateString == null || !htmlDateString.contains(',')) return null;
+  //     try {
+  //         final datePart = htmlDateString.split(',').last.trim(); // "15.10.2024"
+  //         // Используем DateFormat для парсинга строки в DateTime
+  //         return DateFormat('dd.MM.yyyy').parseStrict(datePart);
+  //     } catch (e) {
+  //         print("Не удалось распознать дату из HTML: '$htmlDateString'. Ошибка: $e");
+  //         return null;
+  //     }
+  // }
+
+  // Функции для переключения дней (будут вызываться кнопками)
+  // void _goToPreviousDay() {
+  //     final previousDay = _currentDate.subtract(Duration(days: 1));
+  //     _loadScheduleData(previousDay);
+  // }
+
+  // void _goToNextDay() {
+  //     final nextDay = _currentDate.add(Duration(days: 1));
+  //     _loadScheduleData(nextDay);
+  // }
 
 
   @override
@@ -165,54 +217,48 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Расписание'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 1.0,
+        // ... (настройки AppBar)
       ),
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch, // Заголовки дней будут на всю ширину
         children: [
-          // Заголовок с датой и стрелками
+          // --- Кликабельный заголовок с диапазоном дат ---
           Padding(
-            padding: const EdgeInsets.only(left: 16.0, right: 4.0, top: 16.0, bottom: 8.0), // Уменьшен отступ справа для кнопок
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Используем Flexible, чтобы текст мог переноситься, если очень длинный
-                Flexible(
-                  child: Text(
-                     // Отображаем _scheduleDateDisplay (либо дату, либо "Загрузка...")
-                    _scheduleDateDisplay,
-                    style: TextStyle(
-                      fontSize: 22.0, // Чуть меньше, чтобы лучше помещалось
-                      fontWeight: FontWeight.bold,
-                    ),
-                     overflow: TextOverflow.ellipsis, // Многоточие, если не влезает
-                  ),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            child: InkWell( // Делаем область кликабельной
+              onTap: _isLoading ? null : () => _selectDateRange(context), // Вызываем пикер по тапу (блокируем во время загрузки)
+              borderRadius: BorderRadius.circular(8.0), // Скругление для эффекта при нажатии
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0), // Внутренний отступ для красоты
+                child: Row(
+                   mainAxisAlignment: MainAxisAlignment.center, // Центрируем текст и иконку
+                   children: [
+                     Icon(Icons.calendar_today_outlined, size: 20.0, color: Colors.black54), // Иконка календаря
+                     SizedBox(width: 8.0),
+                     Flexible( // Чтобы текст переносился, если диапазон длинный
+                       child: Text(
+                         _scheduleDateDisplay, // Отображаем диапазон или статус загрузки
+                         style: TextStyle(
+                           fontSize: 18.0, // Можно настроить размер
+                           fontWeight: FontWeight.w500, // Средняя жирность
+                         ),
+                         textAlign: TextAlign.center,
+                       ),
+                     ),
+                     SizedBox(width: 8.0),
+                     // Можно добавить иконку выпадающего списка для большей очевидности
+                     Icon(Icons.arrow_drop_down, color: Colors.black54),
+                   ],
                 ),
-                // Кнопки навигации по дням
-                Row(
-                  children: [
-                    // Делаем кнопки менее заметными, если идет загрузка
-                    IconButton(
-                      onPressed: _isLoading ? null : _goToPreviousDay, // Выключаем кнопку при загрузке
-                      icon: Icon(Icons.chevron_left, color: _isLoading ? Colors.grey : Colors.black54),
-                      tooltip: 'Предыдущий день', // Подсказка при наведении
-                    ),
-                    IconButton(
-                      onPressed: _isLoading ? null : _goToNextDay, // Выключаем кнопку при загрузке
-                      icon: Icon(Icons.chevron_right, color: _isLoading ? Colors.grey : Colors.black54),
-                      tooltip: 'Следующий день', // Подсказка при наведении
-                    ),
-                  ],
-                )
-              ],
+              ),
             ),
           ),
 
+          // --- Убрали стрелочки навигации ---
+
           // Тело экрана: загрузка, ошибка или список
           Expanded(
-            child: _buildBody(), // Используем тот же метод, что и раньше
+            child: _buildBody(),
           ),
         ],
       ),
@@ -223,51 +269,76 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   // Метод _buildBody() остается таким же, как в предыдущем примере
   Widget _buildBody() {
     if (_isLoading) {
-      // Можно оставить CircularProgressIndicator или добавить Shimmer эффект
       return Center(child: CircularProgressIndicator());
-    } else if (_errorMessage != null) {
-      // Отображение ошибки
+    }
+
+    if (_errorMessage != null) {
+      return Center( /* ... код отображения ошибки с кнопкой Повторить ... */ );
+    }
+
+    if (_dailySchedules.isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column( // Добавляем кнопку для повторной попытки
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _errorMessage!,
-                style: TextStyle(color: Colors.red, fontSize: 16),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 16),
-              ElevatedButton(
-                  onPressed: () => _loadScheduleData(_currentDate), // Повторить загрузку для текущей даты
-                  child: Text('Повторить попытку')
-              )
-            ],
-          ),
-        ),
-      );
-    } else if (_scheduleItems.isEmpty) {
-      // Сообщение, если пар нет
-       return Center(
         child: Text(
-          'На этот день пар нет',
+          'Нет данных на выбранный период',
           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
         ),
       );
-    } else {
-      // Список карточек
-      return ListView.builder(
-        itemCount: _scheduleItems.length,
-        itemBuilder: (context, index) {
-          final item = _scheduleItems[index];
-          return ScheduleCard(entry: item);
-        },
-      );
     }
+
+    // Используем ListView для отображения дней и их пар
+    return ListView.builder(
+        padding: const EdgeInsets.only(bottom: 16.0), // Отступ снизу списка
+        itemCount: _dailySchedules.length, // Количество дней = количество элементов в главном списке
+        itemBuilder: (context, dayIndex) {
+            final dailySchedule = _dailySchedules[dayIndex];
+
+            // Создаем столбец для каждого дня: Заголовок + список пар (или сообщение "Пар нет")
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // --- Заголовок дня ---
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: 4.0),
+                  child: Text(
+                    // Форматируем дату дня (например, "Понедельник, 15 Октября")
+                    DateFormat('EEEE, d MMMM', 'ru_RU').format(dailySchedule.date),
+                    style: TextStyle(
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                    ),
+                  ),
+                ),
+
+                // --- Список пар для этого дня ---
+                if (dailySchedule.entries.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
+                      child: Text(
+                        'Пар нет',
+                        style: TextStyle(fontSize: 14.0, color: Colors.grey[600]),
+                      ),
+                    )
+                else
+                    // Используем Column, т.к. пар обычно не так много за день,
+                    // и это проще чем вложенный ListView.
+                    // Если пар может быть ОЧЕНЬ много, можно заменить на ListView(shrinkWrap: true, physics: NeverScrollableScrollPhysics())
+                    Column(
+                      children: dailySchedule.entries.map((entry) {
+                          return ScheduleCard(entry: entry);
+                      }).toList(), // Преобразуем результат map в список виджетов
+                    ),
+
+                // Добавляем разделитель между днями, кроме последнего
+                if (dayIndex < _dailySchedules.length - 1)
+                    Divider(height: 24.0, thickness: 1.0, indent: 16.0, endIndent: 16.0),
+
+              ],
+            );
+        },
+    );
   }
 }
-
 
 // --- Точка входа main() и класс MyApp ---
 // Не забудь добавить их, как в первом примере,
