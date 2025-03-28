@@ -113,28 +113,34 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   // --- Функция парсинга даты из HTML (остается как есть) ---
-  DateTime? _parseDateFromHtml(String? htmlDateString) {
-      // ... (код как в предыдущем примере) ...
-      if (htmlDateString == null || !htmlDateString.contains(',')) return null;
-      try {
-          final datePart = htmlDateString.split(',').last.trim(); // "15.10.2024"
-          return DateFormat('dd.MM.yyyy').parseStrict(datePart);
-      } catch (e) {
-          print("Не удалось распознать дату из HTML: '$htmlDateString'. Ошибка: $e");
-          return null;
-      }
-  }
+  // DateTime? _parseDateFromHtml(String? htmlDateString) {
+  //     // ... (код как в предыдущем примере) ...
+  //     if (htmlDateString == null || !htmlDateString.contains(',')) return null;
+  //     try {
+  //         final datePart = htmlDateString.split(',').last.trim(); // "15.10.2024"
+  //         return DateFormat('dd.MM.yyyy').parseStrict(datePart);
+  //     } catch (e) {
+  //         print("Не удалось распознать дату из HTML: '$htmlDateString'. Ошибка: $e");
+  //         return null;
+  //     }
+  // }
 
 
   // --- Обновленная функция загрузки данных ---
   Future<void> _loadScheduleData(DateTime startDate, DateTime endDate) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      // Показываем предыдущий диапазон + "Загрузка..." пока не загрузится новый
-      _scheduleDateDisplay = '${_formatDateRangeForDisplay(_startDate, _endDate)} (Загрузка...)';
-      _dailySchedules = []; // Очищаем предыдущие данные
-    });
+    // Вызов setState в начале - БЕЗОПАСЕН, т.к. тут еще нет await
+    // Но для единообразия можно и его обернуть, хотя это не обязательно
+    if (mounted) { // <-- Можно добавить для единообразия
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+        _scheduleDateDisplay = '${_formatDateRangeForDisplay(_startDate, _endDate)} (Загрузка...)';
+        _dailySchedules = [];
+      });
+    } else { // <-- Если уже unmounted в самом начале, просто выходим
+        return;
+    }
+
 
     final String startDateString = _formatDateForApi(startDate);
     final String endDateString = _formatDateForApi(endDate);
@@ -146,47 +152,54 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       'calendar2': endDateString, // Используем endDate
       'ras': _rasType,
     };
-
-    print("Отправка запроса на $_scheduleApiUrl с датами: $startDateString - $endDateString; полный запрос: $body");
+    
+    print("Отправка запроса на $_scheduleApiUrl с датами: $startDateString - $endDateString");
 
     try {
+      // Асинхронная операция
       final response = await http.post(
         Uri.parse(_scheduleApiUrl),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: body,
       );
 
+      // --- ВОТ ЗДЕСЬ НУЖНА ПРОВЕРКА ---
+      // Прежде чем вызывать setState после await, проверяем mounted
+      if (!mounted) return; // Если виджет уже убран, просто выходим из функции
+
       print("Ответ получен. Статус: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final htmlContent = response.body;
+        final parsedData = parseScheduleHtmlMultiDay(htmlContent); // Вызов парсера
 
-        // --- ВАЖНО: Используем обновленный парсер ---
-        final parsedData = parseScheduleHtmlMultiDay(htmlContent); // Имя новой функции парсера
-
+        // --- И ЗДЕСЬ ПРОВЕРКА ПЕРЕД setState ---
+        if (!mounted) return;
         setState(() {
-          _startDate = startDate; // Обновляем даты в состоянии
+          _startDate = startDate;
           _endDate = endDate;
-          _dailySchedules = parsedData; // Сохраняем сгруппированные данные
-          _scheduleDateDisplay = _formatDateRangeForDisplay(_startDate, _endDate); // Обновляем отображаемый диапазон
+          _dailySchedules = parsedData;
+          _scheduleDateDisplay = _formatDateRangeForDisplay(_startDate, _endDate);
           _isLoading = false;
         });
       } else {
+        // Если статус не 200, ошибка будет поймана в catch ниже
         throw Exception('Ошибка сервера: ${response.statusCode}');
       }
     } catch (e) {
       print("Ошибка при загрузке/парсинге расписания: $e");
+
+      // --- И ЗДЕСЬ ПРОВЕРКА ПЕРЕД setState ---
+      if (!mounted) return; // Проверяем перед обновлением состояния с ошибкой
       setState(() {
-         // Сохраняем запрошенные даты, даже если ошибка
-         _startDate = startDate;
+         _startDate = startDate; // Сохраняем запрошенные даты
          _endDate = endDate;
-         _scheduleDateDisplay = _formatDateRangeForDisplay(_startDate, _endDate); // Показываем запрошенный диапазон
+         _scheduleDateDisplay = _formatDateRangeForDisplay(_startDate, _endDate); // Показываем их
          _errorMessage = 'Не удалось загрузить расписание: $e';
          _isLoading = false;
       });
     }
   }
-
   // Вспомогательная функция для парсинга даты из строки HTML (например, "Вторник, 15.10.2024")
   // DateTime? _parseDateFromHtml(String? htmlDateString) {
   //     if (htmlDateString == null || !htmlDateString.contains(',')) return null;
