@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 // import 'package:intl/intl.dart'; // Для форматирования даты/времени
-import 'models/vk_post.dart'; // Импортируем модель
+import 'vk_post.dart'; // Импортируем модель
 import 'package:url_launcher/url_launcher.dart';
 
 class NewsCard extends StatelessWidget {

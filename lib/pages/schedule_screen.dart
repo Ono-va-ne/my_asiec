@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:my_asiec_lite/models/schedule_card.dart';
+import '../models/schedule_card.dart';
 // import 'package:my_asiec_lite/models/schedule_entry.dart';
 // import 'package:my_asiec_lite/models/parser_schedule.dart';
-import 'package:my_asiec_lite/models/daily_schedule.dart';
-import 'package:my_asiec_lite/models/group_info.dart';
+import '../models/daily_schedule.dart';
+import '../data/groups.dart';
+import '../models/group_info.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 
@@ -35,45 +36,33 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   final String _rasType = 'GRUP';
   final String _dostup = 'true';
 
-  @override
+ @override
   void initState() {
     super.initState();
-     _initializeGroups(); // Инициализируем список групп
-    // Загружаем расписание для выбранной группы и сегодняшней даты
+    _initializeGroups(); // Вызываем инициализацию
     if (_selectedGroup != null) {
         _loadScheduleData(_startDate, _endDate, _selectedGroup!);
     } else {
-        // Обработка случая, если не удалось выбрать группу по умолчанию
-        setState(() {
-            _isLoading = false;
-            _errorMessage = "Не выбрана группа по умолчанию.";
-        });
+        // ... (обработка ошибки, если нет групп) ...
     }
-    // Загружаем расписание для СЕГОДНЯШНЕЙ даты при первом запуске
-    _loadScheduleData(_startDate, _endDate, _selectedGroup!);
   }
 
-   void _initializeGroups() {
-    // ВАЖНО: Замени этот список на реальные группы и их ID!
-    // В будущем этот метод может загружать группы из API
-    _availableGroups = const [
-      GroupInfo(id: '3afb102a-1ea1-11ed-abe0-00155d879809', name: '9ОИБ231'), // Твой пример
-      GroupInfo(id: 'GROUP_ID_2', name: '11Б221'),
-      GroupInfo(id: 'GROUP_ID_3', name: '9ИС231'),
-      GroupInfo(id: 'GROUP_ID_4', name: '9ПД231'),
-      // Добавь другие группы...
-    ];
-    // Устанавливаем выбранную группу по умолчанию (например, первую в списке)
+  // --- Обновленный метод инициализации ---
+  void _initializeGroups() {
+    // Просто присваиваем импортированную константу нашей переменной состояния
+    _availableGroups = availableGroupsData;
+
+    // Логика выбора группы по умолчанию остается той же,
+    // но теперь использует константу defaultGroupId из нового файла
     if (_availableGroups.isNotEmpty) {
-      // Ищем группу '9ОИБ231' по умолчанию или берем первую
       _selectedGroup = _availableGroups.firstWhere(
-           (g) => g.id == '3afb102a-1ea1-11ed-abe0-00155d879809',
+           (g) => g.id == defaultGroupId, // Используем ID по умолчанию
            orElse: () => _availableGroups.first, // Если не нашли, берем первую
       );
     } else {
-        _selectedGroup = null; // На случай, если список пуст
+        _selectedGroup = null;
     }
-    print("Доступные группы инициализированы. Выбрана: $_selectedGroup");
+    print("Доступные группы инициализированы из файла. Выбрана: $_selectedGroup");
   }
 
   // --- Форматирование дат (остаются как были) ---
