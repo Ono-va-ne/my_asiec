@@ -47,7 +47,7 @@ class _NewsScreenState extends State<NewsScreen> {
       // чтобы не было двойного AppBar
        appBar: AppBar(
          title: Text('Новости колледжа'),
-         backgroundColor: Colors.white, // Или цвет твоей темы
+         backgroundColor: Theme.of(context).colorScheme.surface, // Или цвет твоей темы
          foregroundColor: Colors.black,
          elevation: 1.0,
        ),

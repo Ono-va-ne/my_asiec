@@ -5,6 +5,7 @@ import '../models/schedule_card.dart';
 import '../models/daily_schedule.dart';
 import '../data/groups.dart';
 import '../models/group_info.dart';
+import '../services/settings_service.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 
@@ -37,34 +38,52 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   final String _dostup = 'true';
 
  @override
-  void initState() {
+ void initState() {
     super.initState();
-    _initializeGroups(); // Вызываем инициализацию
+    _initializeGroups(); // Инициализируем список И выбранную группу
+    // Загружаем данные, если группа выбрана
     if (_selectedGroup != null) {
         _loadScheduleData(_startDate, _endDate, _selectedGroup!);
     } else {
-        // ... (обработка ошибки, если нет групп) ...
+        // Ошибка - не удалось определить группу по умолчанию
+        setState(() {
+            _isLoading = false;
+            _errorMessage = "Группа по умолчанию не найдена или не выбрана в настройках.";
+        });
     }
-  }
+ }
 
-  // --- Обновленный метод инициализации ---
-  void _initializeGroups() {
-    // Просто присваиваем импортированную константу нашей переменной состояния
+ void _initializeGroups() {
+    // Заполняем список доступных групп
     _availableGroups = availableGroupsData;
 
-    // Логика выбора группы по умолчанию остается той же,
-    // но теперь использует константу defaultGroupId из нового файла
-    if (_availableGroups.isNotEmpty) {
-      _selectedGroup = _availableGroups.firstWhere(
-           (g) => g.id == defaultGroupId, // Используем ID по умолчанию
-           orElse: () => _availableGroups.first, // Если не нашли, берем первую
-      );
-    } else {
-        _selectedGroup = null;
-    }
-    print("Доступные группы инициализированы из файла. Выбрана: $_selectedGroup");
-  }
+    // --- ЛОГИКА ВЫБОРА ГРУППЫ ПО УМОЛЧАНИЮ ИЗ НАСТРОЕК ---
+    final String? savedGroupId = settingsService.getDefaultGroupId(); // Получаем сохраненный ID
+    _selectedGroup = null; // Сбрасываем на всякий случай
 
+    if (savedGroupId != null) {
+        // Ищем группу с сохраненным ID в нашем списке доступных групп
+        try {
+            _selectedGroup = _availableGroups.firstWhere((g) => g.id == savedGroupId);
+        } catch (e) {
+            print("Сохраненная группа $savedGroupId не найдена в списке доступных.");
+            _selectedGroup = null; // Не нашли, сбрасываем
+        }
+    }
+
+    // Если группа не была сохранена ИЛИ сохраненная не найдена,
+    // выбираем первую доступную группу как запасной вариант
+    if (_selectedGroup == null && _availableGroups.isNotEmpty) {
+        _selectedGroup = _availableGroups.first;
+        print("Группа по умолчанию не найдена в настройках, выбрана первая: ${_selectedGroup?.name}");
+        // Опционально: можно сразу сохранить эту первую группу как дефолтную
+        // settingsService.setDefaultGroupId(_selectedGroup?.id);
+    } else if (_availableGroups.isEmpty) {
+         print("Список доступных групп пуст!");
+    }
+
+    print("Инициализация ScheduleScreen. Выбрана группа: $_selectedGroup");
+ }
   // --- Форматирование дат (остаются как были) ---
   // ... _formatDateForApi, _formatDateRangeForDisplay ...
 
@@ -82,18 +101,33 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       cancelText: 'Отмена',
       confirmText: 'Выбрать',
       saveText: 'Выбрать',
-      builder: (context, child) { // Опционально: кастомизация темы пикера
-          return Theme(
-            data: ThemeData.light().copyWith( // Или ThemeData.dark()
-              colorScheme: ColorScheme.light( // Или ColorScheme.dark()
-                 primary: Colors.blue, // Основной цвет
-                 onPrimary: Colors.white, // Цвет текста на основном цвете
-              )
+builder: (context, child) {
+        final currentTheme = Theme.of(context);
+
+        final pickerThemeData = currentTheme.copyWith(
+          colorScheme: currentTheme.colorScheme.copyWith(
+            // Устанавливаем кастомные primary/onPrimary
+            primary: Theme.of(context).colorScheme.primary,
+            onPrimary: Theme.of(context).colorScheme.onPrimary,
+            // Опционально: Можно подстроить цвет поверхности (фона), если нужно
+            // surface: isDarkMode ? Colors.grey[850] : Colors.white,
+            // onSurface: isDarkMode ? Colors.white70 : Colors.black87,
+          ),
+          // Опционально: Можно настроить стиль кнопок в диалоге
+          textButtonTheme: TextButtonThemeData(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.primary, // Используем наш основной цвет для кнопок ОК/Отмена
             ),
-            child: child!,
-          );
-      }
-    );
+          ),
+           // Опционально: фон самого диалога, если он отличается от scaffoldBackgroundColor
+           // dialogBackgroundColor: isDarkMode ? Colors.grey[900] : Colors.grey[50],
+        );
+
+        return Theme(
+          data: pickerThemeData,
+          child: child!,
+        );
+      }    );
     if (picked != null) {
       final newStartDate = DateTime(picked.start.year, picked.start.month, picked.start.day);
       final newEndDate = DateTime(picked.end.year, picked.end.month, picked.end.day);
@@ -219,6 +253,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Расписание ${_selectedGroup?.name ?? ""}'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        elevation: 1.0,
         // ... (настройки AppBar)
       ),
       body: Column(
@@ -235,7 +271,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 child: Row(
                    mainAxisAlignment: MainAxisAlignment.center, // Центрируем текст и иконку
                    children: [
-                     Icon(Icons.calendar_today_outlined, size: 20.0, color: Colors.black54), // Иконка календаря
+                     Icon(Icons.calendar_today_outlined, size: 20.0, color: Theme.of(context).colorScheme.primary), // Иконка календаря
                      SizedBox(width: 8.0),
                      Flexible( // Чтобы текст переносился, если диапазон длинный
                        child: Text(
@@ -249,7 +285,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                      ),
                      SizedBox(width: 8.0),
                      // Можно добавить иконку выпадающего списка для большей очевидности
-                     Icon(Icons.arrow_drop_down, color: Colors.black54),
+                     Icon(Icons.arrow_drop_down, color: Theme.of(context).colorScheme.primary),
                    ],
                 ),
               ),
@@ -263,14 +299,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                  child: Container( // Оборачиваем в контейнер для фона и скругления
                    padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
                    decoration: BoxDecoration(
-                       color: Colors.white, // Или цвет из темы
+                      //  color: Colors.white, // Или цвет из темы
                        borderRadius: BorderRadius.circular(8.0),
-                       border: Border.all(color: Colors.grey.shade300) // Легкая граница
+                       border: Border.all(color: Colors.grey.shade500) // Легкая граница
                    ),
                    child: DropdownButton<GroupInfo>(
                     value: _selectedGroup, // Текущее выбранное значение
                     isExpanded: true,      // Растягиваем на всю ширину
-                    icon: Icon(Icons.group_outlined, color: Colors.black54), // Иконка справа
+                    icon: Icon(Icons.group_outlined, color: Theme.of(context).colorScheme.primary), // Иконка справа
                     hint: Text('Выберите группу'), // Подсказка, если _selectedGroup == null
                     onChanged: _isLoading ? null : (GroupInfo? newValue) { // Блокируем во время загрузки
                       if (newValue != null && newValue != _selectedGroup) {
@@ -310,7 +346,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
         ],
       ),
-      backgroundColor: Colors.grey[100],
+      // backgroundColor: Colors.grey[100],
     );
   }
 
@@ -330,12 +366,12 @@ if (_errorMessage != null) {
                 Text(
                    //_errorMessage!, // Используем сообщение об ошибке как есть
                    'Не удалось загрузить расписание для группы ${_selectedGroup?.name ?? "N/A"}.',
-                  style: TextStyle(color: Colors.red, fontSize: 16),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
                  Text( // Показываем саму ошибку ниже
                    _errorMessage!, // Тут само исключение
-                   style: TextStyle(color: Colors.red.shade300, fontSize: 12),
+                   style: TextStyle(color: Theme.of(context).colorScheme.onError, fontSize: 12),
                    textAlign: TextAlign.center,
                  ),
                 SizedBox(height: 16),
@@ -377,7 +413,7 @@ if (_errorMessage != null) {
                     style: TextStyle(
                         fontSize: 16.0,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),

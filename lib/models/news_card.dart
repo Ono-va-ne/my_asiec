@@ -93,7 +93,7 @@ class NewsCard extends StatelessWidget {
                           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Уменьшаем отступы
                           minimumSize: Size(0, 30), // Уменьшаем минимальную высоту
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Убираем лишнее пространство для тапа
-                          foregroundColor: Colors.blue // Цвет текста кнопки
+                          foregroundColor: Theme.of(context).colorScheme.primary // Цвет текста кнопки
                       ),
                       child: Row( // Иконка + Текст
                            mainAxisSize: MainAxisSize.min, // Чтобы Row не растягивался
@@ -131,61 +131,60 @@ class NewsCard extends StatelessWidget {
   }
 
   // Виджет для отображения сетки изображений
-  Widget _buildImageGrid(BuildContext context, List<String> imageUrls) {
-    // Определяем количество колонок в сетке
-    // 1 картинка - 1 колонка
-    // 2 или 4 картинки - 2 колонки
-    // 3 или >4 картинок - можно тоже 2 или 3, пока оставим 2
-    int crossAxisCount = 1;
-    if (imageUrls.length >= 2) {
-      crossAxisCount = 2;
-    }
-    // Можно добавить логику для 3 колонок, если картинок много
-
-    return GridView.builder(
-      shrinkWrap: true, // Обязательно внутри Column/ListView
-      physics: NeverScrollableScrollPhysics(), // Отключаем скролл сетки
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 4.0, // Пространство между картинками по горизонтали
-        mainAxisSpacing: 4.0,  // Пространство между картинками по вертикали
-      ),
-      itemCount: imageUrls.length,
-      itemBuilder: (context, index) {
-        return ClipRRect( // Скругляем углы у картинок
-           borderRadius: BorderRadius.circular(8.0),
-           child: Image.network(
-              imageUrls[index],
-              fit: BoxFit.fitWidth, // Картинка будет заполнять ячейку
-              // Добавляем индикатор загрузки и обработчик ошибок
-              loadingBuilder: (context, child, loadingProgress) {
-                 if (loadingProgress == null) return child; // Картинка загружена
-                 return Container(
-                    color: Colors.grey[200], // Фон во время загрузки
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.0,
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                            : null, // Показываем прогресс, если возможно
-                      ),
-                    ),
-                 );
-              },
-              errorBuilder: (context, error, stackTrace) {
-                 return Container( // Заглушка при ошибке загрузки
-                    color: Colors.grey[200],
-                    child: Center(
-                       child: Icon(
-                          Icons.broken_image_outlined,
-                          color: Colors.grey[400],
-                       ),
-                    ),
-                 );
-              },
-           ),
-        );
-      },
-    );
-  }
+//   Widget _buildImageGrid(BuildContext context, List<String> imageUrls) {
+//     // Определяем количество колонок в сетке
+//     // 1 картинка - 1 колонка
+//     // 2 или 4 картинки - 2 колонки
+//     // 3 или >4 картинок - можно тоже 2 или 3, пока оставим 2
+//     int crossAxisCount = 1;
+//     if (imageUrls.length >= 2) {
+//       crossAxisCount = 2;
+//     }
+//     // Можно добавить логику для 3 колонок, если картинок много
+//     return GridView.builder(
+//       shrinkWrap: true, // Обязательно внутри Column/ListView
+//       physics: NeverScrollableScrollPhysics(), // Отключаем скролл сетки
+//       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+//         crossAxisCount: crossAxisCount,
+//         crossAxisSpacing: 4.0, // Пространство между картинками по горизонтали
+//         mainAxisSpacing: 4.0,  // Пространство между картинками по вертикали
+//       ),
+//       itemCount: imageUrls.length,
+//       itemBuilder: (context, index) {
+//         return ClipRRect( // Скругляем углы у картинок
+//            borderRadius: BorderRadius.circular(8.0),
+//            child: Image.network(
+//               imageUrls[index],
+//               fit: BoxFit.fitWidth, // Картинка будет заполнять ячейку
+//               // Добавляем индикатор загрузки и обработчик ошибок
+//               loadingBuilder: (context, child, loadingProgress) {
+//                  if (loadingProgress == null) return child; // Картинка загружена
+//                  return Container(
+//                     color: Colors.grey[200], // Фон во время загрузки
+//                     child: Center(
+//                       child: CircularProgressIndicator(
+//                         strokeWidth: 2.0,
+//                         value: loadingProgress.expectedTotalBytes != null
+//                             ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+//                             : null, // Показываем прогресс, если возможно
+//                       ),
+//                     ),
+//                  );
+//               },
+//               errorBuilder: (context, error, stackTrace) {
+//                  return Container( // Заглушка при ошибке загрузки
+//                     color: Colors.grey[200],
+//                     child: Center(
+//                        child: Icon(
+//                           Icons.broken_image_outlined,
+//                           color: Colors.grey[400],
+//                        ),
+//                     ),
+//                  );
+//               },
+//            ),
+//         );
+//       },
+//     );
+//   }
 }

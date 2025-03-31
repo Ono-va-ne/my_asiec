@@ -72,12 +72,17 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
       final parsedDate = _parseDateFromHtml(htmlDateString); // Используем существующий хелпер
 
       if (parsedDate != null) {
-         // Если уже были записи для предыдущего дня, завершаем его (на всякий случай, если дни идут не по порядку)
-         // Этого не произойдет при первом обнаружении даты
-         // if (currentDayDate != null && currentDayEntries != null && currentDayEntries.isNotEmpty) {
-         //    resultList.add(DailySchedule(date: currentDayDate, entries: currentDayEntries));
-         // }
-
+        // Если мы уже обрабатывали какой-то день до этого,
+        // сохраняем его результаты перед тем, как начать новый.
+        if (currentDayDate != null && currentDayEntries != null) {
+           // Добавляем предыдущий день (даже если пар не было)
+           resultList.add(DailySchedule(
+              date: currentDayDate,
+              // Важно создать копию списка, чтобы будущие добавления не влияли на этот день
+              entries: List.from(currentDayEntries)
+           ));
+           print("Сохранен день: $currentDayDate с ${currentDayEntries.length} парами.");
+        }
          // Начинаем новый день
          currentDayDate = parsedDate;
          currentDayEntries = []; // Создаем новый пустой список для этого дня
