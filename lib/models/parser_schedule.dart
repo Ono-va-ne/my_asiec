@@ -72,6 +72,7 @@ ParsedSchedule parseScheduleHtml(String htmlString) {
           endTime: timeParts?['end'] ?? '',   // или оставляем пустым, если не распарсилось
           building: building,
           room: room,
+          date: DateTime.parse(scheduleDate ?? DateTime.now().toString()), 
         );
         scheduleEntries.add(entry); // Добавляем в список
       } catch (e) {

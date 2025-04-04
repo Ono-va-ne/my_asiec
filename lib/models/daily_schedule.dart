@@ -13,16 +13,17 @@ class DailySchedule {
   DailySchedule({required this.date, required this.entries});
 }
 
-  DateTime? _parseDateFromHtml(String? htmlDateString) {
-      if (htmlDateString == null || !htmlDateString.contains(',')) return null;
-      try {
-          final datePart = htmlDateString.split(',').last.trim(); // "15.10.2024"
-          // Используем DateFormat для парсинга строки в DateTime
-          return DateFormat('dd.MM.yyyy').parseStrict(datePart);
-      } catch (e) {
-          print("Не удалось распознать дату из HTML: '$htmlDateString'. Ошибка: $e");
-          return null;
-      }
+  
+DateTime? _parseDateFromHtml(String? htmlDateString) {
+    if (htmlDateString == null || !htmlDateString.contains(',')) return null;
+    try {
+        final datePart = htmlDateString.split(',').last.trim(); // "15.10.2024"
+        // Используем DateFormat для парсинга строки в DateTime
+        return DateFormat('dd.MM.yyyy').parseStrict(datePart);
+    } catch (e) {
+        print("Не удалось распознать дату из HTML: '$htmlDateString'. Ошибка: $e");
+        return null;
+    }
   }
 
 Map<String, String>? _parseTime(String timeString) {
@@ -107,13 +108,14 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
         final room = cells[5].text.trim();
         final timeParts = _parseTime(timeString); // Используем старый хелпер _parseTime
 
-        final entry = ScheduleEntry(
+        ScheduleEntry entry = ScheduleEntry(
           discipline: discipline,
           teacher: teacher,
           startTime: timeParts?['start'] ?? '',
           endTime: timeParts?['end'] ?? '',
           building: building,
           room: room,
+          date: currentDayDate,
         );
         currentDayEntries.add(entry); // Добавляем пару в список ТЕКУЩЕГО дня
       } catch (e) {
