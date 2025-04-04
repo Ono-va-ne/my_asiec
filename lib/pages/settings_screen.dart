@@ -1,18 +1,25 @@
 // Файл: lib/settings_screen.dart
 // import 'dart:io';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import '../services/settings_service.dart'; // Импортируем сервис
 import '../data/groups.dart'; // Импортируем список групп
 // import '../models/group_info.dart'; // Импортируем модель группы
 
-const String logo = 'assets/logo.svg';
-final Widget svg = SvgPicture.asset(
-  logo,
-  semanticsLabel: 'myASIEC Logo',
-  height: 50,
-  color: Colors.white,
-);
+Future<void> _launchTG(BuildContext context) async {
+    // Формируем стандартную ссылку на пост VK
+    final url = 'https://t.me/MyASIEC';
+    final uri = Uri.parse(url);
+
+
+      // Пытаемся открыть ссылку. LaunchMode.externalApplication
+      // попытается открыть приложение VK, если оно установлено,
+      // иначе откроет браузер.
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    
+    
+  }
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -36,6 +43,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const String logo = 'assets/logo.svg';
+    final Widget svg = SvgPicture.asset(
+      logo,
+      semanticsLabel: 'myASIEC Logo',
+      height: 50,
+      colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary, BlendMode.srcIn),
+    );
+
+    const String tg = 'assets/tg.svg';
+    final Widget svgTg = SvgPicture.asset(
+      tg,
+      semanticsLabel: 'tg',
+      colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurfaceVariant, BlendMode.srcIn),
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text('Настройки'),
@@ -156,6 +177,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
+          ListTile(
+            leading: svgTg,
+            title: Text('Официальный Telegram канал'),
+            onTap: () => _launchTG(context),
+          )
         ],
       ),
     );

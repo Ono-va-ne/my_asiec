@@ -5,6 +5,7 @@ class ScheduleEntry {
   final String endTime;    // Время окончания
   final String building;   // Корпус
   final String room;       // Аудитория
+  final DateTime date;
 
   ScheduleEntry({
     required this.discipline,
@@ -13,5 +14,7 @@ class ScheduleEntry {
     required this.endTime,
     required this.building,
     required this.room,
+    required this.date,
   });
+  // DateTime get date => DateTime.now();
 }
