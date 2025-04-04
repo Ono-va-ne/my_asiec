@@ -1,20 +1,165 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'schedule_entry.dart';
+// import '../models/daily_schedule.dart';
+// import '../pages/schedule_screen.dart';
 
 // Не забудь добавить класс ScheduleEntry из шага 1 сюда или импортировать его
 
 class ScheduleCard extends StatelessWidget {
   final ScheduleEntry entry; // Данные для этой карточки
+  final List<ScheduleEntry> allEntriesForDay;
+  const ScheduleCard({Key? key, required this.entry, required this.allEntriesForDay}) : super(key: key);
 
-  const ScheduleCard({super.key, required this.entry});
+  // --- НОВЫЙ МЕТОД: Определение статуса пары ---
+  // Возвращает enum для статуса: current, next, normal
+  ScheduleEntryStatus _getEntryStatus(DateTime currentTime, List<ScheduleEntry> allEntriesForDay) {
+    print("--- _getEntryStatus для занятия: ${entry.discipline} ${entry.startTime}-${entry.endTime} ---"); // Отладочный вывод в начале
 
+
+    if (!isSameDay(entry.date, currentTime)) { // <--- НОВАЯ ПРОВЕРКА ДАТЫ!
+      print("  Дата занятия не сегодня, статус: normal"); // Отладка: проверка даты
+      return ScheduleEntryStatus.normal; // Если дата занятия НЕ сегодня, то это обычная пара
+    }
+
+    // 1. Парсим время начала и конца занятия из entry.startTime и entry.endTime
+    final startTime = _parseTime(entry.startTime);
+    final endTime = _parseTime(entry.endTime);
+
+    if (startTime == null || endTime == null) {
+      print("  Ошибка парсинга времени, статус: normal"); // Отладка: ошибка парсинга
+      return ScheduleEntryStatus.normal; // Не удалось распарсить время - считаем обычной
+    }
+
+    // 2. Получаем текущее время без даты (только часы и минуты)
+    final nowTime = TimeOfDay.fromDateTime(currentTime);
+
+    // 3. Преобразуем время занятия в TimeOfDay для сравнения
+    final entryStartTimeOfDay = TimeOfDay(hour: startTime.hour, minute: startTime.minute);
+    final entryEndTimeOfDay = TimeOfDay(hour: endTime.hour, minute: endTime.minute);
+
+    print("  Текущее время: $nowTime, Время начала занятия: $entryStartTimeOfDay, Время конца занятия: $entryEndTimeOfDay"); // Отладка: значения времени
+    
+    if (isCurrentTimeInEntry(nowTime, entryStartTimeOfDay, entryEndTimeOfDay)) {
+      print("  Текущее время попадает в интервал занятия, статус: current"); // Отладка: текущая пара
+      return ScheduleEntryStatus.current;
+    }
+
+    // --- НОВАЯ ЛОГИКА для "ближайшей пары" ---
+    // 3. Ищем ближайшую следующую пару ТОЛЬКО если текущая пара НЕ найдена
+    ScheduleEntry? nextEntry;
+ // Проверяем, что есть список всех пар на день
+    bool foundNext = false;
+    for (final otherEntry in allEntriesForDay) {
+      if (otherEntry == entry) continue; // Пропускаем текущую пару
+
+      final otherEntryStartTime = _parseTime(otherEntry.startTime);
+      if (otherEntryStartTime != null) {
+        final otherEntryStartTimeOfDay = TimeOfDay(hour: otherEntryStartTime.hour, minute: otherEntryStartTime.minute);
+
+        if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime)) {
+          // Нашли пару, начинающуюся позже текущего времени
+          if (nextEntry == null) {
+            // Если "ближайшая" пара еще не найдена, то это пока она
+            nextEntry = otherEntry;
+          } else {
+            // Если "ближайшая" пара уже есть, сравниваем время начала
+            final currentNextEntryStartTime = _parseTime(nextEntry.startTime);
+                if (currentNextEntryStartTime != null) {
+                  // --- Упрощенное условное выражение ---
+                  int otherEntryHour = otherEntryStartTime.hour;
+                  int currentNextEntryHour = currentNextEntryStartTime.hour;
+                  int otherEntryMinute = otherEntryStartTime.minute;
+                  int currentNextEntryMinute = currentNextEntryStartTime.minute;
+
+                  bool isHourEarlier = otherEntryHour < currentNextEntryHour;
+                  bool isHourEqual = otherEntryHour == currentNextEntryHour;
+                  bool isMinuteEarlier = otherEntryMinute < currentNextEntryMinute;
+
+                  if (isHourEarlier || (isHourEqual && isMinuteEarlier)) {
+                    nextEntry = otherEntry;
+                  }
+                }            }
+        }
+      
+
+        // Если время начала ДРУГОЙ пары ПОЗЖЕ, чем текущее время,
+        // и мы еще не нашли "ближайшую", то это ОНА!
+        if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime) && !foundNext) { // Используем новый метод для сравнения времени "после"
+          foundNext = true;
+          if (isSameDay(entry.date, currentTime)) { // <--- Проверка даты для "ближайшей" пары!
+            return ScheduleEntryStatus.next; // Ближайшая пара (только если сегодня!)
+          }
+        }
+      }
+    }
+  // Пока просто возвращаем normal для всех остальных
+    return ScheduleEntryStatus.normal;
+  }
+
+  bool isSameDay(DateTime entryStartTimeOfDay,DateTime nowTime) {
+    print("--- isSameDay: сравниваем даты ---");
+    print("  Дата занятия: $entryStartTimeOfDay, Дата сейчас: $nowTime");
+    bool result = entryStartTimeOfDay.year == nowTime.year && entryStartTimeOfDay.month == nowTime.month && entryStartTimeOfDay.day == nowTime.day;
+    print("  Результат: $result");
+    return result;
+  }
+  // --- НОВЫЙ МЕТОД: Проверка, является ли время timeOfDay позже, чем nowTime ---
+  bool isTimeAfterNow(TimeOfDay timeOfDay, TimeOfDay nowTime) {
+      if (timeOfDay.hour > nowTime.hour) {
+          return true;
+      } else if (timeOfDay.hour == nowTime.hour && timeOfDay.minute > nowTime.minute) {
+          return true;
+      }
+      return false;
+  }
+
+    // --- Обновленный метод: Проверка, попадает ли текущее время в интервал пары ---
+  bool isCurrentTimeInEntry(TimeOfDay nowTime, TimeOfDay startTimeOfDay, TimeOfDay endTimeOfDay) {
+      return isSameTime(nowTime, startTimeOfDay) ||
+             (nowTime.hour > startTimeOfDay.hour && nowTime.hour < endTimeOfDay.hour) ||
+             (nowTime.hour == startTimeOfDay.hour && nowTime.minute >= startTimeOfDay.minute && nowTime.hour < endTimeOfDay.hour) ||
+             (nowTime.hour == endTimeOfDay.hour && nowTime.minute <= endTimeOfDay.minute && nowTime.hour > startTimeOfDay.hour) ||
+             (nowTime.hour == startTimeOfDay.hour && nowTime.minute >= startTimeOfDay.minute && nowTime.hour == endTimeOfDay.hour && nowTime.minute <= endTimeOfDay.minute);
+  }
+
+  // Вспомогательная функция для парсинга времени в TimeOfDay
+  TimeOfDay? _parseTime(String timeString) {
+    try {
+      final format = DateFormat("HH:mm"); // Формат времени в твоих строках
+      final dateTime = format.parse(timeString);
+      return TimeOfDay.fromDateTime(dateTime);
+    } catch (e) {
+      print("Ошибка парсинга времени: $timeString");
+      return null;
+    }
+  }
+
+  // Вспомогательная функция для сравнения времени (без учета даты)
+  bool isSameTime(TimeOfDay time1, TimeOfDay time2) {
+    return time1.hour == time2.hour && time1.minute == time2.minute;
+  }
+  
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    //  final dailySchedule =
+    //     _ScheduleScreenState.of(context)?.dailyScheduleForCard(entry.date); // <---  Нужно реализовать получение списка!
+    final List<ScheduleEntry> allEntriesForDay = this.allEntriesForDay;
+    final entryStatus = _getEntryStatus(now, allEntriesForDay);
+    
     return Card( // Используем виджет Card для красивого контейнера с тенью
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Отступы вокруг карточки
-      shape: RoundedRectangleBorder( // Слегка скруглим углы
-          borderRadius: BorderRadius.circular(12.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        // --- Добавляем контур для "ближайшей" пары ---
+        side: entryStatus == ScheduleEntryStatus.next
+            ? BorderSide(color: Colors.blue, width: 2.0)
+            : BorderSide.none, // Нет контура для остальных
       ),
+      color: entryStatus == ScheduleEntryStatus.current
+          ? Colors.blue[100] // Светло-синий фон для текущей
+          : null, // Используем цвет темы по умолчанию для остальных,
       elevation: 2.0, // Небольшая тень
       child: Padding(
         padding: const EdgeInsets.all(16.0), // Внутренние отступы в карточке
@@ -75,4 +220,10 @@ class ScheduleCard extends StatelessWidget {
       ),
     );
   }
+}
+
+enum ScheduleEntryStatus {
+  normal,    // Обычная пара
+  current,   // Текущая пара (идёт сейчас)
+  next,      // Ближайшая следующая пара (пока не реализовано)
 }

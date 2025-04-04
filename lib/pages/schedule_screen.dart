@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../models/schedule_card.dart';
+import '../models/schedule_entry.dart';
 // import 'package:my_asiec_lite/models/schedule_entry.dart';
 // import 'package:my_asiec_lite/models/parser_schedule.dart';
 import '../models/daily_schedule.dart';
@@ -36,6 +39,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   // final String _groupId = '3afb102a-1ea1-11ed-abe0-00155d879809%0A'; // ЗАМЕНИ!
   final String _rasType = 'GRUP';
   final String _dostup = 'true';
+
+  DailySchedule? dailyScheduleForCard(DateTime date) {
+    try {
+      return _dailySchedules.firstWhere((dailySchedule) =>
+          dailySchedule.date.year == date.year &&
+          dailySchedule.date.month == date.month &&
+          dailySchedule.date.day == date.day);
+    } catch (e) {
+      return null; // Не нашли расписание для этой даты
+    }
+  }
 
  @override
  void initState() {
@@ -202,18 +216,20 @@ builder: (context, child) {
           _isLoading = false;
         });
       } else { /* ... обработка ошибки сервера ... */ }
-    } catch (e) {
-       if (!mounted) return;
-       setState(() {
-         // Сохраняем даты и группу
-         _startDate = startDate;
-         _endDate = endDate;
-         // _selectedGroup не меняем при ошибке
-         _scheduleDateDisplay = '${_formatDateRangeForDisplay(_startDate, _endDate)}';
-         _errorMessage = 'Не удалось загрузить расписание для группы ${group.name}: $e';
-         _isLoading = false;
-       });
-       print("Ошибка при загрузке расписания для группы ${group.id}: $e");
+    } catch (e, stackTrace) { // Ловим исключение
+      String errorMessageText = 'Не удалось загрузить расписание: $e'; // Стандартное сообщение
+
+      // --- НОВАЯ ЛОГИКА ПРОВЕРКИ ИСКЛЮЧЕНИЯ ---
+      if (e is http.ClientException) { // Проверяем, является ли ошибка ClientException
+        if (e.innerException is SocketException) { // Проверяем, что innerException - SocketException
+          final socketException = e.innerException as SocketException;
+          if (socketException.osError != null && socketException.osError!.errno == 110 &&
+              socketException.message.contains('Connection timed out')) {
+            // --- Вот оно, наше исключение "Connection timed out" ---
+            errorMessageText = 'Сервер не отвечает. Пожалуйста, попробуйте позже.'; // Меняем сообщение
+          }
+        }
+      }
     }
   }
 
@@ -356,33 +372,33 @@ builder: (context, child) {
       return Center(child: CircularProgressIndicator());
     }
 
-if (_errorMessage != null) {
-       return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                   //_errorMessage!, // Используем сообщение об ошибке как есть
-                   'Не удалось загрузить расписание для группы ${_selectedGroup?.name ?? "N/A"}.',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 16),
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                  //_errorMessage!, // Используем сообщение об ошибке как есть
+                  'Не удалось загрузить расписание для группы ${_selectedGroup?.name ?? "N/A"}.',
+                style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+                Text( // Показываем саму ошибку ниже
+                  _errorMessage!, // Тут само исключение
+                  style: TextStyle(color: Theme.of(context).colorScheme.errorContainer, fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
-                 Text( // Показываем саму ошибку ниже
-                   _errorMessage!, // Тут само исключение
-                   style: TextStyle(color: Theme.of(context).colorScheme.onError, fontSize: 12),
-                   textAlign: TextAlign.center,
-                 ),
-                SizedBox(height: 16),
-                ElevatedButton(
-                    onPressed: _selectedGroup == null ? null : () => _loadScheduleData(_startDate, _endDate, _selectedGroup!),
-                    child: Text('Повторить попытку')
-                )
-              ],
-            ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                  onPressed: _selectedGroup == null ? null : () => _loadScheduleData(_startDate, _endDate, _selectedGroup!),
+                  child: Text('Повторить попытку')
+              )
+            ],
           ),
-       );
+        ),
+      );
     }
      if (_dailySchedules.isEmpty) {
       return Center(
@@ -433,7 +449,7 @@ if (_errorMessage != null) {
                     // Если пар может быть ОЧЕНЬ много, можно заменить на ListView(shrinkWrap: true, physics: NeverScrollableScrollPhysics())
                     Column(
                       children: dailySchedule.entries.map((entry) {
-                          return ScheduleCard(entry: entry);
+                          return ScheduleCard(entry: entry, allEntriesForDay: dailySchedule.entries);
                       }).toList(), // Преобразуем результат map в список виджетов
                     ),
 
@@ -446,6 +462,14 @@ if (_errorMessage != null) {
         },
     );
   }
+}
+
+extension on OSError {
+  get errno => null;
+}
+
+extension on http.ClientException {
+  get innerException => null;
 }
 
   @override

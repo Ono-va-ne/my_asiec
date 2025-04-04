@@ -90,8 +90,8 @@ class MyApp extends StatelessWidget {
          ? Colors.white
          : Colors.grey[850]; // Темно-серый для карт в темной теме
      final appBarBackgroundColor = brightness == Brightness.light
-         ? Colors.white // Или baseColorScheme.surface
-         : Colors.grey[900]; // Или baseColorScheme.surface
+         ? baseColorScheme.surface // Или baseColorScheme.surface
+         : baseColorScheme.surface; // Или baseColorScheme.surface
 
      return ThemeData(
         colorScheme: baseColorScheme,
