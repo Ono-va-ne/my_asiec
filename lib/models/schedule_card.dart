@@ -44,11 +44,12 @@ class ScheduleCard extends StatelessWidget {
       print("  Текущее время попадает в интервал занятия, статус: current"); // Отладка: текущая пара
       return ScheduleEntryStatus.current;
     }
-    else if (isEntryNearest(nowTime, entryStartTimeOfDay, entryEndTimeOfDay)) {
+    else if (isTimeBeforeEntry(nowTime, entryStartTimeOfDay, entryEndTimeOfDay)) {
       print("  Текущее время позже начала занятия, статус: next"); // Отладка: ближайшая пара
       return ScheduleEntryStatus.next;
     } else {
       print("  Текущее время не попадает в интервал занятия, статус: normal"); }
+
 
     // --- НОВАЯ ЛОГИКА для "ближайшей пары" ---
     // 3. Ищем ближайшую следующую пару ТОЛЬКО если текущая пара НЕ найдена
@@ -56,7 +57,6 @@ class ScheduleCard extends StatelessWidget {
     if (allEntriesForDay != null) {
       List<ScheduleEntry> futureEntries = [];
  // Проверяем, что есть список всех пар на день
-    bool foundNext = false;
     for (final otherEntry in allEntriesForDay) {
       if (otherEntry == entry) continue; // Пропускаем текущую пару
 
@@ -64,14 +64,14 @@ class ScheduleCard extends StatelessWidget {
       if (otherEntryStartTime != null) {
         final otherEntryStartTimeOfDay = TimeOfDay(hour: otherEntryStartTime.hour, minute: otherEntryStartTime.minute);
 
-        if (isEntryNearest(nowTime, entryStartTimeOfDay, entryEndTimeOfDay)) {
+        if (isTimeBeforeEntry(nowTime, otherEntryStartTimeOfDay, entryEndTimeOfDay)) {
           nextEntry = otherEntry;
           break;
         }
-        // if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime)) {
-        //   futureEntries.add(otherEntry);
-        // break;
-        //   }
+        if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime)) {
+          nextEntry = otherEntry;
+        break;
+          }
         }
 
         futureEntries.sort((a, b) {
@@ -82,54 +82,43 @@ class ScheduleCard extends StatelessWidget {
         });
 
         if (futureEntries.isNotEmpty) {
-        nextEntry = futureEntries.first; // Начинаем с первой пары из списка
+          nextEntry = futureEntries.first; // Начинаем с первой пары из списка
+          for (final otherNextEntry in futureEntries.skip(1)) { // Перебираем остальные, начиная со второй
+            final otherNextEntryStartTime = _parseTime(otherNextEntry.startTime);
+            final currentNextEntryStartTime = _parseTime(nextEntry!.startTime); // nextEntry точно не null, т.к. futureEntries не пустой
 
-        for (final otherNextEntry in futureEntries.skip(1)) { // Перебираем остальные, начиная со второй
-          final otherNextEntryStartTime = _parseTime(otherNextEntry.startTime);
-          final currentNextEntryStartTime = _parseTime(nextEntry!.startTime); // nextEntry точно не null, т.к. futureEntries не пустой
+            if (otherNextEntryStartTime != null && currentNextEntryStartTime != null) { // Строка 103 - Проверка на null
+              // --- Упрощенное условное выражение (как и в прошлый раз) ---
+              int otherEntryHour = otherNextEntryStartTime?.hour ?? 0;
+              int currentNextEntryHour = currentNextEntryStartTime?.hour ?? 0;
+              int otherEntryMinute = otherNextEntryStartTime?.minute ?? 0;
+              int currentNextEntryMinute = currentNextEntryStartTime?.minute ?? 0;
 
-          if (otherNextEntryStartTime != null && currentNextEntryStartTime != null) { // Строка 103 - Проверка на null
-            // --- Упрощенное условное выражение (как и в прошлый раз) ---
-            int otherEntryHour = otherNextEntryStartTime?.hour ?? 0;
-            int currentNextEntryHour = currentNextEntryStartTime?.hour ?? 0;
-            int otherEntryMinute = otherNextEntryStartTime?.minute ?? 0;
-            int currentNextEntryMinute = currentNextEntryStartTime?.minute ?? 0;
+              bool isHourEarlier = otherEntryHour < currentNextEntryHour;
+              bool isHourEqual = otherEntryHour == currentNextEntryHour;
+              bool isMinuteEarlier = otherEntryMinute < currentNextEntryMinute;
 
-            bool isHourEarlier = otherEntryHour < currentNextEntryHour;
-            bool isHourEqual = otherEntryHour == currentNextEntryHour;
-            bool isMinuteEarlier = otherEntryMinute < currentNextEntryMinute;
-
-            if (isHourEarlier || (isHourEqual && isMinuteEarlier)) { // Строка 105 - УПРОЩЕННОЕ УСЛОВИЕ!
-              // Если время начала ТЕКУЩЕЙ пары из futureEntries РАНЬШЕ, чем время начала уже найденной "ближайшей" (nextEntry),
-              // то ТЕКУЩАЯ пара становится новой "ближайшей" (nextEntry = otherNextEntry)
-              nextEntry = otherNextEntry;
+              if (isHourEarlier || (isHourEqual && isMinuteEarlier)) { // Строка 105 - УПРОЩЕННОЕ УСЛОВИЕ!
+                // Если время начала ТЕКУЩЕЙ пары из futureEntries РАНЬШЕ, чем время начала уже найденной "ближайшей" (nextEntry),
+                // то ТЕКУЩАЯ пара становится новой "ближайшей" (nextEntry = otherNextEntry)
+                nextEntry = otherNextEntry;
+              }
             }
           }
         }
-      }
       if (nextEntry == entry) {
         return ScheduleEntryStatus.next;
       }
-
-        // Если время начала ДРУГОЙ пары ПОЗЖЕ, чем текущее время,
-        // и мы еще не нашли "ближайшую", то это ОНА!
-        
-        // if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime) && !foundNext) { // Используем новый метод для сравнения времени "после"
-        //   foundNext = true;
-        //   if (isSameDay(entry.date, currentTime)) { // <--- Проверка даты для "ближайшей" пары!
-        //     return ScheduleEntryStatus.next; // Ближайшая пара (только если сегодня!)
-        //   }
-        // }
       }
     }
   // Пока просто возвращаем normal для всех остальных
     return ScheduleEntryStatus.normal;
   }
 
-  bool isSameDay(DateTime entryStartTimeOfDay,DateTime nowTime) {
+  bool isSameDay(DateTime entryDate,DateTime nowTime) {
     print("--- isSameDay: сравниваем даты ---");
-    print("  Дата занятия: $entryStartTimeOfDay, Дата сейчас: $nowTime");
-    bool result = entryStartTimeOfDay.year == nowTime.year && entryStartTimeOfDay.month == nowTime.month && entryStartTimeOfDay.day == nowTime.day;
+    print("  Дата занятия: $entryDate, Дата сейчас: $nowTime");
+    bool result = entryDate.year == nowTime.year && entryDate.month == nowTime.month && entryDate.day == nowTime.day;
     print("  Результат: $result");
     return result;
   }
@@ -151,17 +140,27 @@ class ScheduleCard extends StatelessWidget {
              (nowTime.hour == endTimeOfDay.hour && nowTime.minute <= endTimeOfDay.minute && nowTime.hour > startTimeOfDay.hour) ||
              (nowTime.hour == startTimeOfDay.hour && nowTime.minute >= startTimeOfDay.minute && nowTime.hour == endTimeOfDay.hour && nowTime.minute <= endTimeOfDay.minute);
   }
-  bool isEntryNearest(TimeOfDay nowTime, TimeOfDay startTimeOfDay, TimeOfDay endTimeOfDay) {
-    print("--- isEntryNearest: проверяем ближайшую пару ---");
-    print("  Текущее время: $nowTime, Время начала занятия: $startTimeOfDay, Время конца занятия: $endTimeOfDay"); // Отладка: значения времени
+  bool isTimeBeforeEntry(TimeOfDay nowTime, TimeOfDay startTimeOfDay, TimeOfDay endTimeOfDay) {
+    print("--- isTimeBeforeEntry: Сравнение времени ---"); // Начало метода
 
-    if ((nowTime.hour < startTimeOfDay.hour) !& isCurrentTimeInEntry(nowTime, startTimeOfDay, endTimeOfDay)) {
-      print("Условие: (nowTime.hour < startTimeOfDay.hour) && (isCurrentTimeInEntry(nowTime, startTimeOfDay, endTimeOfDay) == false)");
+    print("  Текущее время (nowTime): $nowTime, Время начала занятия (startTimeOfDay): $startTimeOfDay"); // Значения времени
+
+    if ((nowTime.hour < startTimeOfDay.hour) && isCurrentTimeInEntry(nowTime, startTimeOfDay, endTimeOfDay)) {
+      print("  Условие: $nowTime.hour < $startTimeOfDay.hour  => TRUE (Часы текущего времени МЕНЬШЕ часов начала занятия)"); // Условие 1 и результат TRUE
       return true;
-    } else 
-          if ((nowTime.hour == startTimeOfDay.hour && nowTime.minute < startTimeOfDay.minute) !& isCurrentTimeInEntry(nowTime, startTimeOfDay, endTimeOfDay)) {
-            return true;
-          } else return false;
+    } else {
+      print("  Условие: $nowTime.hour < $startTimeOfDay.hour  => FALSE (Часы текущего времени НЕ МЕНЬШЕ часов начала занятия)"); // Условие 1 и результат FALSE
+    }
+
+    if (nowTime.hour == startTimeOfDay.hour && nowTime.minute < startTimeOfDay.minute) {
+      print("  Условие: nowTime.hour == startTimeOfDay.hour && nowTime.minute < startTimeOfDay.minute  => TRUE (Часы равны, минуты текущего времени МЕНЬШЕ минут начала занятия)"); // Условие 2 и результат TRUE
+      return true;
+    } else {
+      print("  Условие: nowTime.hour == startTimeOfDay.hour && nowTime.minute < startTimeOfDay.minute  => FALSE (Условие 2 не выполнено)"); // Условие 2 и результат FALSE
+    }
+
+    print("  Ни одно из условий не выполнено, возвращаем FALSE"); // Если дошли до сюда, значит, ни одно условие не выполнилось
+    return false;
   }
 
   // Вспомогательная функция для парсинга времени в TimeOfDay
@@ -195,11 +194,11 @@ class ScheduleCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12.0),
         // --- Добавляем контур для "ближайшей" пары ---
         side: entryStatus == ScheduleEntryStatus.next
-            ? BorderSide(color: Colors.blue, width: 2.0)
+            ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2.0)
             : BorderSide.none, // Нет контура для остальных
       ),
       color: entryStatus == ScheduleEntryStatus.current
-          ? Colors.blue[100] // Светло-синий фон для текущей
+          ? Theme.of(context).colorScheme.primaryContainer // Светло-синий фон для текущей
           : null, // Используем цвет темы по умолчанию для остальных,
       elevation: 2.0, // Небольшая тень
       child: Padding(
@@ -224,7 +223,7 @@ class ScheduleCard extends StatelessWidget {
                     entry.teacher,
                     style: TextStyle(
                       fontSize: 14.0,
-                      color: Colors.grey[700], // Цвет чуть потемнее серого
+                      color: Theme.of(context).colorScheme.outline, // Цвет чуть потемнее серого
                     ),
                   ),
                 ],
@@ -250,7 +249,7 @@ class ScheduleCard extends StatelessWidget {
                   '${entry.building}\n${entry.room}', // Корпус и аудитория с переносом строки
                   style: TextStyle(
                     fontSize: 14.0,
-                    color: Colors.grey[700],
+                    color: Theme.of(context).colorScheme.outline,
                   ),
                   textAlign: TextAlign.right, // Выравниваем текст вправо
                 ),
