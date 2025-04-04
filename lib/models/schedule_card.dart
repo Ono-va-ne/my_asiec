@@ -44,10 +44,17 @@ class ScheduleCard extends StatelessWidget {
       print("  Текущее время попадает в интервал занятия, статус: current"); // Отладка: текущая пара
       return ScheduleEntryStatus.current;
     }
+    else if (isEntryNearest(nowTime, entryStartTimeOfDay, entryEndTimeOfDay)) {
+      print("  Текущее время позже начала занятия, статус: next"); // Отладка: ближайшая пара
+      return ScheduleEntryStatus.next;
+    } else {
+      print("  Текущее время не попадает в интервал занятия, статус: normal"); }
 
     // --- НОВАЯ ЛОГИКА для "ближайшей пары" ---
     // 3. Ищем ближайшую следующую пару ТОЛЬКО если текущая пара НЕ найдена
     ScheduleEntry? nextEntry;
+    if (allEntriesForDay != null) {
+      List<ScheduleEntry> futureEntries = [];
  // Проверяем, что есть список всех пар на день
     bool foundNext = false;
     for (final otherEntry in allEntriesForDay) {
@@ -57,40 +64,62 @@ class ScheduleCard extends StatelessWidget {
       if (otherEntryStartTime != null) {
         final otherEntryStartTimeOfDay = TimeOfDay(hour: otherEntryStartTime.hour, minute: otherEntryStartTime.minute);
 
-        if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime)) {
-          // Нашли пару, начинающуюся позже текущего времени
-          if (nextEntry == null) {
-            // Если "ближайшая" пара еще не найдена, то это пока она
-            nextEntry = otherEntry;
-          } else {
-            // Если "ближайшая" пара уже есть, сравниваем время начала
-            final currentNextEntryStartTime = _parseTime(nextEntry.startTime);
-                if (currentNextEntryStartTime != null) {
-                  // --- Упрощенное условное выражение ---
-                  int otherEntryHour = otherEntryStartTime.hour;
-                  int currentNextEntryHour = currentNextEntryStartTime.hour;
-                  int otherEntryMinute = otherEntryStartTime.minute;
-                  int currentNextEntryMinute = currentNextEntryStartTime.minute;
-
-                  bool isHourEarlier = otherEntryHour < currentNextEntryHour;
-                  bool isHourEqual = otherEntryHour == currentNextEntryHour;
-                  bool isMinuteEarlier = otherEntryMinute < currentNextEntryMinute;
-
-                  if (isHourEarlier || (isHourEqual && isMinuteEarlier)) {
-                    nextEntry = otherEntry;
-                  }
-                }            }
+        if (isEntryNearest(nowTime, entryStartTimeOfDay, entryEndTimeOfDay)) {
+          nextEntry = otherEntry;
+          break;
         }
-      
+        // if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime)) {
+        //   futureEntries.add(otherEntry);
+        // break;
+        //   }
+        }
+
+        futureEntries.sort((a, b) {
+          final startTimeA = _parseTime(a.startTime);
+          final startTimeB = _parseTime(b.startTime);
+          if (startTimeA == null || startTimeB == null) return 0; // Если время не распарсилось, не меняем порядок
+          return startTimeA.hour.compareTo(startTimeB.hour) != 0 ? startTimeA.hour.compareTo(startTimeB.hour) : startTimeA.minute.compareTo(startTimeB.minute);
+        });
+
+        if (futureEntries.isNotEmpty) {
+        nextEntry = futureEntries.first; // Начинаем с первой пары из списка
+
+        for (final otherNextEntry in futureEntries.skip(1)) { // Перебираем остальные, начиная со второй
+          final otherNextEntryStartTime = _parseTime(otherNextEntry.startTime);
+          final currentNextEntryStartTime = _parseTime(nextEntry!.startTime); // nextEntry точно не null, т.к. futureEntries не пустой
+
+          if (otherNextEntryStartTime != null && currentNextEntryStartTime != null) { // Строка 103 - Проверка на null
+            // --- Упрощенное условное выражение (как и в прошлый раз) ---
+            int otherEntryHour = otherNextEntryStartTime?.hour ?? 0;
+            int currentNextEntryHour = currentNextEntryStartTime?.hour ?? 0;
+            int otherEntryMinute = otherNextEntryStartTime?.minute ?? 0;
+            int currentNextEntryMinute = currentNextEntryStartTime?.minute ?? 0;
+
+            bool isHourEarlier = otherEntryHour < currentNextEntryHour;
+            bool isHourEqual = otherEntryHour == currentNextEntryHour;
+            bool isMinuteEarlier = otherEntryMinute < currentNextEntryMinute;
+
+            if (isHourEarlier || (isHourEqual && isMinuteEarlier)) { // Строка 105 - УПРОЩЕННОЕ УСЛОВИЕ!
+              // Если время начала ТЕКУЩЕЙ пары из futureEntries РАНЬШЕ, чем время начала уже найденной "ближайшей" (nextEntry),
+              // то ТЕКУЩАЯ пара становится новой "ближайшей" (nextEntry = otherNextEntry)
+              nextEntry = otherNextEntry;
+            }
+          }
+        }
+      }
+      if (nextEntry == entry) {
+        return ScheduleEntryStatus.next;
+      }
 
         // Если время начала ДРУГОЙ пары ПОЗЖЕ, чем текущее время,
         // и мы еще не нашли "ближайшую", то это ОНА!
-        if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime) && !foundNext) { // Используем новый метод для сравнения времени "после"
-          foundNext = true;
-          if (isSameDay(entry.date, currentTime)) { // <--- Проверка даты для "ближайшей" пары!
-            return ScheduleEntryStatus.next; // Ближайшая пара (только если сегодня!)
-          }
-        }
+        
+        // if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime) && !foundNext) { // Используем новый метод для сравнения времени "после"
+        //   foundNext = true;
+        //   if (isSameDay(entry.date, currentTime)) { // <--- Проверка даты для "ближайшей" пары!
+        //     return ScheduleEntryStatus.next; // Ближайшая пара (только если сегодня!)
+        //   }
+        // }
       }
     }
   // Пока просто возвращаем normal для всех остальных
@@ -121,6 +150,18 @@ class ScheduleCard extends StatelessWidget {
              (nowTime.hour == startTimeOfDay.hour && nowTime.minute >= startTimeOfDay.minute && nowTime.hour < endTimeOfDay.hour) ||
              (nowTime.hour == endTimeOfDay.hour && nowTime.minute <= endTimeOfDay.minute && nowTime.hour > startTimeOfDay.hour) ||
              (nowTime.hour == startTimeOfDay.hour && nowTime.minute >= startTimeOfDay.minute && nowTime.hour == endTimeOfDay.hour && nowTime.minute <= endTimeOfDay.minute);
+  }
+  bool isEntryNearest(TimeOfDay nowTime, TimeOfDay startTimeOfDay, TimeOfDay endTimeOfDay) {
+    print("--- isEntryNearest: проверяем ближайшую пару ---");
+    print("  Текущее время: $nowTime, Время начала занятия: $startTimeOfDay, Время конца занятия: $endTimeOfDay"); // Отладка: значения времени
+
+    if ((nowTime.hour < startTimeOfDay.hour) !& isCurrentTimeInEntry(nowTime, startTimeOfDay, endTimeOfDay)) {
+      print("Условие: (nowTime.hour < startTimeOfDay.hour) && (isCurrentTimeInEntry(nowTime, startTimeOfDay, endTimeOfDay) == false)");
+      return true;
+    } else 
+          if ((nowTime.hour == startTimeOfDay.hour && nowTime.minute < startTimeOfDay.minute) !& isCurrentTimeInEntry(nowTime, startTimeOfDay, endTimeOfDay)) {
+            return true;
+          } else return false;
   }
 
   // Вспомогательная функция для парсинга времени в TimeOfDay
