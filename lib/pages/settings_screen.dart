@@ -163,7 +163,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context: context,
                 builder: (context) => AboutDialog(
                   applicationName: 'МойАПЭК', // Название приложения
-                  applicationVersion: '0.1.0', // TODO: Получать версию динамически
+                  applicationVersion: '0.2.0', // TODO: Получать версию динамически
                   applicationIcon: svg, // Или иконка твоего приложения
                   applicationLegalese: '©2025 Onovane',
                   children: [
