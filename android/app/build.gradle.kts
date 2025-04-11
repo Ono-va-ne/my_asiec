@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.my_asiec_lite"
+    namespace = "com.onovane.my_asiec"
     compileSdk = 35
     ndkVersion = "28.0.13004108"
 
@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.my_asiec_lite"
+        applicationId = "com.onovane.my_asiec"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
