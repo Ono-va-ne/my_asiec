@@ -1,10 +1,11 @@
-// Файл: lib/settings_screen.dart
 // import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import '../services/settings_service.dart'; // Импортируем сервис
 import '../data/groups.dart'; // Импортируем список групп
+import '../data/teachers.dart';
+import '../data/rooms.dart'; // Импортируем список аудиторий
 // import '../models/group_info.dart'; // Импортируем модель группы
 
 Future<void> _launchTG(BuildContext context) async {
@@ -14,7 +15,7 @@ Future<void> _launchTG(BuildContext context) async {
 
 
       // Пытаемся открыть ссылку. LaunchMode.externalApplication
-      // попытается открыть приложение VK, если оно установлено,
+      // попытается открыть приложение TG, если оно установлено,
       // иначе откроет браузер.
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     
@@ -30,12 +31,16 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String? _selectedGroupId; // Храним ID выбранной группы по умолчанию
+  String? _selectedTeacherId;
+  String? _selectedRoomId;
 
   @override
   void initState() {
     super.initState();
     // Загружаем текущую выбранную группу при инициализации
     _selectedGroupId = settingsService.getDefaultGroupId();
+    _selectedTeacherId = settingsService.getDefaultTeacherId();
+    _selectedRoomId = settingsService.getDefaultRoomId();
     // Мы не используем ValueListenableBuilder здесь, т.к. нам не нужно
     // динамически перестраивать весь экран при смене группы,
     // достаточно обновить Dropdown при выборе.
@@ -57,6 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       semanticsLabel: 'tg',
       colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.onSurfaceVariant, BlendMode.srcIn),
     );
+    
     return Scaffold(
       appBar: AppBar(
         title: Text('Настройки'),
@@ -67,31 +73,96 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: EdgeInsets.symmetric(vertical: 8.0),
         children: [
           // --- Секция: Группа по умолчанию ---
-          _buildSectionHeader('Основные'),
+          _buildSectionHeader('Умолчания'),
           ListTile(
             leading: Icon(Icons.group_outlined),
-            title: Text('Группа по умолчанию'),
-            subtitle: Text('Будет выбрана при запуске приложения'),
-            trailing: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                // Используем ID группы как значение
-                value: _selectedGroupId,
-                hint: Text('Не выбрана'),
-                // Фильтруем список, чтобы не было ошибки, если сохраненный ID невалиден
-                items: availableGroupsData
-                    .map((group) => DropdownMenuItem<String>(
-                          value: group.id,
-                          child: Text(group.name),
-                        ))
-                    .toList(),
-                onChanged: (String? newGroupId) {
-                   if (newGroupId != null) {
-                      setState(() {
-                         _selectedGroupId = newGroupId; // Обновляем UI
-                      });
-                      settingsService.setDefaultGroupId(newGroupId); // Сохраняем настройку
-                   }
-                },
+            title: Text('Группа'),
+            // subtitle: Text('Будет выбрана при запуске приложения'),
+            trailing: SizedBox(
+              width: 200,
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  // Используем ID группы как значение
+                  value: _selectedGroupId,
+                  hint: Text('Не выбрана'),
+                  // Фильтруем список, чтобы не было ошибки, если сохраненный ID невалиден
+                  items: availableGroupsData
+                      .map((group) => DropdownMenuItem<String>(
+                            value: group.id,
+                            child: Text(group.name),
+                          ))
+                      .toList(),
+                  onChanged: (String? newGroupId) {
+                     if (newGroupId != null) {
+                        setState(() {
+                           _selectedGroupId = newGroupId; // Обновляем UI
+                        });
+                        settingsService.setDefaultGroupId(newGroupId); // Сохраняем настройку
+                     }
+                  },
+                ),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: Icon(Icons.person_outlined),
+            title: Text('Преподаватель'),
+            // subtitle: Text('Будет выбран при запуске приложения'),
+            trailing: SizedBox(
+              width: 200,
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  // Используем ID группы как значение
+                  value: _selectedTeacherId,
+                  hint: Text('Не выбран(а)'),
+                  // Фильтруем список, чтобы не было ошибки, если сохраненный ID невалиден
+                  items: availableTeachersData
+                      .map((teacher) => DropdownMenuItem<String>(
+                            value: teacher.id,
+                            child: Text(teacher.name, overflow: TextOverflow.ellipsis, maxLines: 1,),
+                          ))
+                      .toList(),
+                  onChanged: (String? newTeacherId) {
+                     if (newTeacherId != null) {
+                        setState(() {
+                           _selectedTeacherId = newTeacherId; // Обновляем UI
+                        });
+                        settingsService.setDefaultTeacherId(newTeacherId); // Сохраняем настройку
+                     }
+                  },
+                ),
+              ),
+            ),
+          ),
+          ListTile(
+            leading: Icon(Icons.room_outlined),
+            title: Text('Аудитория'),
+            subtitle: Text('Ваша любимая аудитория.. наверное?'),
+            trailing: SizedBox(
+              width: 200,
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  // Используем ID группы как значение
+                  value: _selectedRoomId,
+                  hint: Text('Не выбрана'),
+                  // Фильтруем список, чтобы не было ошибки, если сохраненный ID невалиден
+                  items: availableRoomsData
+                      .map((room) => DropdownMenuItem<String>(
+                            value: room.id,
+                            child: Text(room.name, overflow: TextOverflow.ellipsis, maxLines: 1,),
+                          ))
+                      .toList(),
+                  onChanged: (String? newRoomId) {
+                     if (newRoomId != null) {
+                        setState(() {
+                           _selectedRoomId = newRoomId; // Обновляем UI
+                        });
+                        settingsService.setDefaultRoomId(newRoomId); // Сохраняем настройку
+                     }
+                  },
+                ),
               ),
             ),
           ),
@@ -163,7 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context: context,
                 builder: (context) => AboutDialog(
                   applicationName: 'МойАПЭК', // Название приложения
-                  applicationVersion: '0.1.0', // TODO: Получать версию динамически
+                  applicationVersion: '0.2.0', // TODO: Получать версию динамически
                   applicationIcon: svg, // Или иконка твоего приложения
                   applicationLegalese: '©2025 Onovane',
                   children: [
