@@ -390,27 +390,44 @@ builder: (context, child) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Равномерное распределение кнопок по ширине
       children: [
-        ElevatedButton(
-          onPressed: () {
-            _setScheduleType(ScheduleType.grup); // Функция для установки типа "Группа"
-          },
-          child: Text('Группа'),
+        _buildScheduleTypeButton(
+          type: ScheduleType.grup,
+          text: 'Группа',
         ),
-        ElevatedButton(
-          onPressed: () {
-            _setScheduleType(ScheduleType.prep); // Функция для установки типа "Преподаватель"
-          },
-          child: Text('Преподаватель'),
+        _buildScheduleTypeButton(
+          type: ScheduleType.prep,
+          text: 'Преподаватель',
         ),
-        ElevatedButton(
-          onPressed: () {
-            _setScheduleType(ScheduleType.aud);
-            print('Выбран поиск по аудитории (AUD)'); // Функция для установки типа "Аудитория"
-          },
-          child: Text('Аудитория'),
+        _buildScheduleTypeButton(
+          type: ScheduleType.aud,
+          text: 'Аудитория',
         ),
       ],
     );
+  }
+  Widget _buildScheduleTypeButton({required ScheduleType type, required String text}) {
+    final isSelected = _rasType == type; // Проверяем, является ли кнопка "выбранной"
+
+    final textColor = isSelected
+        ? Theme.of(context).colorScheme.onPrimaryContainer // Цвет текста для ElevatedButton (на залитом фоне)
+        : Theme.of(context).colorScheme.onSurface; // Цвет текста для OutlinedButton (на "плоском" фоне)
+
+    return isSelected
+        ? ElevatedButton( // Если ВЫБРАНА - используем ElevatedButton
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer, // Цвет фона для выбранной кнопки
+            ),
+            onPressed: () {
+              _setScheduleType(type);
+            },
+            child: Text(text, style: TextStyle(color: textColor),),
+          )
+        : OutlinedButton( // Если НЕ ВЫБРАНА - используем OutlinedButton
+            onPressed: () {
+              _setScheduleType(type);
+            },
+            child: Text(text),
+          );
   }
 
     Widget _buildObjectSelector() {

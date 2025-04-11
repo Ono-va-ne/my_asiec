@@ -73,13 +73,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: EdgeInsets.symmetric(vertical: 8.0),
         children: [
           // --- Секция: Группа по умолчанию ---
-          _buildSectionHeader('Основные'),
+          _buildSectionHeader('Умолчания'),
           ListTile(
             leading: Icon(Icons.group_outlined),
-            title: Text('Группа по умолчанию'),
+            title: Text('Группа'),
             // subtitle: Text('Будет выбрана при запуске приложения'),
             trailing: SizedBox(
-              width: 160,
+              width: 200,
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   // Используем ID группы как значение
@@ -106,16 +106,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ListTile(
             leading: Icon(Icons.person_outlined),
-            title: Text('Преподаватель по умолчанию'),
+            title: Text('Преподаватель'),
             // subtitle: Text('Будет выбран при запуске приложения'),
             trailing: SizedBox(
-              width: 160,
+              width: 200,
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   isExpanded: true,
                   // Используем ID группы как значение
                   value: _selectedTeacherId,
-                  hint: Text('Не выбрана'),
+                  hint: Text('Не выбран(а)'),
                   // Фильтруем список, чтобы не было ошибки, если сохраненный ID невалиден
                   items: availableTeachersData
                       .map((teacher) => DropdownMenuItem<String>(
@@ -137,10 +137,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ListTile(
             leading: Icon(Icons.room_outlined),
-            title: Text('Аудитория по умолчанию'),
+            title: Text('Аудитория'),
             subtitle: Text('Ваша любимая аудитория.. наверное?'),
             trailing: SizedBox(
-              width: 160,
+              width: 200,
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   isExpanded: true,
