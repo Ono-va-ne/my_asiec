@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 // import 'package:intl/intl.dart'; // Для форматирования даты
 
 // Импортируем сервис и модель
-import 'package:my_asiec_lite/services/vk_api_service.dart';
-import 'package:my_asiec_lite/models/vk_post.dart';
+import '../services/vk_api_service.dart';
+import '../models/vk_post.dart';
 // Импортируем виджет карточки поста (создадим ниже)
-import 'package:my_asiec_lite/models/news_card.dart';
+import '../models/news_card.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({Key? key}) : super(key: key);

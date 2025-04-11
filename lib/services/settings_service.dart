@@ -7,6 +7,8 @@ const String _themeModeKey = 'app_theme_mode';
 const String _themeAccentColorKey = 'app_theme_accent_color';
 const String _themeMaterialYouKey = 'app_theme_material_you';
 const String _defaultGroupIdKey = 'app_default_group_id';
+const String _defaultTeacherIdKey = 'default_teacher_id';
+const String _defaultRoomIdKey = 'default_room_id';
 
 class SettingsService {
   // --- Notifiers для оповещения об изменениях ---
@@ -61,6 +63,32 @@ class SettingsService {
      await _prefs?.setBool(_themeMaterialYouKey, enabled);
      materialYouNotifier.value = enabled; // Уведомляем
    }
+  
+
+  Future<void> setDefaultRoomId(String? roomId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_defaultRoomIdKey, roomId ?? ''); // Сохраняем ID или пустую строку, если null
+  }
+
+  String? getDefaultRoomId() {
+    return _prefs?.getString(_defaultRoomIdKey);
+  }
+
+  Future<void> setDefaultTeacherId(String? teacherId) async {
+    if (_prefs == null) await loadSettings();
+    if (teacherId != null) {
+      await _prefs?.setString(_defaultTeacherIdKey, teacherId);
+    } else {
+       await _prefs?.remove(_defaultTeacherIdKey);
+    }
+    print('setDefaultTeacherId: $teacherId'); // Для отладки
+    // Тут можно добавить notifier, если нужно
+  }
+
+  String? getDefaultTeacherId() {
+    return _prefs?.getString(_defaultTeacherIdKey);
+  }
+
 
   Future<void> setDefaultGroupId(String? groupId) async {
     if (_prefs == null) await loadSettings();
@@ -71,10 +99,6 @@ class SettingsService {
     }
     // Тут можно добавить notifier, если нужно
   }
-
-  // --- Получение настроек ---
-
-  // ThemeMode, AccentColor, MaterialYou получаются через notifier.value
 
   String? getDefaultGroupId() {
      // Возвращаем сразу из SharedPreferences (можно кэшировать, если надо)

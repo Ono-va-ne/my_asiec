@@ -2,12 +2,17 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import '../models/schedule_card.dart';
-import '../models/schedule_entry.dart';
+// import '../models/schedule_entry.dart';
 // import 'package:my_asiec_lite/models/schedule_entry.dart';
 // import 'package:my_asiec_lite/models/parser_schedule.dart';
 import '../models/daily_schedule.dart';
+
 import '../data/groups.dart';
+import '../data/rooms.dart';
+import '../data/teachers.dart';
 import '../models/group_info.dart';
+import '../models/teacher_info.dart';
+import '../models/room_info.dart';
 import '../services/settings_service.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
@@ -24,6 +29,7 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   // --- Состояние ---
+  ScheduleType _rasType = ScheduleType.grup;
   List<DailySchedule> _dailySchedules = []; // Теперь храним список расписаний по дням
   DateTime _startDate = DateTime.now(); // Дата начала диапазона
   DateTime _endDate = DateTime.now();   // Дата конца диапазона
@@ -32,12 +38,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   String? _errorMessage;
 
   List<GroupInfo> _availableGroups = []; // Список доступных групп
+  List<TeacherInfo> _availableTeachers = []; // Список доступных групп
+  List<RoomInfo> _availableRooms = []; // Список доступных групп
   GroupInfo? _selectedGroup; // Выбранная группа (может быть null сначала)
+  TeacherInfo? _selectedTeacher;
+  RoomInfo? _selectedRoom;
 
   // --- Константы для запроса (остаются как были) ---
   final String _scheduleApiUrl = 'https://asiec.ru/ras/ras.php'; // ЗАМЕНИ!
   // final String _groupId = '3afb102a-1ea1-11ed-abe0-00155d879809%0A'; // ЗАМЕНИ!
-  final String _rasType = 'GRUP';
   final String _dostup = 'true';
 
   DailySchedule? dailyScheduleForCard(DateTime date) {
@@ -50,14 +59,57 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return null; // Не нашли расписание для этой даты
     }
   }
+  void _setScheduleType(ScheduleType newType) {
+    dynamic defaultSelectedObject = null; // Переменная для объекта по умолчанию
 
+    switch (newType) {
+      case ScheduleType.grup:
+        defaultSelectedObject = _selectedGroup; // Пытаемся использовать _selectedGroup по умолчанию
+        if (defaultSelectedObject == null && _availableGroups.isNotEmpty) {
+          defaultSelectedObject = _availableGroups.first; // Если нет сохраненной, берем первый из списка
+        }
+        break;
+      case ScheduleType.prep:
+        defaultSelectedObject = _selectedTeacher; // Пытаемся использовать _selectedTeacher по умолчанию
+        if (defaultSelectedObject == null && _availableTeachers.isNotEmpty) {
+          defaultSelectedObject = _availableTeachers.first; // Если нет сохраненного, берем первый из списка
+        }
+        break;
+      case ScheduleType.aud:
+        if (_availableRooms.isNotEmpty) {
+          defaultSelectedObject = _availableRooms.first; // Для аудиторий всегда берем первый из списка, если есть
+        }
+        break;
+    }
+
+    setState(() {
+      _rasType = newType; // Обновляем тип расписания
+      _errorMessage = null; // Сбрасываем сообщение об ошибке
+      _dailySchedules.clear(); // Очищаем текущее расписание
+
+      // --- ВЫЗЫВАЕМ _loadScheduleData С ID ПО УМОЛЧАНИЮ (ИЛИ ПЕРВЫМ ИЗ СПИСКА)! ---
+      if (defaultSelectedObject != null) {
+        _loadScheduleData(_startDate, _endDate, newType, defaultSelectedObject); // <--- Загружаем данные, если есть объект по умолчанию
+      }
+    });
+  }
+  String _getRasTypeValue(ScheduleType type) {
+    switch (type) {
+      case ScheduleType.grup:
+        return 'GRUP'; // <--- Значение для расписания группы (уточни, если другое!)
+      case ScheduleType.prep:
+        return 'PREP'; // <--- Значение для расписания преподавателя (уточни!)
+      case ScheduleType.aud:
+        return 'AUD';  // По умолчанию - группа, на всякий случай
+    }
+  }
  @override
  void initState() {
     super.initState();
-    _initializeGroups(); // Инициализируем список И выбранную группу
+    _initializeScheduleObjects(); // Инициализируем список И выбранную группу
     // Загружаем данные, если группа выбрана
     if (_selectedGroup != null) {
-        _loadScheduleData(_startDate, _endDate, _selectedGroup!);
+        _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
     } else {
         // Ошибка - не удалось определить группу по умолчанию
         setState(() {
@@ -67,9 +119,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
  }
 
- void _initializeGroups() {
+ void _initializeScheduleObjects() {
     // Заполняем список доступных групп
     _availableGroups = availableGroupsData;
+    _availableTeachers = availableTeachersData; // Заполняем список доступных преподавателей
+    _availableRooms = availableRoomsData; // Заполняем список доступных аудиторий
 
     // --- ЛОГИКА ВЫБОРА ГРУППЫ ПО УМОЛЧАНИЮ ИЗ НАСТРОЕК ---
     final String? savedGroupId = settingsService.getDefaultGroupId(); // Получаем сохраненный ID
@@ -96,14 +150,56 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
          print("Список доступных групп пуст!");
     }
 
-    print("Инициализация ScheduleScreen. Выбрана группа: $_selectedGroup");
- }
-  // --- Форматирование дат (остаются как были) ---
-  // ... _formatDateForApi, _formatDateRangeForDisplay ...
+    final String? savedTeacherId = settingsService.getDefaultTeacherId(); // <--- Получаем сохраненный ID преподавателя
+    _selectedTeacher = null; // Сбрасываем на всякий случай
 
-  // --- Функция вызова DateRangePicker (остается как была) ---
-  // ... _selectDateRange ...
-  // Важно: внутри _selectDateRange, вызов _loadScheduleData теперь должен передавать _selectedGroup!
+    if (savedTeacherId != null) {
+      try {
+        _selectedTeacher = _availableTeachers.firstWhere( // <--- Ищем преподавателя
+          (t) => t.id == savedTeacherId,
+          // orElse: () => null,
+        );
+      } catch (e) {
+        print("Сохраненный преподаватель $savedTeacherId не найден в списке доступных.");
+        _selectedTeacher = null; // Не нашли, сбрасываем
+      }
+    }
+
+    if (_selectedTeacher == null && _availableTeachers.isNotEmpty) {
+      _selectedTeacher = _availableTeachers.first; // <--- Выбираем первого преподавателя, если нет сохраненного
+      print("Преподаватель по умолчанию не найден в настройках, выбран первый: ${_selectedTeacher?.name}");
+    } else if (_availableTeachers.isEmpty) {
+      print("Список доступных преподавателей пуст!");
+    }
+
+    print("Инициализация ScheduleScreen. Выбрана группа: $_selectedGroup");
+
+    final String? savedRoomId = settingsService.getDefaultRoomId(); // <--- Получаем сохраненный ID аудитории
+    _selectedRoom = null; // Сбрасываем на всякий случай
+
+    if (savedRoomId != null) {
+      try {
+        _selectedRoom = _availableRooms.firstWhere( // <--- Ищем аудиторию
+          (r) => r.id == savedRoomId,);
+      } catch (e) {
+        print("Сохраненная аудитория $savedRoomId не найдена в списке доступных.");
+        _selectedRoom = null; // Не нашли, сбрасываем
+      }
+    }
+
+    if (_selectedRoom == null && _availableRooms.isNotEmpty) {
+      _selectedRoom = _availableRooms.first; // <--- Выбираем первую аудиторию, если нет сохраненной
+      print("Аудитория по умолчанию не найдена в настройках, выбрана первая: ${_selectedRoom?.name}");
+    } else if (_availableRooms.isEmpty) {
+      print("Список доступных аудиторий пуст!");
+    }
+
+
+    print("Инициализация ScheduleScreen. Группа: $_selectedGroup, Преподаватель: $_selectedTeacher, Аудитория: $_selectedRoom");
+ }
+
+
+
   Future<void> _selectDateRange(BuildContext context) async {
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
@@ -147,7 +243,7 @@ builder: (context, child) {
       final newEndDate = DateTime(picked.end.year, picked.end.month, picked.end.day);
        if (newStartDate != _startDate || newEndDate != _endDate) {
            if (_selectedGroup != null) { // Проверяем, выбрана ли группа
-             _loadScheduleData(newStartDate, newEndDate, _selectedGroup!);
+             _loadScheduleData(newStartDate, newEndDate, _rasType, null);
            } else {
                // Можно показать ошибку или ничего не делать
                print("Невозможно загрузить расписание: группа не выбрана");
@@ -169,7 +265,7 @@ builder: (context, child) {
 
   // --- Обновленная функция загрузки данных ---
   // Теперь принимает выбранную группу как параметр
-  Future<void> _loadScheduleData(DateTime startDate, DateTime endDate, GroupInfo group) async {
+  Future<void> _loadScheduleData(DateTime startDate, DateTime endDate, ScheduleType scheduleType, dynamic selectedObject) async {
      // Проверяем mounted перед первым setState
      if (!mounted) return;
      setState(() {
@@ -179,19 +275,45 @@ builder: (context, child) {
       _scheduleDateDisplay = '${_formatDateRangeForDisplay(_startDate, _endDate)} (Загрузка...)';
       _dailySchedules = [];
     });
-
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _dailySchedules.clear();
+    });
+    String objectId = ''; // Переменная для ID объекта (группы, преподавателя, аудитории)
+    String rasParamName = '';
     final String startDateString = _formatDateForApi(startDate);
     final String endDateString = _formatDateForApi(endDate);
 
-    final Map<String, String> body = {
+    switch (scheduleType) {
+      case ScheduleType.grup:
+        rasParamName = 'gruppa'; // Имя параметра для групп
+        if (selectedObject is GroupInfo) {
+          objectId = selectedObject.id; // Получаем ID группы
+        }
+        break;
+      case ScheduleType.prep:
+        rasParamName = 'prepod';
+        if (selectedObject is TeacherInfo) {
+          objectId = selectedObject.id; // Получаем ID преподавателя
+        }
+        break;
+      case ScheduleType.aud:
+      rasParamName = 'auditoria';
+        if (selectedObject is RoomInfo) {
+          objectId = selectedObject.id; // Получаем ID аудитории
+        }
+        break;
+    }
+
+    final body = {
       'dostup': _dostup,
-      'gruppa': group.id, // <-- Используем ID выбранной группы
+      rasParamName: objectId, // <-- Используем ID выбранной группы
       'calendar': startDateString,
       'calendar2': endDateString,
-      'ras': _rasType,
+      'ras': _getRasTypeValue(_rasType), // Convert ScheduleType to String
     };
 
-    print("Отправка запроса для группы ${group.name} ($startDateString - $endDateString)");
 
     try {
       final response = await http.post(
@@ -216,7 +338,7 @@ builder: (context, child) {
           _isLoading = false;
         });
       } else { /* ... обработка ошибки сервера ... */ }
-    } catch (e, stackTrace) { // Ловим исключение
+    } catch (e) { // Ловим исключение
       String errorMessageText = 'Не удалось загрузить расписание: $e'; // Стандартное сообщение
 
       // --- НОВАЯ ЛОГИКА ПРОВЕРКИ ИСКЛЮЧЕНИЯ ---
@@ -264,11 +386,122 @@ builder: (context, child) {
     }
   }
 
+  Widget _buildScheduleTypeButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Равномерное распределение кнопок по ширине
+      children: [
+        ElevatedButton(
+          onPressed: () {
+            _setScheduleType(ScheduleType.grup); // Функция для установки типа "Группа"
+          },
+          child: Text('Группа'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            _setScheduleType(ScheduleType.prep); // Функция для установки типа "Преподаватель"
+          },
+          child: Text('Преподаватель'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            _setScheduleType(ScheduleType.aud);
+            print('Выбран поиск по аудитории (AUD)'); // Функция для установки типа "Аудитория"
+          },
+          child: Text('Аудитория'),
+        ),
+      ],
+    );
+  }
+
+    Widget _buildObjectSelector() {
+    String hintText;
+    List<DropdownMenuItem<dynamic>>? items = [];
+    // ignore: unused_local_variable
+    String rasParamName = ''; // Имя параметра для передачи в запросе
+    switch (_rasType) {
+      case ScheduleType.grup:
+        rasParamName = 'gruppa'; // Имя параметра для групп
+        hintText = 'Выберите группу';
+        items = _availableGroups.map((group) { // Используем _groupList
+          return DropdownMenuItem<GroupInfo>( // Тип элемента - GroupInfo
+            value: group,
+            child: Text(group.name),
+          );
+        }).toList();
+        break;
+      case ScheduleType.prep:
+        rasParamName = 'prepod';
+        hintText = 'Выберите преподавателя'; // Hint для преподавателей
+        items = _availableTeachers.map((teacher) { // Используем _groupList
+          return DropdownMenuItem<TeacherInfo>( // Тип элемента - GroupInfo
+            value: teacher,
+            child: Text(teacher.name),
+          );
+        }).toList();
+        break;
+      case ScheduleType.aud:
+      rasParamName = 'auditoria';
+        hintText = 'Выберите аудиторию'; // Hint для аудиторий
+        items = _availableRooms.map((room) { // Используем _groupList
+          return DropdownMenuItem<RoomInfo>( // Тип элемента - GroupInfo
+            value: room,
+            child: Text(room.name),
+          );
+        }).toList();
+        break;
+    }
+
+    return  Padding( // <--- Оборачиваем Padding, как и раньше
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 0.0), // Уменьшаем вертикальный отступ
+      child: DropdownButtonHideUnderline( // Убираем стандартное подчеркивание
+          child: Container( // Оборачиваем в контейнер для фона и скругления
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+            decoration: BoxDecoration(
+              //  color: Colors.white, // Или цвет из темы
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(color: Colors.grey.shade500) // Легкая граница
+            ),
+            child: DropdownButton<dynamic>( // Тип DropdownButton теперь dynamic (может быть GroupInfo, TeacherInfo, RoomInfo в будущем)
+            value: _rasType == ScheduleType.grup
+              ? _selectedGroup // Для групп - _selectedGroup
+              : _rasType == ScheduleType.prep
+                  ? _selectedTeacher // Для преподавателей - _selectedTeacher
+                  : _rasType == ScheduleType.aud
+                      ? _selectedRoom // Для аудиторий - _selectedRoom (нужно добавить _selectedRoom!)
+                      : null, // <--- ИСПРАВЛЕНО! value для групп!
+            hint: Text(hintText), // Динамический hintText
+            isExpanded: true,      // Растягиваем на всю ширину
+            icon: Icon(Icons.group_outlined, color: Theme.of(context).colorScheme.primary), // Иконка справа
+            onChanged: (dynamic newValue) { // onChanged теперь принимает dynamic
+                      setState(() {
+                        _errorMessage = null;
+                        _dailySchedules.clear();
+                        if (newValue != null) {
+                          if (_rasType == ScheduleType.grup) {
+                            _selectedGroup = newValue as GroupInfo; // Обновляем _selectedGroup
+                          } else if (_rasType == ScheduleType.prep) {
+                            _selectedTeacher = newValue as TeacherInfo; // Обновляем _selectedTeacher
+                          } else if (_rasType == ScheduleType.aud) { // Раскомментируй, когда добавим RoomInfo
+                            _selectedRoom = newValue as RoomInfo; // Обновляем _selectedRoom
+                           }
+                          // --- ЯВНО ПЕРЕСТРАИВАЕМ _buildObjectSelector() ДЛЯ ОБНОВЛЕНИЯ UI! ---
+                          _buildObjectSelector(); // <--- ВЫЗЫВАЕМ _buildObjectSelector() ЕЩЕ РАЗ! (после setState)
+                          _loadScheduleData(_startDate, _endDate, _rasType, newValue);
+                        }
+                      });
+                    },
+            items: items, // Динамический список items
+          ),
+          ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Расписание ${_selectedGroup?.name ?? ""}'),
+        title: Text('Расписание'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 1.0,
         // ... (настройки AppBar)
@@ -307,54 +540,10 @@ builder: (context, child) {
               ),
             ),
           ),
-
-           if (_availableGroups.isNotEmpty) // Показываем, только если есть группы
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 0.0), // Уменьшаем вертикальный отступ
-              child: DropdownButtonHideUnderline( // Убираем стандартное подчеркивание
-                 child: Container( // Оборачиваем в контейнер для фона и скругления
-                   padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-                   decoration: BoxDecoration(
-                      //  color: Colors.white, // Или цвет из темы
-                       borderRadius: BorderRadius.circular(8.0),
-                       border: Border.all(color: Colors.grey.shade500) // Легкая граница
-                   ),
-                   child: DropdownButton<GroupInfo>(
-                    value: _selectedGroup, // Текущее выбранное значение
-                    isExpanded: true,      // Растягиваем на всю ширину
-                    icon: Icon(Icons.group_outlined, color: Theme.of(context).colorScheme.primary), // Иконка справа
-                    hint: Text('Выберите группу'), // Подсказка, если _selectedGroup == null
-                    onChanged: _isLoading ? null : (GroupInfo? newValue) { // Блокируем во время загрузки
-                      if (newValue != null && newValue != _selectedGroup) {
-                        print("Выбрана новая группа: ${newValue.name}");
-                        setState(() {
-                          _selectedGroup = newValue; // Обновляем выбранную группу
-                        });
-                        // Загружаем данные для новой группы и текущего диапазона дат
-                        _loadScheduleData(_startDate, _endDate, newValue);
-                      }
-                    },
-                    items: _availableGroups
-                        .map<DropdownMenuItem<GroupInfo>>((GroupInfo group) {
-                      return DropdownMenuItem<GroupInfo>(
-                        value: group, // Значение элемента - сам объект GroupInfo
-                        child: Text(
-                           group.name, // Отображаемый текст - имя группы
-                           overflow: TextOverflow.ellipsis, // Многоточие для длинных названий
-                        ),
-                      );
-                    }).toList(), // Преобразуем итератор в список
-                  ),
-                 ),
-              ),
-            )
-          else // Если список групп пуст (например, не загрузился)
-             Padding(
-                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                 child: Text('Список групп недоступен', style: TextStyle(color: Colors.red))
-             ),
+          _buildObjectSelector(), // <--- ВСТАВЬ СЮДА ВЫЗОВ _buildObjectSelector()!
 
            SizedBox(height: 8.0), // Небольшой отступ после дропдауна
+           _buildScheduleTypeButtons(),
 
           // Тело экрана: загрузка, ошибка или список
           Expanded(
@@ -366,11 +555,11 @@ builder: (context, child) {
     );
   }
 
-  // Метод _buildBody() остается таким же, как в предыдущем примере
   Widget _buildBody() {
     if (_isLoading) {
       return Center(child: CircularProgressIndicator());
     }
+
 
     if (_errorMessage != null) {
       return Center(
@@ -392,7 +581,7 @@ builder: (context, child) {
                 ),
               SizedBox(height: 16),
               ElevatedButton(
-                  onPressed: _selectedGroup == null ? null : () => _loadScheduleData(_startDate, _endDate, _selectedGroup!),
+                  onPressed: _selectedGroup == null ? null : () => _loadScheduleData(_startDate, _endDate, _rasType, null),
                   child: Text('Повторить попытку')
               )
             ],
@@ -477,3 +666,9 @@ extension on http.ClientException {
     // TODO: implement build
     throw UnimplementedError();
   }
+
+enum ScheduleType {
+  grup,
+  prep,
+  aud,
+}

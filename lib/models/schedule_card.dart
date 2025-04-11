@@ -145,7 +145,7 @@ class ScheduleCard extends StatelessWidget {
 
     print("  Текущее время (nowTime): $nowTime, Время начала занятия (startTimeOfDay): $startTimeOfDay"); // Значения времени
 
-    if ((nowTime.hour < startTimeOfDay.hour) && isCurrentTimeInEntry(nowTime, startTimeOfDay, endTimeOfDay)) {
+    if (nowTime.hour < startTimeOfDay.hour) {
       print("  Условие: $nowTime.hour < $startTimeOfDay.hour  => TRUE (Часы текущего времени МЕНЬШЕ часов начала занятия)"); // Условие 1 и результат TRUE
       return true;
     } else {
