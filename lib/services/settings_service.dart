@@ -63,7 +63,6 @@ class SettingsService {
      await _prefs?.setBool(_themeMaterialYouKey, enabled);
      materialYouNotifier.value = enabled; // Уведомляем
    }
-  
 
   Future<void> setDefaultRoomId(String? roomId) async {
     final prefs = await SharedPreferences.getInstance();

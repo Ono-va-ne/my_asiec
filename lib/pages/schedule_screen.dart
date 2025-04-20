@@ -211,48 +211,55 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       cancelText: 'Отмена',
       confirmText: 'Выбрать',
       saveText: 'Выбрать',
-builder: (context, child) {
+      builder: (context, child) {
         final currentTheme = Theme.of(context);
-
+  
         final pickerThemeData = currentTheme.copyWith(
           colorScheme: currentTheme.colorScheme.copyWith(
-            // Устанавливаем кастомные primary/onPrimary
             primary: Theme.of(context).colorScheme.primary,
             onPrimary: Theme.of(context).colorScheme.onPrimary,
-            // Опционально: Можно подстроить цвет поверхности (фона), если нужно
-            // surface: isDarkMode ? Colors.grey[850] : Colors.white,
-            // onSurface: isDarkMode ? Colors.white70 : Colors.black87,
           ),
-          // Опционально: Можно настроить стиль кнопок в диалоге
           textButtonTheme: TextButtonThemeData(
             style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.primary, // Используем наш основной цвет для кнопок ОК/Отмена
+              foregroundColor: Theme.of(context).colorScheme.primary,
             ),
           ),
-           // Опционально: фон самого диалога, если он отличается от scaffoldBackgroundColor
-           // dialogBackgroundColor: isDarkMode ? Colors.grey[900] : Colors.grey[50],
         );
-
+  
         return Theme(
           data: pickerThemeData,
           child: child!,
         );
-      }    );
+      },
+    );
+  
     if (picked != null) {
       final newStartDate = DateTime(picked.start.year, picked.start.month, picked.start.day);
       final newEndDate = DateTime(picked.end.year, picked.end.month, picked.end.day);
-       if (newStartDate != _startDate || newEndDate != _endDate) {
-           if (_selectedGroup != null) { // Проверяем, выбрана ли группа
-             _loadScheduleData(newStartDate, newEndDate, _rasType, null);
-           } else {
-               // Можно показать ошибку или ничего не делать
-               print("Невозможно загрузить расписание: группа не выбрана");
-               _showSnackBar(context, "Сначала выберите группу");
-           }
-       }
+  
+      if (newStartDate != _startDate || newEndDate != _endDate) {
+        dynamic selectedObject;
+        switch (_rasType) {
+          case ScheduleType.grup:
+            selectedObject = _selectedGroup;
+            break;
+          case ScheduleType.prep:
+            selectedObject = _selectedTeacher;
+            break;
+          case ScheduleType.aud:
+            selectedObject = _selectedRoom;
+            break;
+        }
+  
+        if (selectedObject != null) {
+          _loadScheduleData(newStartDate, newEndDate, _rasType, selectedObject);
+        } else {
+          print("Невозможно загрузить расписание: объект не выбран");
+          _showSnackBar(context, "Сначала выберите объект");
+        }
+      }
     }
   }
-
   // --- Хелпер для показа SnackBar ---
   void _showSnackBar(BuildContext context, String message) {
      ScaffoldMessenger.of(context).showSnackBar(
@@ -516,59 +523,55 @@ builder: (context, child) {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Расписание'),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        elevation: 1.0,
-        // ... (настройки AppBar)
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch, // Заголовки дней будут на всю ширину
-        children: [
-          // --- Кликабельный заголовок с диапазоном дат ---
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-            child: InkWell( // Делаем область кликабельной
-              onTap: _isLoading ? null : () => _selectDateRange(context), // Вызываем пикер по тапу (блокируем во время загрузки)
-              borderRadius: BorderRadius.circular(8.0), // Скругление для эффекта при нажатии
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0), // Внутренний отступ для красоты
-                child: Row(
-                   mainAxisAlignment: MainAxisAlignment.center, // Центрируем текст и иконку
-                   children: [
-                     Icon(Icons.calendar_today_outlined, size: 20.0, color: Theme.of(context).colorScheme.primary), // Иконка календаря
-                     SizedBox(width: 8.0),
-                     Flexible( // Чтобы текст переносился, если диапазон длинный
-                       child: Text(
-                         _scheduleDateDisplay, // Отображаем диапазон или статус загрузки
-                         style: TextStyle(
-                           fontSize: 18.0, // Можно настроить размер
-                           fontWeight: FontWeight.w500, // Средняя жирность
+    return SafeArea(
+      child: Scaffold(
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch, // Заголовки дней будут на всю ширину
+          children: [
+            // --- Кликабельный заголовок с диапазоном дат ---
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              child: InkWell( // Делаем область кликабельной
+                onTap: _isLoading ? null : () => _selectDateRange(context), // Вызываем пикер по тапу (блокируем во время загрузки)
+                borderRadius: BorderRadius.circular(8.0), // Скругление для эффекта при нажатии
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0), // Внутренний отступ для красоты
+                  child: Row(
+                     mainAxisAlignment: MainAxisAlignment.center, // Центрируем текст и иконку
+                     children: [
+                       Icon(Icons.calendar_today_outlined, size: 20.0, color: Theme.of(context).colorScheme.primary), // Иконка календаря
+                       SizedBox(width: 8.0),
+                       Flexible( // Чтобы текст переносился, если диапазон длинный
+                         child: Text(
+                           _scheduleDateDisplay, // Отображаем диапазон или статус загрузки
+                           style: TextStyle(
+                             fontSize: 18.0, // Можно настроить размер
+                             fontWeight: FontWeight.w500, // Средняя жирность
+                           ),
+                           textAlign: TextAlign.center,
                          ),
-                         textAlign: TextAlign.center,
                        ),
-                     ),
-                     SizedBox(width: 8.0),
-                     // Можно добавить иконку выпадающего списка для большей очевидности
-                     Icon(Icons.arrow_drop_down, color: Theme.of(context).colorScheme.primary),
-                   ],
+                       SizedBox(width: 8.0),
+                       // Можно добавить иконку выпадающего списка для большей очевидности
+                       Icon(Icons.arrow_drop_down, color: Theme.of(context).colorScheme.primary),
+                     ],
+                  ),
                 ),
               ),
             ),
-          ),
-          _buildObjectSelector(), // <--- ВСТАВЬ СЮДА ВЫЗОВ _buildObjectSelector()!
-
-           SizedBox(height: 8.0), // Небольшой отступ после дропдауна
-           _buildScheduleTypeButtons(),
-
-          // Тело экрана: загрузка, ошибка или список
-          Expanded(
-            child: _buildBody(),
-          ),
-        ],
+            _buildObjectSelector(), // <--- ВСТАВЬ СЮДА ВЫЗОВ _buildObjectSelector()!
+      
+             SizedBox(height: 8.0), // Небольшой отступ после дропдауна
+             _buildScheduleTypeButtons(),
+      
+            // Тело экрана: загрузка, ошибка или список
+            Expanded(
+              child: _buildBody(),
+            ),
+          ],
+        ),
+        // backgroundColor: Colors.grey[100],
       ),
-      // backgroundColor: Colors.grey[100],
     );
   }
 

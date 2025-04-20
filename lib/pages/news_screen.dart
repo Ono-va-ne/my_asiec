@@ -43,14 +43,6 @@ class _NewsScreenState extends State<NewsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar лучше убрать отсюда, если он есть в MainScreen,
-      // чтобы не было двойного AppBar
-       appBar: AppBar(
-         title: Text('Новости колледжа'),
-         backgroundColor: Theme.of(context).colorScheme.surface, // Или цвет твоей темы
-         foregroundColor: Colors.black,
-         elevation: 1.0,
-       ),
       body: RefreshIndicator(
         // Добавляем возможность обновления списка потягиванием вниз
         onRefresh: _refreshNews,
