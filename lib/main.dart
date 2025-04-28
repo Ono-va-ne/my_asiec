@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../pages/schedule_screen.dart';
 import '../pages/news_screen.dart';
 import '../pages/settings_screen.dart';
@@ -66,6 +67,9 @@ void main() async {
 
     WidgetsFlutterBinding.ensureInitialized(); // Убедимся, что есть перед loadSettings
     await settingsService.loadSettings();
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp();
+    FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true); // Включаем кэширование Firestore
     runApp(MyApp()); // Запускаем твое приложение
   }, (error, stackTrace) {
     recordError(error, stackTrace);

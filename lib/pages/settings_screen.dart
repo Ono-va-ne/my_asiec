@@ -1,7 +1,7 @@
-// import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart'; // Импортируем пакет для получения информации о приложении
 import '../services/settings_service.dart'; // Импортируем сервис
 import '../data/groups.dart'; // Импортируем список групп
 import '../data/teachers.dart';
@@ -10,6 +10,7 @@ import '../data/rooms.dart'; // Импортируем список аудито
 
 Future<void> _launchTG(BuildContext context) async {
     // Формируем стандартную ссылку на пост VK
+    
     final url = 'https://t.me/MyASIEC';
     final uri = Uri.parse(url);
 
@@ -33,10 +34,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _selectedGroupId; // Храним ID выбранной группы по умолчанию
   String? _selectedTeacherId;
   String? _selectedRoomId;
+  String _appVersion = 'Загрузка...';
 
+  // Инициализируем с пустыми значениями
   @override
   void initState() {
     super.initState();
+    _loadAppVersion();
     // Загружаем текущую выбранную группу при инициализации
     _selectedGroupId = settingsService.getDefaultGroupId();
     _selectedTeacherId = settingsService.getDefaultTeacherId();
@@ -44,6 +48,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Мы не используем ValueListenableBuilder здесь, т.к. нам не нужно
     // динамически перестраивать весь экран при смене группы,
     // достаточно обновить Dropdown при выборе.
+  }
+  Future<void> _loadAppVersion() async {
+    try {
+      PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      // Получили информацию о пакете
+      if (mounted) { // Проверяем, что виджет все еще "жив" перед обновлением состояния
+        setState(() {
+          _appVersion = packageInfo.version; // Обновляем переменную состояния с версией
+        });
+      }
+    } catch (e) {
+      print("Ошибка при загрузке информации о пакете: $e");
+      if (mounted) {
+         setState(() {
+           _appVersion = 'Ошибка загрузки версии'; // Показываем сообщение об ошибке, если что-то пошло не так
+         });
+      }
+    }
   }
 
   @override
@@ -229,7 +251,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   context: context,
                   builder: (context) => AboutDialog(
                     applicationName: 'МойАПЭК', // Название приложения
-                    applicationVersion: '0.2.0', // TODO: Получать версию динамически
+                    applicationVersion: _appVersion, // TODO: Получать версию динамически
                     applicationIcon: svg, // Или иконка твоего приложения
                     applicationLegalese: '©2025 Onovane',
                     children: [

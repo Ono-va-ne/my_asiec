@@ -346,6 +346,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         });
       } else { /* ... обработка ошибки сервера ... */ }
     } catch (e) { // Ловим исключение
+      // ignore: unused_local_variable
       String errorMessageText = 'Не удалось загрузить расписание: $e'; // Стандартное сообщение
 
       // --- НОВАЯ ЛОГИКА ПРОВЕРКИ ИСКЛЮЧЕНИЯ ---

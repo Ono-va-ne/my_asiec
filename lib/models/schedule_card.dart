@@ -54,64 +54,62 @@ class ScheduleCard extends StatelessWidget {
     // --- НОВАЯ ЛОГИКА для "ближайшей пары" ---
     // 3. Ищем ближайшую следующую пару ТОЛЬКО если текущая пара НЕ найдена
     ScheduleEntry? nextEntry;
-    if (allEntriesForDay != null) {
-      List<ScheduleEntry> futureEntries = [];
+    List<ScheduleEntry> futureEntries = [];
  // Проверяем, что есть список всех пар на день
-    for (final otherEntry in allEntriesForDay) {
-      if (otherEntry == entry) continue; // Пропускаем текущую пару
+  for (final otherEntry in allEntriesForDay) {
+    if (otherEntry == entry) continue; // Пропускаем текущую пару
 
-      final otherEntryStartTime = _parseTime(otherEntry.startTime);
-      if (otherEntryStartTime != null) {
-        final otherEntryStartTimeOfDay = TimeOfDay(hour: otherEntryStartTime.hour, minute: otherEntryStartTime.minute);
+    final otherEntryStartTime = _parseTime(otherEntry.startTime);
+    if (otherEntryStartTime != null) {
+      final otherEntryStartTimeOfDay = TimeOfDay(hour: otherEntryStartTime.hour, minute: otherEntryStartTime.minute);
 
-        if (isTimeBeforeEntry(nowTime, otherEntryStartTimeOfDay, entryEndTimeOfDay)) {
-          nextEntry = otherEntry;
-          break;
-        }
-        if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime)) {
-          nextEntry = otherEntry;
+      if (isTimeBeforeEntry(nowTime, otherEntryStartTimeOfDay, entryEndTimeOfDay)) {
+        nextEntry = otherEntry;
         break;
-          }
+      }
+      if (isTimeAfterNow(otherEntryStartTimeOfDay, nowTime)) {
+        nextEntry = otherEntry;
+      break;
         }
+      }
 
-        futureEntries.sort((a, b) {
-          final startTimeA = _parseTime(a.startTime);
-          final startTimeB = _parseTime(b.startTime);
-          if (startTimeA == null || startTimeB == null) return 0; // Если время не распарсилось, не меняем порядок
-          return startTimeA.hour.compareTo(startTimeB.hour) != 0 ? startTimeA.hour.compareTo(startTimeB.hour) : startTimeA.minute.compareTo(startTimeB.minute);
-        });
+      futureEntries.sort((a, b) {
+        final startTimeA = _parseTime(a.startTime);
+        final startTimeB = _parseTime(b.startTime);
+        if (startTimeA == null || startTimeB == null) return 0; // Если время не распарсилось, не меняем порядок
+        return startTimeA.hour.compareTo(startTimeB.hour) != 0 ? startTimeA.hour.compareTo(startTimeB.hour) : startTimeA.minute.compareTo(startTimeB.minute);
+      });
 
-        if (futureEntries.isNotEmpty) {
-          nextEntry = futureEntries.first; // Начинаем с первой пары из списка
-          for (final otherNextEntry in futureEntries.skip(1)) { // Перебираем остальные, начиная со второй
-            final otherNextEntryStartTime = _parseTime(otherNextEntry.startTime);
-            final currentNextEntryStartTime = _parseTime(nextEntry!.startTime); // nextEntry точно не null, т.к. futureEntries не пустой
+      if (futureEntries.isNotEmpty) {
+        nextEntry = futureEntries.first; // Начинаем с первой пары из списка
+        for (final otherNextEntry in futureEntries.skip(1)) { // Перебираем остальные, начиная со второй
+          final otherNextEntryStartTime = _parseTime(otherNextEntry.startTime);
+          final currentNextEntryStartTime = _parseTime(nextEntry!.startTime); // nextEntry точно не null, т.к. futureEntries не пустой
 
-            if (otherNextEntryStartTime != null && currentNextEntryStartTime != null) { // Строка 103 - Проверка на null
-              // --- Упрощенное условное выражение (как и в прошлый раз) ---
-              int otherEntryHour = otherNextEntryStartTime?.hour ?? 0;
-              int currentNextEntryHour = currentNextEntryStartTime?.hour ?? 0;
-              int otherEntryMinute = otherNextEntryStartTime?.minute ?? 0;
-              int currentNextEntryMinute = currentNextEntryStartTime?.minute ?? 0;
+          if (otherNextEntryStartTime != null && currentNextEntryStartTime != null) { // Строка 103 - Проверка на null
+            // --- Упрощенное условное выражение (как и в прошлый раз) ---
+            int otherEntryHour = otherNextEntryStartTime.hour;
+            int currentNextEntryHour = currentNextEntryStartTime.hour;
+            int otherEntryMinute = otherNextEntryStartTime.minute;
+            int currentNextEntryMinute = currentNextEntryStartTime.minute;
 
-              bool isHourEarlier = otherEntryHour < currentNextEntryHour;
-              bool isHourEqual = otherEntryHour == currentNextEntryHour;
-              bool isMinuteEarlier = otherEntryMinute < currentNextEntryMinute;
+            bool isHourEarlier = otherEntryHour < currentNextEntryHour;
+            bool isHourEqual = otherEntryHour == currentNextEntryHour;
+            bool isMinuteEarlier = otherEntryMinute < currentNextEntryMinute;
 
-              if (isHourEarlier || (isHourEqual && isMinuteEarlier)) { // Строка 105 - УПРОЩЕННОЕ УСЛОВИЕ!
-                // Если время начала ТЕКУЩЕЙ пары из futureEntries РАНЬШЕ, чем время начала уже найденной "ближайшей" (nextEntry),
-                // то ТЕКУЩАЯ пара становится новой "ближайшей" (nextEntry = otherNextEntry)
-                nextEntry = otherNextEntry;
-              }
+            if (isHourEarlier || (isHourEqual && isMinuteEarlier)) { // Строка 105 - УПРОЩЕННОЕ УСЛОВИЕ!
+              // Если время начала ТЕКУЩЕЙ пары из futureEntries РАНЬШЕ, чем время начала уже найденной "ближайшей" (nextEntry),
+              // то ТЕКУЩАЯ пара становится новой "ближайшей" (nextEntry = otherNextEntry)
+              nextEntry = otherNextEntry;
             }
           }
         }
-      if (nextEntry == entry) {
-        return ScheduleEntryStatus.next;
       }
-      }
+    if (nextEntry == entry) {
+      return ScheduleEntryStatus.next;
     }
-  // Пока просто возвращаем normal для всех остальных
+    }
+    // Пока просто возвращаем normal для всех остальных
     return ScheduleEntryStatus.normal;
   }
 
