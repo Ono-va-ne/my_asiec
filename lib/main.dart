@@ -3,9 +3,12 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../pages/schedule_screen.dart';
 import '../pages/news_screen.dart';
 import '../pages/settings_screen.dart';
+import '../pages/homework_screen.dart';
+
 import 'dart:io';
 import 'dart:async';
 import 'package:intl/date_symbol_data_local.dart';
@@ -206,6 +209,7 @@ class _MainScreenState extends State<MainScreen> {
   // Список виджетов-экранов для отображения
   static const List<Widget> _widgetOptions = <Widget>[
     ScheduleScreen(), // Твой существующий экран расписания
+    HomeworkScreen(),
     NewsScreen(),
     SettingsScreen(),     // Новый экран новостей
   ];
@@ -213,7 +217,7 @@ class _MainScreenState extends State<MainScreen> {
   // Метод для смены вкладки
 void _onItemTapped(int index) {
     // --- Проверяем, нажал ли пользователь на вкладку "Новости" (индекс 1) ---
-    if (index == 1) { // 0 - Расписание, 1 - Новости, 2 - Настройки
+    if (index == 2) { // 0 - Расписание, 1 - Новости, 2 - Настройки
       // Показываем диалоговое окно
       showDialog(
         context: context,
@@ -265,21 +269,20 @@ void _onItemTapped(int index) {
       ),
 
         // Нижняя панель навигации
-        bottomNavigationBar: NavigationBar(
-        // Имя параметра изменилось: currentIndex -> selectedIndex
+      bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        // Имя колбэка изменилось: onTap -> onDestinationSelected
         onDestinationSelected: _onItemTapped, // Используем тот же метод
-        // backgroundColor: Theme.of(context).colorScheme.surface,
-        // Вместо 'items' используется 'destinations',
-        // а вместо BottomNavigationBarItem -> NavigationDestination
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         destinations: const <Widget>[
           NavigationDestination(
-            // Рекомендуется использовать outlined иконки для неактивного состояния
             icon: Icon(Icons.schedule_outlined),
-            // И заполненные для активного (если нужно различие)
             selectedIcon: Icon(Icons.schedule),
             label: 'Расписание',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.assignment_outlined),
+            selectedIcon: Icon(Icons.assignment),
+            label: 'Домашка',
           ),
           NavigationDestination(
             icon: Icon(Icons.article_outlined),
@@ -303,6 +306,7 @@ void _onItemTapped(int index) {
         // labelBehavior: NavigationDestinationLabelBehavior.alwaysShow, // Или .onlyShowSelected / .alwaysHide
         // indicatorColor: Colors.amber, // Явное задание цвета индикатора (лучше через тему)
         // backgroundColor: Colors.red, // Явное задание цвета фона (лучше через тему)
-      ),    );
+      ),    
+    );
   }
 }

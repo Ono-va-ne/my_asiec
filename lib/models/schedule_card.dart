@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'schedule_entry.dart';
+import 'package:material_color_utilities/material_color_utilities.dart';
 // import '../models/daily_schedule.dart';
 // import '../pages/schedule_screen.dart';
-
+extension Material3Palette on Color {
+  Color tone(int tone) {
+    assert(tone >= 0 && tone <= 100);
+    final color = Hct.fromInt(value);
+    final tonalPalette = TonalPalette.of(color.hue, color.chroma);
+    return Color(tonalPalette.get(tone));
+  }
+}
 // Не забудь добавить класс ScheduleEntry из шага 1 сюда или импортировать его
 
 class ScheduleCard extends StatelessWidget {
@@ -238,9 +246,19 @@ class ScheduleCard extends StatelessWidget {
                   '${entry.startTime} - ${entry.endTime}', // Формируем строку времени
                   style: TextStyle(
                     fontSize: 14.0,
-                    fontWeight: FontWeight.w500, // Немного жирнее обычного
+                    fontWeight: FontWeight.bold, // Немного жирнее обычного
                   ),
                   textAlign: TextAlign.right,
+                ),
+                SizedBox(height: 4.0),
+                Text(
+                  entry.group, // Группа
+                  style: TextStyle(
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.w400,
+                    color: Theme.of(context).colorScheme.onSurface, // Цвет текста - основной цвет темы
+                  ),
+                  textAlign: TextAlign.right, // Выравниваем текст вправо
                 ),
                 SizedBox(height: 4.0), // Отступ
                 Text(

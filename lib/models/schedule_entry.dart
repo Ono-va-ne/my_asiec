@@ -1,6 +1,7 @@
 class ScheduleEntry {
   final String discipline; // Название дисциплины
   final String teacher;    // Имя преподавателя
+  final String group;      // Группа
   final String startTime;  // Время начала
   final String endTime;    // Время окончания
   final String building;   // Корпус
@@ -10,6 +11,7 @@ class ScheduleEntry {
   ScheduleEntry({
     required this.discipline,
     required this.teacher,
+    required this.group,
     required this.startTime,
     required this.endTime,
     required this.building,

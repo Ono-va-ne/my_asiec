@@ -56,6 +56,7 @@ ParsedSchedule parseScheduleHtml(String htmlString) {
         // 9. Извлекаем данные из ячеек по их порядку
         // Важно: trim() удаляет лишние пробелы и переносы строк по краям
         final timeString = cells[0].text.trim(); // "1 (8:00 - 9:20)"
+        final group = cells[1].text.trim(); 
         final discipline = cells[2].text.trim();
         final teacher = cells[3].text.trim();
         final building = cells[4].text.trim(); // 'Корпус 1' из ter_pc
@@ -70,6 +71,7 @@ ParsedSchedule parseScheduleHtml(String htmlString) {
           teacher: teacher,
           startTime: timeParts?['start'] ?? '', // Безопасно извлекаем время
           endTime: timeParts?['end'] ?? '',   // или оставляем пустым, если не распарсилось
+          group: group,
           building: building,
           room: room,
           date: DateTime.parse(scheduleDate ?? DateTime.now().toString()), 

@@ -242,7 +242,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Divider(),
       
             // --- Секция: О приложении/разработчике ---
-             _buildSectionHeader('Дополнительно'),
+            _buildSectionHeader('Дополнительно'),
+            ListTile(
+              leading: svgTg,
+              title: Text('Официальный Telegram канал'),
+              onTap: () => _launchTG(context),
+            ),
             ListTile(
               leading: Icon(Icons.info_outline),
               title: Text('О разработчике'),
@@ -257,7 +262,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(top: 16.0),
-                        child: Text('Разработано с ❤️ с помощью Flutter.'),
+                        child: Text('Автор: Попков Дмитрий (9ОИБ231)\nИдея: Никифоров Максим (11ОИБ232)\nРазработано с ❤️ с помощью Flutter'),
                       ),
                       // TODO: Добавь сюда ссылки на себя (VK, GitHub, Telegram)
                     ],
@@ -265,11 +270,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               },
             ),
-            ListTile(
-              leading: svgTg,
-              title: Text('Официальный Telegram канал'),
-              onTap: () => _launchTG(context),
-            )
           ],
         ),
       ),

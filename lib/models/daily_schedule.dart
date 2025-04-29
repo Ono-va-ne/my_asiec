@@ -102,6 +102,7 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
     if (currentDayDate != null && currentDayEntries != null && cells.length >= 6) {
       try {
         final timeString = cells[0].text.trim();
+        final group = cells[1].text.trim(); 
         final discipline = cells[2].text.trim();
         final teacher = cells[3].text.trim();
         final building = cells[4].text.trim();
@@ -113,6 +114,7 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
           teacher: teacher,
           startTime: timeParts?['start'] ?? '',
           endTime: timeParts?['end'] ?? '',
+          group: group,
           building: building,
           room: room,
           date: currentDayDate,

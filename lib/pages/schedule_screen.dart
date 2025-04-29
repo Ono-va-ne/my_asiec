@@ -1,21 +1,21 @@
 import 'dart:io';
 
+import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import '../models/schedule_card.dart';
-// import '../models/schedule_entry.dart';
-// import 'package:my_asiec_lite/models/schedule_entry.dart';
-// import 'package:my_asiec_lite/models/parser_schedule.dart';
+
 import '../models/daily_schedule.dart';
 
 import '../data/groups.dart';
 import '../data/rooms.dart';
 import '../data/teachers.dart';
+
 import '../models/group_info.dart';
 import '../models/teacher_info.dart';
 import '../models/room_info.dart';
+
 import '../services/settings_service.dart';
-import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
 
 
 // Импортируй сюда классы ScheduleEntry и ScheduleCard, если они в других файлах
@@ -395,48 +395,35 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _buildScheduleTypeButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Равномерное распределение кнопок по ширине
-      children: [
-        _buildScheduleTypeButton(
-          type: ScheduleType.grup,
-          text: 'Группа',
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 8.0, left: 16.0, right: 16.0),
+    child: SegmentedButton<ScheduleType>(
+      segments: const [
+        ButtonSegment(
+          value: ScheduleType.grup,
+          label: Text('Группа'),
+          icon: Icon(Icons.group),
         ),
-        _buildScheduleTypeButton(
-          type: ScheduleType.prep,
-          text: 'Преподаватель',
+        ButtonSegment(
+          value: ScheduleType.prep,
+          label: Text('Преподаватель'),
+          icon: Icon(Icons.person),
         ),
-        _buildScheduleTypeButton(
-          type: ScheduleType.aud,
-          text: 'Аудитория',
+        ButtonSegment(
+          value: ScheduleType.aud,
+          label: Text('Аудитория'),
+          icon: Icon(Icons.meeting_room),
         ),
       ],
-    );
-  }
-  Widget _buildScheduleTypeButton({required ScheduleType type, required String text}) {
-    final isSelected = _rasType == type; // Проверяем, является ли кнопка "выбранной"
-
-    final textColor = isSelected
-        ? Theme.of(context).colorScheme.onPrimaryContainer // Цвет текста для ElevatedButton (на залитом фоне)
-        : Theme.of(context).colorScheme.onSurface; // Цвет текста для OutlinedButton (на "плоском" фоне)
-
-    return isSelected
-        ? ElevatedButton( // Если ВЫБРАНА - используем ElevatedButton
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer, // Цвет фона для выбранной кнопки
-            ),
-            onPressed: () {
-              _setScheduleType(type);
-            },
-            child: Text(text, style: TextStyle(color: textColor),),
-          )
-        : OutlinedButton( // Если НЕ ВЫБРАНА - используем OutlinedButton
-            onPressed: () {
-              _setScheduleType(type);
-            },
-            child: Text(text),
-          );
-  }
+      selected: <ScheduleType>{_rasType},
+      onSelectionChanged: (Set<ScheduleType> newSelection) {
+        if (newSelection.isNotEmpty) {
+          _setScheduleType(newSelection.first);
+        }
+      },
+    ),
+  );
+}
 
     Widget _buildObjectSelector() {
     String hintText;
@@ -613,7 +600,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
      if (_dailySchedules.isEmpty) {
       return Center(
         child: Text(
-          'Нет данных на выбранный период для группы ${_selectedGroup?.name ?? ""}', // Добавили группу
+          'Пусто ¯\\_(ツ)_/¯', // Добавили группу
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 16, color: Colors.grey[600]),
         ),
