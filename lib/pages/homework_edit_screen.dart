@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/homework.dart'; // Импортируем нашу модель Homework
 // Возможно, понадобятся другие импорты позже (для DatePicker, выбора фото и т.д.)
 
@@ -14,6 +15,8 @@ class HomeworkEditScreen extends StatefulWidget {
 }
 
 class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
+
+  final _firestore = FirebaseFirestore.instance;
   // --- Контроллеры для текстовых полей ---
   final _disciplineController = TextEditingController();
   final _groupController = TextEditingController();
@@ -66,24 +69,53 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
   }
 
   // --- Метод для сохранения/обновления ДЗ ---
-  void _saveHomework() {
+  void _saveHomework() async {
     // Проверяем валидацию формы
     if (_formKey.currentState!.validate()) {
       // Если данные корректны, создаем объект Homework
-      final newHomework = Homework(
+      final homeworkToSave = Homework(
         id: widget.homeworkEntry?.id, // Если редактируем, сохраняем старый ID
-        discipline: _disciplineController.text,
+        discipline: _disciplineController.text.trim(),
         group: _groupController.text,
-        subgroup: _subgroupController.text.isEmpty ? null : _subgroupController.text, // Если поле подгруппы пустое, сохраняем null
-        task: _taskController.text,
+        subgroup: _subgroupController.text.trim().isEmpty ? null : _subgroupController.text.trim(), // Если поле подгруппы пустое, сохраняем null
+        task: _taskController.text.trim(),
         dueDate: _selectedDueDate,
         dateAdded: widget.homeworkEntry?.dateAdded ?? DateTime.now(), // Если редактируем, сохраняем старую дату добавления, иначе - текущую
+        photoUrls: widget.homeworkEntry?.photoUrls,
         // TODO: Обработать photoUrls
       );
 
-      // TODO: Здесь будем сохранять newHomework в Firebase!
-      print('Сохраняем ДЗ: ${newHomework.toJson()}'); // Пока просто выводим в консоль
-      Navigator.of(context).pop(); // Возвращаемся назад после сохранения
+      // --- ЛОГИКА СОХРАНЕНИЯ В FIREBASE ---
+      try {
+        if (homeworkToSave.id == null) {
+          // --- Добавляем новое задание ---
+          print('Добавляем новое ДЗ в Firebase: ${homeworkToSave.toJson()}'); // Отладочный вывод
+          await _firestore.collection('homework').add(homeworkToSave.toJson()); // <--- КЛЮЧЕВАЯ СТРОКА для добавления!
+          print('Новое ДЗ успешно добавлено!');
+        } else {
+          // --- Редактируем существующее задание ---
+          print('Редактируем ДЗ с ID: ${homeworkToSave.id}'); // Отладочный вывод
+          await _firestore.collection('homework').doc(homeworkToSave.id).update(homeworkToSave.toJson()); // <--- КЛЮЧЕВАЯ СТРОКА для обновления!
+          print('ДЗ успешно обновлено!');
+        }
+
+        // TODO: Возможно, показать SnackBar или другое сообщение об успехе
+
+        // Возвращаемся назад после успешного сохранения
+        if (mounted) { // Проверяем, что виджет все еще "жив"
+           Navigator.of(context).pop();
+        }
+
+      } catch (e) {
+        print("Ошибка при сохранении ДЗ в Firebase: $e"); // Логгируем ошибку
+        // TODO: Показать пользователю сообщение об ошибке
+         if (mounted) {
+           // Возможно, показать AlertDialog или SnackBar с ошибкой
+         }
+      }
+      // TODO: Здесь будем сохранять homeworkToSave в Firebase!
+      // print('Сохраняем ДЗ: ${homeworkToSave.toJson()}'); // Пока просто выводим в консоль
+      // Navigator.of(context).pop(); // Возвращаемся назад после сохранения
     }
   }
 
@@ -112,6 +144,18 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
                 },
               ),
               const SizedBox(height: 12.0),
+              TextFormField(
+                controller: _groupController,
+                decoration: const InputDecoration(labelText: 'Группа'),
+                validator: (value) { // Добавляем валидацию (обязательное поле)
+                  if (value == null || value.isEmpty) {
+                    return 'Пожалуйста, выберите группу';
+                  }
+                  return null; // Если все хорошо, возвращаем null
+                },
+              ),
+              const SizedBox(height: 12.0),
+
 
               // --- Поле для ввода подгруппы (опционально) ---
               TextFormField(
