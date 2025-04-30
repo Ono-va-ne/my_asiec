@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/homework.dart'; // Импортируем нашу модель Homework
-import 'homework_edit_screen.dart'; // Импортируем экран добавления/редактирования ДЗ
+import '../models/homework.dart';
+import 'homework_edit_screen.dart';
 import 'package:intl/intl.dart';
+import '../services/settings_service.dart'; // Импортируем сервис настроек
 
 class HomeworkScreen extends StatefulWidget {
   const HomeworkScreen({Key? key}) : super(key: key);
@@ -13,49 +14,62 @@ class HomeworkScreen extends StatefulWidget {
 
 class _HomeworkScreenState extends State<HomeworkScreen> {
   final _firestore = FirebaseFirestore.instance;
-  // TODO: добавить отображение только своей группы
+  String? _userGroupId; // ID группы пользователя из настроек
+
   @override
   void initState() {
     super.initState();
+    _loadUserGroupId(); // Загружаем ID группы пользователя при инициализации
+  }
+
+  // Метод для загрузки ID группы пользователя из настроек
+  Future<void> _loadUserGroupId() async {
+    final groupId = settingsService.getDefaultGroupId();
+    setState(() {
+      _userGroupId = groupId;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: 
-// --- Используем StreamBuilder для отслеживания изменений в коллекции ---
-          StreamBuilder<QuerySnapshot>( // <--- StreamBuilder ожидает QuerySnapshot из Firestore
-        stream: _firestore.collection('homework').orderBy('dueDate').snapshots(), // <--- ПОТОК ДАННЫХ: получаем snapshot коллекции 'homework', сортируем по dueDate
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _firestore.collection('homework').orderBy('dueDate').snapshots(),
         builder: (context, snapshot) {
-          // --- Проверяем состояние соединения ---
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator()); // Показываем индикатор загрузки, пока данные грузятся
+            return const Center(child: CircularProgressIndicator());
           }
 
-          // --- Проверяем наличие ошибок ---
           if (snapshot.hasError) {
-            print("Ошибка при загрузке ДЗ: ${snapshot.error}"); // Логгируем ошибку
-            return Center(child: Text('Ошибка загрузки домашнего задания: ${snapshot.error}')); // Показываем сообщение об ошибке пользователю
+            print("Ошибка при загрузке ДЗ: ${snapshot.error}");
+            return Center(
+                child: Text(
+                    'Ошибка загрузки домашнего задания: ${snapshot.error}'));
           }
 
-          // --- Проверяем наличие данных ---
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('Домашних заданий пока нет.')); // Если данных нет или список пуст
+            return const Center(child: Text('Домашних заданий пока нет.'));
           }
 
-          // --- Если данные есть, преобразуем их и отображаем в списке ---
-          final homeworkEntries = snapshot.data!.docs.map((doc) {
-            // Для каждого документа (doc) в QuerySnapshot:
-            // 1. Получаем данные документа (doc.data())
-            // 2. Создаем объект Homework из этих данных, передавая сам документ (doc) для получения ID
-            return Homework.fromJson(doc.data() as Map<String, dynamic>, doc.id); // <--- Используем наш fromJson!
-          }).toList(); // Преобразуем результат в List<Homework>
+          // Фильтруем ДЗ по группе пользователя
+          final filteredHomeworkEntries = snapshot.data!.docs
+              .map((doc) => Homework.fromJson(
+                  doc.data() as Map<String, dynamic>, doc.id))
+              .where((entry) =>
+                  _userGroupId == null || entry.groupId == _userGroupId)
+              .toList();
 
-          // --- Отображаем список домашнего задания ---
+          // Если после фильтрации нет ДЗ, показываем сообщение
+          if (filteredHomeworkEntries.isEmpty) {
+            return const Center(
+                child: Text(
+                    'Домашних заданий для вашей группы пока нет.'));
+          }
+
           return ListView.builder(
-            itemCount: homeworkEntries.length,
+            itemCount: filteredHomeworkEntries.length,
             itemBuilder: (context, index) {
-              final entry = homeworkEntries[index]; // Получаем объект Homework для текущего элемента списка
+              final entry = filteredHomeworkEntries[index];
 
               return Dismissible(
                 key: Key(entry.id!),
@@ -72,7 +86,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                     builder: (BuildContext context) {
                       return AlertDialog(
                         title: const Text('Подтверждение'),
-                        content: const Text('Вы уверены, что хотите удалить это задание?'),
+                        content: const Text(
+                            'Вы уверены, что хотите удалить это задание?'),
                         actions: <Widget>[
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(false),
@@ -88,41 +103,54 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                   );
                 },
                 onDismissed: (direction) async {
-                  print('Удаляем ДЗ с ID: ${entry.id}'); // Отладочный вывод
+                  print('Удаляем ДЗ с ID: ${entry.id}');
                   try {
-                    await _firestore.collection('homework').doc(entry.id).delete();
+                    await _firestore
+                        .collection('homework')
+                        .doc(entry.id)
+                        .delete();
                     print('ДЗ успешно удалено!');
                   } catch (e) {
-                    print("Ошибка при удалении ДЗ из Firebase: $e"); // Логгируем ошибку
+                    print("Ошибка при удалении ДЗ из Firebase: $e");
                   }
                 },
-                child: Card( // Оборачиваем в Card для лучшего вида
-                  margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0), // Уменьшаем вертикальный отступ
-                  elevation: 1.0, // Небольшая тень
-                  child: ListTile( // Используем ListTile для элемента списка
-                    title: Text(entry.task, style: TextStyle(fontWeight: FontWeight.bold),), // Заголовок - Предмет
-                    subtitle: Column( // Подзаголовок - Срок сдачи и текст задания
+                child: Card(
+                  margin: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 4.0),
+                  elevation: 1.0,
+                  child: ListTile(
+                    title: Text(
+                      entry.task,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(entry.discipline, style: TextStyle(color: Theme.of(context).colorScheme.onSurface)), // Текст задания
+                        Text(entry.discipline,
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface)),
                         const SizedBox(height: 4.0),
                         Text(entry.group),
                         const SizedBox(height: 4.0),
-                        Text('Срок сдачи: ${DateFormat('dd.MM.yyyy').format(entry.dueDate)}'), // Форматируем и отображаем срок сдачи
+                        Text(
+                            'Срок сдачи: ${DateFormat('dd.MM.yyyy').format(entry.dueDate)}'),
                       ],
                     ),
-                    trailing: entry.subgroup != null ? Text('Подгр. ${entry.subgroup}') : null, // Отображаем подгруппу, если есть
+                    trailing: entry.subgroup != null
+                        ? Text('Подгр. ${entry.subgroup}')
+                        : null,
                     onTap: () {
+                      print('Нажали на ДЗ: ${entry.discipline}, groupId: ${entry.groupId}');
                       Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => HomeworkEditScreen(homeworkEntry: entry),
-                        )
-                      );
-                      // TODO: Реализовать переход на экран редактирования при нажатии
-                       print('Нажали на ДЗ: ${entry.discipline}');
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                HomeworkEditScreen(homeworkEntry: entry),
+                          ));
+                      print('Нажали на ДЗ: ${entry.discipline}');
                     },
-                    // TODO: Возможно, добавить GestureDetector или Dismissible для удаления по свайпу
                   ),
                 ),
               );
@@ -130,13 +158,12 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
           );
         },
       ),
-      // --- Вот наш FAB для добавления ДЗ! ---
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // При нажатии на FAB, открываем экран добавления/редактирования ДЗ
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const HomeworkEditScreen()),
+            MaterialPageRoute(
+                builder: (context) => const HomeworkEditScreen()),
           );
         },
         tooltip: 'Добавить домашнее задание',

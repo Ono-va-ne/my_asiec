@@ -4,6 +4,7 @@ class Homework {
   String? id;
   final String discipline;
   final String group;
+  final String groupId;
   final String? subgroup;
   final String task;
   final DateTime dueDate;
@@ -14,6 +15,7 @@ class Homework {
     this.id,
     required this.discipline,
     required this.group,
+    required this.groupId,
     this.subgroup,
     required this.task,
     required this.dueDate,
@@ -24,6 +26,7 @@ class Homework {
     return {
       'discipline': discipline,
       'group': group,
+      'groupId': groupId,
       'subgroup': subgroup,
       'task': task,
       'dueDate': Timestamp.fromDate(dueDate),
@@ -37,6 +40,7 @@ class Homework {
       id: id,
       discipline: json['discipline'] as String,
       group: json['group'] as String,
+      groupId: json['groupId'] as String,
       subgroup: json['subgroup'] as String?,
       task: json['task'] as String,
       dueDate: (json['dueDate'] as Timestamp).toDate(),

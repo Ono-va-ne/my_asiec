@@ -8,6 +8,7 @@ import '../pages/schedule_screen.dart';
 import '../pages/news_screen.dart';
 import '../pages/settings_screen.dart';
 import '../pages/homework_screen.dart';
+// import '../data/group_uploader.dart';
 
 import 'dart:io';
 import 'dart:async';
@@ -72,6 +73,8 @@ void main() async {
     await settingsService.loadSettings();
     WidgetsFlutterBinding.ensureInitialized();
     await Firebase.initializeApp();
+    // final uploader = GroupDataUploader();
+    // uploader.uploadGroups();
     FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true); // Включаем кэширование Firestore
     runApp(MyApp()); // Запускаем твое приложение
   }, (error, stackTrace) {
