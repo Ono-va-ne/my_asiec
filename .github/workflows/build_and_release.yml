@@ -28,11 +28,6 @@ jobs:
           flutter clean
           flutter build apk --release
 
-      - name: Build iOS IPA
-        run: |
-          cd ios && pod install
-          flutter build ios --release
-
       - name: Create a new GitHub release
         if: ${{ github.event_name != 'push' }} # Выполняем создание релиза только при ручном запуске
         id: create_release
@@ -55,13 +50,3 @@ jobs:
           asset_path: ./build/app/release/app-release.apk
           asset_name: app-${{ inputs.version }}-android.apk
           asset_content_type: application/vnd.android.package-archive
-
-      - name: Upload iOS artifact
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./ios/build/Runner.ipa
-          asset_name: app-${{ inputs.version }}-ios.ipa
-          asset_content_type: application/octet-stream
