@@ -1,0 +1,67 @@
+name: Build & Release
+
+on:
+  push:
+    branches:
+      - main # Запускаем сборку и релиз только при пушах в основную ветку 'main'
+  workflow_dispatch: # Позволяет вручную запускать этот воркфлоу с выбором параметров
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest # Используем мак ОС, потому что iOS требует Xcode
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable # Используйте стабильную версию Flutter
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+
+      - name: Build Android APK
+        run: |
+          flutter clean
+          flutter build apk --release
+
+      - name: Build iOS IPA
+        run: |
+          cd ios && pod install
+          flutter build ios --release
+
+      - name: Create a new GitHub release
+        if: ${{ github.event_name != 'push' }} # Выполняем создание релиза только при ручном запуске
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ inputs.version }} # Версия указывается вручную при запуске
+          target_commitish: ${{ github.ref }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+
+      - name: Upload artifacts to the release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/app/release/app-release.apk
+          asset_name: app-${{ inputs.version }}-android.apk
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: Upload iOS artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ios/build/Runner.ipa
+          asset_name: app-${{ inputs.version }}-ios.ipa
+          asset_content_type: application/octet-stream
