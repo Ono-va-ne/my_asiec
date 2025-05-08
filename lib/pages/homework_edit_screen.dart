@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/homework.dart';
+import '../services/local_homework_service.dart';
 import '../data/groups.dart'; // Импортируем файл с данными групп
-// Импортируем нашу модель Homework
 // Возможно, понадобятся другие импорты позже (для DatePicker, выбора фото и т.д.)
+import '../services/settings_service.dart'; // Импортируем SettingsService
 
 class HomeworkEditScreen extends StatefulWidget {
   // Если будем использовать этот экран для РЕДАКТИРОВАНИЯ,
@@ -18,15 +19,17 @@ class HomeworkEditScreen extends StatefulWidget {
 
 class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
   final _firestore = FirebaseFirestore.instance;
+  final _localHomeworkService = LocalHomeworkService();
+
   // --- Контроллеры для текстовых полей ---
   final _disciplineController = TextEditingController();
-  //final _groupController = TextEditingController(); // Убираем контроллер для группы
   final _subgroupController = TextEditingController(); // Для подгруппы
   final _taskController = TextEditingController(); // Для текста ДЗ
 
   // --- Переменная для хранения выбранной даты сдачи ---
   DateTime _selectedDueDate = DateTime.now(); // По умолчанию - сегодня
 
+  bool _saveLocally = false;
   // --- Формовая ключ для валидации ---
   final _formKey = GlobalKey<FormState>(); // Помогает проверять корректность введенных данных
 
@@ -43,19 +46,30 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
     // Если мы редактируем существующую запись, заполняем поля
     if (widget.homeworkEntry != null) {
       _disciplineController.text = widget.homeworkEntry!.discipline;
-      //_groupController.text = widget.homeworkEntry!.group; // Больше не используем контроллер
       _selectedGroupId = widget.homeworkEntry!.groupId; // Устанавливаем выбранный ID группы
-      _selectedGroupName = widget.homeworkEntry!.group; // Устанавливаем имя группы
-      _subgroupController.text = widget.homeworkEntry!.subgroup ??
-          ''; // ?? '' - если subgroup null, ставим пустую строку
+      _subgroupController.text = widget.homeworkEntry!.subgroup ?? '';
       _taskController.text = widget.homeworkEntry!.task;
       _selectedDueDate = widget.homeworkEntry!.dueDate;
       // TODO: Обработать фото, если они есть
+    } else {
+      // Если это добавление новой домашки, проверяем настройки
+      final defaultGroupId = settingsService.getDefaultGroupId();
+      if (defaultGroupId != null) {
+        _selectedGroupId = defaultGroupId;
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_groups.isNotEmpty && _selectedGroupId != null && _selectedGroupName == null) {
+      _selectedGroupName = _groups.firstWhere((group) => group['id'] == _selectedGroupId)['name'];
     }
   }
 
   // --- Очистка контроллеров при удалении виджета ---
-  @override
+    @override
   void dispose() {
     _disciplineController.dispose();
     _subgroupController.dispose();
@@ -91,7 +105,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
       }
 
       // Если данные корректны, создаем объект Homework
-      final homeworkToSave = Homework(
+      final homeworkToProcess = Homework(
         id: widget.homeworkEntry?.id, // Если редактируем, сохраняем старый ID
         discipline: _disciplineController.text.trim(),
         group: _selectedGroupName!, // Используем выбранное имя группы
@@ -104,27 +118,36 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
         dateAdded: widget.homeworkEntry?.dateAdded ??
             DateTime.now(), // Если редактируем, сохраняем старую дату добавления, иначе - текущую
         photoUrls: widget.homeworkEntry?.photoUrls,
+        isLocal: widget.homeworkEntry?.isLocal ?? _saveLocally,
         // TODO: Обработать photoUrls
       );
 
       // --- ЛОГИКА СОХРАНЕНИЯ В FIREBASE ---
       try {
-        if (homeworkToSave.id == null) {
-          // --- Добавляем новое задание ---
-          print(
-              'Добавляем новое ДЗ в Firebase: ${homeworkToSave.toJson()}'); // Отладочный вывод
-          await _firestore
-              .collection('homework')
-              .add(homeworkToSave.toJson()); // <--- КЛЮЧЕВАЯ СТРОКА для добавления!
-          print('Новое ДЗ успешно добавлено!');
+        if (homeworkToProcess.isLocal) {
+          // --- Сохраняем/обновляем ЛОКАЛЬНО (в Hive) ---
+          print('Сохраняем/обновляем ЛОКАЛЬНО: ${homeworkToProcess.toJson()}'); // Локально toJson не совсем нужен, но для лога можно
+          if (homeworkToProcess.id == null) {
+            // Добавляем новую локальную запись (ID будет сгенерирован в сервисе)
+             await _localHomeworkService.addHomework(homeworkToProcess);
+          } else {
+            // Обновляем существующую локальную запись
+             await _localHomeworkService.updateHomework(homeworkToProcess);
+          }
+           print('Локальное ДЗ успешно сохранено/обновлено!');
+
         } else {
-          // --- Редактируем существующее задание ---
-          print('Редактируем ДЗ с ID: ${homeworkToSave.id}'); // Отладочный вывод
-          await _firestore
-              .collection('homework')
-              .doc(homeworkToSave.id)
-              .update(homeworkToSave.toJson()); // <--- КЛЮЧЕВАЯ СТРОКА для обновления!
-          print('ДЗ успешно обновлено!');
+          // --- Сохраняем/обновляем УДАЛЕННО (в Firebase) ---
+          print('Сохраняем/обновляем УДАЛЕННО: ${homeworkToProcess.toJson()}');
+          if (homeworkToProcess.id == null) {
+            // Добавляем новую удаленную запись
+            await _firestore.collection('homework').add(homeworkToProcess.toJson());
+            print('Новое УДАЛЕННОЕ ДЗ успешно добавлено!');
+          } else {
+            // Обновляем существующую удаленную запись
+            await _firestore.collection('homework').doc(homeworkToProcess.id).update(homeworkToProcess.toJson());
+             print('УДАЛЕННОЕ ДЗ успешно обновлено!');
+          }
         }
 
         // TODO: Возможно, показать SnackBar или другое сообщение об успехе
@@ -163,18 +186,24 @@ Future<void> _fetchGroups() async {
       if (!mounted) return; // Проверка на mounted
       setState(() {
         _groups = filteredAndSortedGroups;
-        print("_groups: $_groups");
-        if (_groups.isNotEmpty && _selectedGroupId == null && widget.homeworkEntry == null) {
-          _selectedGroupId = _groups[0]['id'];
-          _selectedGroupName = _groups[0]['name'];
-        } else if (widget.homeworkEntry != null && _groups.isNotEmpty) {
-          final selectedGroup = _groups.firstWhere(
-                  (group) => group['id'] == widget.homeworkEntry!.groupId,
-              orElse: () => {'id': null, 'name': null});
-
-          _selectedGroupName = selectedGroup['name'];
-          _selectedGroupId = selectedGroup['id'];
-                }
+        // Если _selectedGroupId уже установлен (например, из настроек или при редактировании),
+        // пытаемся найти соответствующее имя группы.
+        if (_selectedGroupId != null) {
+          try {
+            _selectedGroupName = _groups.firstWhere((group) => group['id'] == _selectedGroupId)['name'];
+          } catch (e) {
+            print("Группа с ID $_selectedGroupId не найдена в списке.");
+            _selectedGroupId = null;
+            _selectedGroupName = null;
+          }
+        }
+        // Если _selectedGroupId все еще null (ничего не выбрано и нет в настройках),
+        // и это добавление новой домашки, выбираем первую группу из списка.
+        if (_selectedGroupId == null && widget.homeworkEntry == null && _groups.isNotEmpty) {
+          _selectedGroupId = _groups.first['id'];
+          _selectedGroupName = _groups.first['name'];
+        }
+        print("Selected Group ID: $_selectedGroupId, Name: $_selectedGroupName");
       });
     } catch (e) {
       print("Ошибка при загрузке групп: $e");
@@ -188,6 +217,7 @@ Future<void> _fetchGroups() async {
 
   @override
   Widget build(BuildContext context) {
+    final isAdding = widget.homeworkEntry == null;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.homeworkEntry == null
@@ -228,9 +258,8 @@ Future<void> _fetchGroups() async {
                 onChanged: (String? newValue) {
                   setState(() {
                     _selectedGroupName = newValue;
-                    _selectedGroupId = _groups.firstWhere((group) => group['name'] == newValue)['id'];
-                    print("_selectedGroupId: $_selectedGroupId"); // <--- Добавили вывод
-                    print("_selectedGroupName: $_selectedGroupName"); // <--- Добавили вывод
+                    _selectedGroupId = _groups.firstWhere((group) => group['name'] == newValue)['id']; // Обновляем ID
+                    print("Selected Group ID: $_selectedGroupId, Name: $_selectedGroupName");
                   });
                 },
                 validator: (value) {
@@ -280,6 +309,20 @@ Future<void> _fetchGroups() async {
               const SizedBox(height: 20.0),
 
               // TODO: Добавить кнопку для выбора фото
+
+              if (isAdding) // <--- Показываем только при добавлении!
+                CheckboxListTile(
+                  title: const Text('Сохранить локально'),
+                  value: _saveLocally,
+                  onChanged: (bool? value) {
+                    if (value != null) {
+                      setState(() {
+                        _saveLocally = value; // Обновляем состояние чекбокса
+                      });
+                    }
+                  },
+                ),
+              const SizedBox(height: 20.0),
 
               // --- Кнопка сохранения ---
               ElevatedButton(

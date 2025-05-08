@@ -1,15 +1,30 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 
+part 'homework.g.dart';
+
+@HiveType(typeId: 0)
 class Homework {
+  @HiveField(0)
   String? id;
+  @HiveField(1)
   final String discipline;
+  @HiveField(2)
   final String group;
+  @HiveField(3)
   final String groupId;
+  @HiveField(4)
   final String? subgroup;
+  @HiveField(5)
   final String task;
+  @HiveField(6)
   final DateTime dueDate;
+  @HiveField(7)
   final List<String>? photoUrls;
+  @HiveField(8)
   final DateTime dateAdded;
+  @HiveField(9)
+  final bool isLocal;
 
   Homework({
     this.id,
@@ -21,6 +36,7 @@ class Homework {
     required this.dueDate,
     this.photoUrls,
     required this.dateAdded,
+    this.isLocal = false,
   });
   Map<String, dynamic> toJson() {
     return {
@@ -45,7 +61,8 @@ class Homework {
       task: json['task'] as String,
       dueDate: (json['dueDate'] as Timestamp).toDate(),
       photoUrls: (json['photoUrls'] as List<dynamic>?)?.map((item) => item as String).toList(),
-      dateAdded: (json['dateAdded'] as Timestamp).toDate()
+      dateAdded: (json['dateAdded'] as Timestamp).toDate(),
+      isLocal: false,
     );
   }
 }

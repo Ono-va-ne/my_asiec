@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/homework.dart';
 import 'homework_edit_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:rxdart/rxdart.dart';
+import '../services/local_homework_service.dart';
 import '../services/settings_service.dart'; // Импортируем сервис настроек
 
 class HomeworkScreen extends StatefulWidget {
@@ -14,7 +16,18 @@ class HomeworkScreen extends StatefulWidget {
 
 class _HomeworkScreenState extends State<HomeworkScreen> {
   final _firestore = FirebaseFirestore.instance;
+  final _localHomeworkService = LocalHomeworkService();
   String? _userGroupId; // ID группы пользователя из настроек
+  
+  bool _isDueDateTodayOrFuture(DateTime dueDate) {
+    final now = DateTime.now();
+    // Создаем объекты DateTime, представляющие начало текущего дня и начало даты сдачи
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final dueDateStart = DateTime(dueDate.year, dueDate.month, dueDate.day); // Игнорируем время в дате сдачи
+
+    // Проверяем, является ли дата сдачи сегодня или позже сегодняшнего дня
+    return dueDateStart.isAtSameMomentAs(todayStart) || dueDateStart.isAfter(todayStart);
+  }
 
   @override
   void initState() {
@@ -32,13 +45,38 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final firebaseStream = _firestore.collection('homework').orderBy('dueDate').snapshots();
+    final localStream = _localHomeworkService.getHomeworkStream();
+
+    // --- Объединяем два потока в один! ---
+    final combinedStream = Rx.combineLatest2<QuerySnapshot, List<Homework>, List<Homework>>( // <--- Используем combineLatest2!
+      firebaseStream, // Первый поток (Firebase)
+      localStream,    // Второй поток (Hive)
+      (firebaseSnapshot, localHomeworks) { // Функция-комбинатор: принимает последние значения из обоих потоков
+        // Преобразуем документы из Firebase в List<Homework>
+        final firebaseHomeworks = firebaseSnapshot.docs.map((doc) {
+          return Homework.fromJson(doc.data() as Map<String, dynamic>, doc.id);
+        }).toList();
+
+        // Объединяем списки: сначала локальные, потом из Firebase (или наоборот - как удобно)
+        // Важно: нужно убедиться, что нет дубликатов, если одна и та же запись может быть и там, и там (в нашем случае такого быть не должно, т.к. isLocal флаг)
+        final allHomeworks = [...localHomeworks, ...firebaseHomeworks]; // <--- Объединяем списки!
+
+        // Возможно, сортируем объединенный список по дате сдачи
+        allHomeworks.sort((a, b) => a.dueDate.compareTo(b.dueDate)); // <--- Сортируем по дате сдачи
+
+        return allHomeworks; // Возвращаем объединенный и отсортированный список
+      },
+    );
     return Scaffold(
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collection('homework').orderBy('dueDate').snapshots(),
+      body: StreamBuilder<List<Homework>>(
+        stream: combinedStream,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting || snapshot.connectionState == ConnectionState.none) {
             return const Center(child: CircularProgressIndicator());
           }
+          final homeworkEntries = snapshot.data ?? [];
+
 
           if (snapshot.hasError) {
             print("Ошибка при загрузке ДЗ: ${snapshot.error}");
@@ -47,16 +85,18 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                     'Ошибка загрузки домашнего задания: ${snapshot.error}'));
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (homeworkEntries.isEmpty) {
             return const Center(child: Text('Домашних заданий пока нет.'));
           }
 
           // Фильтруем ДЗ по группе пользователя
-          final filteredHomeworkEntries = snapshot.data!.docs
-              .map((doc) => Homework.fromJson(
-                  doc.data() as Map<String, dynamic>, doc.id))
+          final filteredHomeworkEntries = homeworkEntries
               .where((entry) =>
-                  _userGroupId == null || entry.groupId == _userGroupId)
+                  // Логика фильтрации: если _userSubgroup == null (не выбран),
+                  // показываем все, ИЛИ если subgroup записи ДЗ совпадает с _userSubgroup
+                  (_userGroupId == null || (entry.groupId != null && entry.groupId == _userGroupId)) &&
+                  _isDueDateTodayOrFuture(entry.dueDate) // <--- ИСПРАВЛЕННАЯ ЛОГИКА ФИЛЬТРАЦИИ!
+              )
               .toList();
 
           // Если после фильтрации нет ДЗ, показываем сообщение
@@ -103,16 +143,25 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                   );
                 },
                 onDismissed: (direction) async {
-                  print('Удаляем ДЗ с ID: ${entry.id}');
-                  try {
-                    await _firestore
-                        .collection('homework')
-                        .doc(entry.id)
-                        .delete();
-                    print('ДЗ успешно удалено!');
-                  } catch (e) {
-                    print("Ошибка при удалении ДЗ из Firebase: $e");
-                  }
+                   print('Начало onDismissed для ДЗ с ID: ${entry.id}, isLocal: ${entry.isLocal}'); // Отладка: начало Dismissed
+
+                   if (entry.isLocal) {
+                       // Удалить из Hive
+                       print('  Вызываем удаление из Hive для ID: ${entry.id}'); // Отладка: вызываем Hive сервис
+                       await _localHomeworkService.deleteHomework(entry.id!);
+                       print('  Вызов удаления из Hive завершен.'); // Отладка: вызов завершен
+                   } else {
+                       // Удалить из Firebase
+                       print('  Вызываем удаление из Firebase для ID: ${entry.id}'); // Отладка: вызываем Firebase
+                        try {
+                           await _firestore.collection('homework').doc(entry.id!).delete();
+                           print('  Вызов удаления из Firebase завершен.'); // Отладка: вызов завершен
+                        } catch (e) {
+                           print("Ошибка при удалении УДАЛЕННОГО ДЗ из Firebase: $e");
+                           // TODO: Обработать ошибку удаления
+                        }
+                   }
+                   print('Конец onDismissed.'); // Отладка: конец Dismissed
                 },
                 child: Card(
                   margin: const EdgeInsets.symmetric(

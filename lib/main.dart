@@ -3,11 +3,15 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive/hive.dart';
 
 import '../pages/schedule_screen.dart';
 import '../pages/news_screen.dart';
 import '../pages/settings_screen.dart';
 import '../pages/homework_screen.dart';
+
+import '../models/homework.dart';
 // import '../data/group_uploader.dart';
 
 import 'dart:io';
@@ -32,36 +36,6 @@ void main() async {
   await runZonedGuarded<Future<void>>(() async {
     WidgetsFlutterBinding.ensureInitialized();
 
-    // // --- Настройка логирования ---
-    // // Создаем начальный логгер (может быть только консольный до получения пути)
-    // // final initialLogger = Logger( /* ... только ConsoleOutput ... */);
-    // // Инициализируем путь и реальный FileOutput (это асинхронно!)
-    // await setupLogging(); // <-- ВЫЗЫВАЕМ НАСТРОЙКУ
-    // // *** Важное изменение для обновления FileOutput ***
-    // // Так как logger final, а FileOutput нужно было создать после получения пути,
-    // // мы создадим новый Logger с нужной конфигурацией здесь.
-    // // Предыдущий logger будет заменен этим.
-    // final fileOutput = FileOutput(file: _logFile, overrideExisting: false);
-    // final consoleOutput = kDebugMode ? ConsoleOutput() : null;
-    // final multiOutput = MultiOutput([ if (consoleOutput != null) consoleOutput, fileOutput]);
-
-    // // Обновляем глобальный логгер (это не лучший паттерн, но рабочий для простоты)
-    // // Вместо этого можно передавать логгер через DI (GetIt, Provider)
-    // // Logger( ... ); // Не можем переназначить final, но можем настроить стандартный
-    // // Стандартный Logger не позволяет менять output и printer после создания.
-    // // Поэтому лучше использовать кастомный логгер или передавать его.
-    // // Но для простоты, будем использовать глобальный logger, инициализированный в logger_setup.dart,
-    // // осознавая, что FileOutput начнет работать только ПОСЛЕ setupLogging().
-    // // Логи до этого момента попадут только в консоль (если включено).
-
-    // // --- Настройка глобальных обработчиков ошибок ---
-    // FlutterError.onError = recordFlutterError; // Для ошибок Flutter
-    // PlatformDispatcher.instance.onError = (error, stack) { // Для ошибок Dart
-    //   recordError(error, stack);
-    //   return true; // Сообщаем, что ошибка обработана
-    // };
-
-    // logger.i("Запуск приложения..."); // Первый лог после настройки
     // Применяем обход проверки SSL глобально
     HttpOverrides.global = MyHttpOverrides(); // <-- ДОБАВЬ ЭТУ СТРОКУ
 
@@ -73,6 +47,11 @@ void main() async {
     await settingsService.loadSettings();
     WidgetsFlutterBinding.ensureInitialized();
     await Firebase.initializeApp();
+    await Hive.initFlutter();
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(HomeworkAdapter());
+    }
+    await Hive.openBox<Homework>('localHomeworkBox');
     // final uploader = GroupDataUploader();
     // uploader.uploadGroups();
     FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true); // Включаем кэширование Firestore
