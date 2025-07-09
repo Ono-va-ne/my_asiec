@@ -67,9 +67,16 @@ class NewsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ... (Дата, Текст, Картинки) ...
-
-            // --- Обновленная нижняя строка ---
+            // --- ТЕКСТ ПОСТА ---
+            if (post.text.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(
+                  post.text,
+                  style: TextStyle(fontSize: 15.5, height: 1.35),
+                ),
+              ),
+            // ... (здесь могут быть картинки, дата и т.д.) ...
             Divider(height: 1.0),
             Padding(
               padding: const EdgeInsets.only(top: 8.0),

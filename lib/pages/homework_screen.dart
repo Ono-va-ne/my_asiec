@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
 import '../services/local_homework_service.dart';
 import '../services/settings_service.dart'; // Импортируем сервис настроек
+import '../pages/homework_view_screen.dart';
 
 class HomeworkScreen extends StatefulWidget {
   const HomeworkScreen({Key? key}) : super(key: key);
@@ -92,14 +93,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
           // Фильтруем ДЗ по группе пользователя
           final filteredHomeworkEntries = homeworkEntries
               .where((entry) =>
-                  // Логика фильтрации: если _userSubgroup == null (не выбран),
-                  // показываем все, ИЛИ если subgroup записи ДЗ совпадает с _userSubgroup
-                  (_userGroupId == null || (entry.groupId != null && entry.groupId == _userGroupId)) &&
-                  _isDueDateTodayOrFuture(entry.dueDate) // <--- ИСПРАВЛЕННАЯ ЛОГИКА ФИЛЬТРАЦИИ!
+                  (_userGroupId == null || (entry.groupId == _userGroupId)) &&
+                  _isDueDateTodayOrFuture(entry.dueDate) 
               )
               .toList();
 
-          // Если после фильтрации нет ДЗ, показываем сообщение
           if (filteredHomeworkEntries.isEmpty) {
             return const Center(
                 child: Text(
@@ -169,13 +167,15 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                   elevation: 1.0,
                   child: ListTile(
                     title: Text(
-                      entry.task,
+                      entry.discipline,
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(entry.discipline,
+                        Text(entry.task.length > 100 // Проверяем длину строки
+                            ? '${entry.task.substring(0, 100)}...' // Если больше 50, берем первые 50 и добавляем многоточие
+                            : entry.task,
                             style: TextStyle(
                                 color: Theme.of(context)
                                     .colorScheme
@@ -187,17 +187,59 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                             'Срок сдачи: ${DateFormat('dd.MM.yyyy').format(entry.dueDate)}'),
                       ],
                     ),
-                    trailing: entry.subgroup != null
-                        ? Text('Подгр. ${entry.subgroup}')
-                        : null,
+                    trailing: Column( // Используем Column для вертикального расположения элементов
+                      mainAxisSize: MainAxisSize.min, // Column занимает минимальную высоту
+                      crossAxisAlignment: CrossAxisAlignment.end, 
+                      children: [
+                        // Отображаем подгруппу, если она есть
+                        if (entry.subgroup != null)
+                           Text(
+                             'Подгр. ${entry.subgroup}',
+                             style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline) // Уменьшаем шрифт для подгруппы
+                           ),
+
+                        // Если есть подгруппа И есть хотя бы одна иконка, добавляем небольшой вертикальный отступ
+                        if (entry.subgroup != null && (entry.isLocal || (entry.photoUrls != null && entry.photoUrls!.isNotEmpty)))
+                           const SizedBox(height: 4),
+
+                        // Отображаем иконки (если они нужны) в горизонтальном ряду
+                        if (entry.isLocal || (entry.photoUrls != null && entry.photoUrls!.isNotEmpty)) // Показываем Row с иконками только если хотя бы одна иконка нужна
+                           Row(
+                              mainAxisSize: MainAxisSize.min, // Row занимает минимальную ширину
+                              children: [
+                                 // Иконка для локального ДЗ
+                                 if (entry.isLocal) // Показываем, если запись локальная
+                                    Icon(
+                                       Icons.phone_android, // Или Icons.sd_storage, Icons.smartphone - какая больше нравится
+                                       size: 18, // Размер иконки
+                                       color: Theme.of(context).colorScheme.primary, // Цвет иконки
+                                    ),
+
+                                 // Если есть иконка локального ДЗ И иконка фото, добавляем горизонтальный отступ
+                                 if (entry.isLocal && (entry.photoUrls != null && entry.photoUrls!.isNotEmpty))
+                                    const SizedBox(width: 4), // Небольшой горизонтальный отступ
+
+                                 // Иконка для ДЗ с фотографиями
+                                 if (entry.photoUrls != null && entry.photoUrls!.isNotEmpty) // Показываем, если есть фото
+                                    Icon(
+                                       Icons.image, // Или Icons.photo
+                                       size: 18, // Размер иконки
+                                       color: Theme.of(context).colorScheme.primary, // Цвет иконки
+                                    ),
+                              ],
+                           ),
+                      ],
+                    ),
                     onTap: () {
                       print('Нажали на ДЗ: ${entry.discipline}, groupId: ${entry.groupId}');
                       Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                HomeworkEditScreen(homeworkEntry: entry),
-                          ));
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HomeworkViewScreen( // <--- ОТКРЫВАЕМ ЭКРАН ПРОСМОТРА!
+                             homeworkEntry: entry,
+                          ),
+                        ),
+                      );
                       print('Нажали на ДЗ: ${entry.discipline}');
                     },
                   ),

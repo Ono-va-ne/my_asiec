@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'schedule_entry.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
+import '../models/homework.dart'; // Импорт модели Homework
+import 'package:collection/collection.dart';
 // import '../models/daily_schedule.dart';
 // import '../pages/schedule_screen.dart';
 extension Material3Palette on Color {
@@ -17,7 +19,8 @@ extension Material3Palette on Color {
 class ScheduleCard extends StatelessWidget {
   final ScheduleEntry entry; // Данные для этой карточки
   final List<ScheduleEntry> allEntriesForDay;
-  const ScheduleCard({Key? key, required this.entry, required this.allEntriesForDay}) : super(key: key);
+  final List<Homework> homeworks;
+  const ScheduleCard({super.key, required this.entry, required this.allEntriesForDay, required this.homeworks});
 
   // --- НОВЫЙ МЕТОД: Определение статуса пары ---
   // Возвращает enum для статуса: current, next, normal
@@ -185,93 +188,146 @@ class ScheduleCard extends StatelessWidget {
   bool isSameTime(TimeOfDay time1, TimeOfDay time2) {
     return time1.hour == time2.hour && time1.minute == time2.minute;
   }
+
+  String? extractSubgroup(String discipline) {
+  final regex = RegExp(r'/\s*(\d+)\s*подгруппа', caseSensitive: false);
+  final match = regex.firstMatch(discipline);
+  if (match != null && match.groupCount >= 1) {
+    return match.group(1); // Вернет "2" для "подгруппа 2"
+  }
+  return null;
+  }
   
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+    final scheduleSubgroup = extractSubgroup(entry.discipline);
+    final Homework? foundHomework = homeworks.firstWhereOrNull((hw) {
+      final entryDisciplineMain = entry.discipline.split('/')[0].trim().toLowerCase();
+      final hwDisciplineMain = hw.discipline.split('/')[0].trim().toLowerCase();
+      final hwSubgroup = hw.subgroup?.trim();
+      final subgroupMatch = (scheduleSubgroup == null && (hwSubgroup == null || hwSubgroup.isEmpty)) ||
+                            (scheduleSubgroup != null && hwSubgroup != null && scheduleSubgroup == hwSubgroup);
+      final disciplineMatch = entryDisciplineMain.contains(hwDisciplineMain) ||
+                              hwDisciplineMain.contains(entryDisciplineMain);
+      return disciplineMatch &&
+            hw.group == entry.group &&
+            hw.dueDate.year == entry.date.year &&
+            hw.dueDate.month == entry.date.month &&
+            hw.dueDate.day == entry.date.day &&
+            subgroupMatch;
+    });
+
+    final hasHomework = foundHomework != null;
     //  final dailySchedule =
     //     _ScheduleScreenState.of(context)?.dailyScheduleForCard(entry.date); // <---  Нужно реализовать получение списка!
     final List<ScheduleEntry> allEntriesForDay = this.allEntriesForDay;
     final entryStatus = _getEntryStatus(now, allEntriesForDay);
     
-    return Card( // Используем виджет Card для красивого контейнера с тенью
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Отступы вокруг карточки
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-        // --- Добавляем контур для "ближайшей" пары ---
-        side: entryStatus == ScheduleEntryStatus.next
-            ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2.0)
-            : BorderSide.none, // Нет контура для остальных
-      ),
-      color: entryStatus == ScheduleEntryStatus.current
-          ? Theme.of(context).colorScheme.primaryContainer // Светло-синий фон для текущей
-          : null, // Используем цвет темы по умолчанию для остальных,
-      elevation: 2.0, // Небольшая тень
-      child: Padding(
-        padding: const EdgeInsets.all(16.0), // Внутренние отступы в карточке
-        child: Row( // Используем Row, чтобы разместить элементы в строку
-          crossAxisAlignment: CrossAxisAlignment.start, // Выравниваем элементы по верху
-          children: [
-            // Левая часть: Название дисциплины и преподаватель
-            Expanded( // Expanded заставляет этот столбец занять всё доступное место по ширине
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start, // Выравниваем текст влево
-                children: [
-                  Text(
-                    entry.discipline,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold, // Жирный шрифт
-                      fontSize: 16.0, // Размер шрифта побольше
-                    ),
-                  ),
-                  SizedBox(height: 4.0), // Небольшой отступ между текстами
-                  Text(
-                    entry.teacher,
-                    style: TextStyle(
-                      fontSize: 14.0,
-                      color: Theme.of(context).colorScheme.outline, // Цвет чуть потемнее серого
-                    ),
+    return InkWell(
+      onTap: hasHomework
+        ? () {
+            // Откройте экран с ДЗ или покажите диалог
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text('Домашнее задание'),
+                content: Text(foundHomework.task),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('Закрыть'),
                   ),
                 ],
               ),
-            ),
-
-            SizedBox(width: 16.0), // Отступ между левой и правой частями
-
-            // Правая часть: Время и место
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end, // Выравниваем текст вправо
-              children: [
-                Text(
-                  '${entry.startTime} - ${entry.endTime}', // Формируем строку времени
-                  style: TextStyle(
-                    fontSize: 14.0,
-                    fontWeight: FontWeight.bold, // Немного жирнее обычного
-                  ),
-                  textAlign: TextAlign.right,
+            );
+            // Или навигация на отдельный экран:
+            // Navigator.push(context, MaterialPageRoute(builder: (_) => HomeworkDetailScreen(homework: foundHomework)));
+          }
+        : null,
+    borderRadius: BorderRadius.circular(12.0),
+      child: Card( // Используем виджет Card для красивого контейнера с тенью
+        margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), // Отступы вокруг карточки
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          // --- Добавляем контур для "ближайшей" пары ---
+          side: entryStatus == ScheduleEntryStatus.next
+              ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2.0)
+              : BorderSide.none, // Нет контура для остальных
+        ),
+        color: entryStatus == ScheduleEntryStatus.current
+            ? Theme.of(context).colorScheme.primaryContainer // Светло-синий фон для текущей
+            : null, // Используем цвет темы по умолчанию для остальных,
+        elevation: 2.0, // Небольшая тень
+        child: Padding(
+          padding: const EdgeInsets.all(16.0), // Внутренние отступы в карточке
+          child: Row( // Используем Row, чтобы разместить элементы в строку
+            crossAxisAlignment: CrossAxisAlignment.start, // Выравниваем элементы по верху
+            children: [
+              // Левая часть: Название дисциплины и преподаватель
+              Expanded( // Expanded заставляет этот столбец занять всё доступное место по ширине
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start, // Выравниваем текст влево
+                  children: [
+                    Text(
+                      entry.discipline,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold, // Жирный шрифт
+                        fontSize: 16.0, // Размер шрифта побольше
+                      ),
+                    ),
+                    SizedBox(height: 4.0), // Небольшой отступ между текстами
+                    Text(
+                      entry.teacher,
+                      style: TextStyle(
+                        fontSize: 14.0,
+                        color: Theme.of(context).colorScheme.outline, // Цвет чуть потемнее серого
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: 4.0),
-                Text(
-                  entry.group, // Группа
-                  style: TextStyle(
-                    fontSize: 14.0,
-                    fontWeight: FontWeight.w400,
-                    color: Theme.of(context).colorScheme.onSurface, // Цвет текста - основной цвет темы
+              ),
+      
+              SizedBox(width: 16.0), // Отступ между левой и правой частями
+      
+              // Правая часть: Время и место
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end, // Выравниваем текст вправо
+                children: [
+                  Text(
+                    '${entry.startTime} - ${entry.endTime}', // Формируем строку времени
+                    style: TextStyle(
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.bold, // Немного жирнее обычного
+                    ),
+                    textAlign: TextAlign.right,
                   ),
-                  textAlign: TextAlign.right, // Выравниваем текст вправо
-                ),
-                SizedBox(height: 4.0), // Отступ
-                Text(
-                  '${entry.building}\n${entry.room}', // Корпус и аудитория с переносом строки
-                  style: TextStyle(
-                    fontSize: 14.0,
-                    color: Theme.of(context).colorScheme.outline,
+                  SizedBox(height: 4.0),
+                  Text(
+                    entry.group, // Группа
+                    style: TextStyle(
+                      fontSize: 14.0,
+                      fontWeight: FontWeight.w400,
+                      color: Theme.of(context).colorScheme.onSurface, // Цвет текста - основной цвет темы
+                    ),
+                    textAlign: TextAlign.right, // Выравниваем текст вправо
                   ),
-                  textAlign: TextAlign.right, // Выравниваем текст вправо
-                ),
-              ],
-            ),
-          ],
+                  SizedBox(height: 4.0), // Отступ
+                  Text(
+                    '${entry.building}\n${entry.room}', // Корпус и аудитория с переносом строки
+                    style: TextStyle(
+                      fontSize: 14.0,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    textAlign: TextAlign.right, // Выравниваем текст вправо
+                  ),
+                  SizedBox(height: 8.0), // Отступ снизу
+                  if (hasHomework)
+                    Icon(Icons.assignment, color: Theme.of(context).colorScheme.primary),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

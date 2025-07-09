@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:rxdart/rxdart.dart';
 import '../models/schedule_card.dart';
 
 import '../models/daily_schedule.dart';
@@ -16,6 +17,10 @@ import '../models/teacher_info.dart';
 import '../models/room_info.dart';
 
 import '../services/settings_service.dart';
+
+import '../services/local_homework_service.dart'; // Импортируйте сервис
+import 'package:cloud_firestore/cloud_firestore.dart'; // Для Firebase
+import '../models/homework.dart'; // Импорт модели
 
 
 // Импортируй сюда классы ScheduleEntry и ScheduleCard, если они в других файлах
@@ -32,10 +37,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   ScheduleType _rasType = ScheduleType.grup;
   List<DailySchedule> _dailySchedules = []; // Теперь храним список расписаний по дням
   DateTime _startDate = DateTime.now(); // Дата начала диапазона
-  DateTime _endDate = DateTime.now();   // Дата конца диапазона
+  DateTime _endDate = DateTime.now().add(Duration(days: 6));   // Дата конца диапазона
   String _scheduleDateDisplay = 'Загрузка...'; // Строка для отображения диапазона
   bool _isLoading = true;
   String? _errorMessage;
+
+  final _firestore = FirebaseFirestore.instance;
+  final _localHomeworkService = LocalHomeworkService();
+
+  Stream<List<Homework>>? _homeworkStream;
 
   List<GroupInfo> _availableGroups = []; // Список доступных групп
   List<TeacherInfo> _availableTeachers = []; // Список доступных групп
@@ -107,6 +117,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
  void initState() {
     super.initState();
     _initializeScheduleObjects(); // Инициализируем список И выбранную группу
+    final firebaseStream = _firestore.collection('homework').snapshots().map((snapshot) =>
+      snapshot.docs.map((doc) => Homework.fromJson(doc.data(), doc.id)).toList()
+    );
+    final localStream = _localHomeworkService.getHomeworkStream();
+    _homeworkStream = Rx.combineLatest2<List<Homework>, List<Homework>, List<Homework>>(
+      localStream,
+      firebaseStream,
+      (local, remote) => [...local, ...remote],
+    );
     // Загружаем данные, если группа выбрана
     if (_selectedGroup != null) {
         _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
@@ -554,7 +573,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       
             // Тело экрана: загрузка, ошибка или список
             Expanded(
-              child: _buildBody(),
+              child: StreamBuilder<List<Homework>>(
+                stream: _homeworkStream,
+                builder: (context, homeworkSnapshot) {
+                  final allHomeworks = homeworkSnapshot.data ?? [];
+                  return _buildBody(allHomeworks); // Передаем список ДЗ
+                },
+              ),
             ),
           ],
         ),
@@ -563,7 +588,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(List<Homework> allHomeworks) {
     if (_isLoading) {
       return Center(child: CircularProgressIndicator());
     }
@@ -646,7 +671,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     // Если пар может быть ОЧЕНЬ много, можно заменить на ListView(shrinkWrap: true, physics: NeverScrollableScrollPhysics())
                     Column(
                       children: dailySchedule.entries.map((entry) {
-                          return ScheduleCard(entry: entry, allEntriesForDay: dailySchedule.entries);
+                          return ScheduleCard(entry: entry, allEntriesForDay: dailySchedule.entries, homeworks: allHomeworks);
                       }).toList(), // Преобразуем результат map в список виджетов
                     ),
 

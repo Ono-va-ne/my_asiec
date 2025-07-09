@@ -29,7 +29,7 @@ class _NewsScreenState extends State<NewsScreen> {
   void _loadNews() {
     // Присваиваем Future переменной состояния
     // FutureBuilder будет использовать этот Future для отображения данных
-    _newsFuture = _vkApiService.fetchVkNews();
+    _newsFuture = _vkApiService.fetchVkNewsFromApi();
   }
 
   // Функция для обновления (например, потянуть вниз для обновления)
