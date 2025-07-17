@@ -9,6 +9,7 @@ import '../pages/schedule_screen.dart';
 import '../pages/news_screen.dart';
 import '../pages/settings_screen.dart';
 import '../pages/homework_screen.dart';
+import '../pages/tests_screen.dart';
 
 import '../models/homework.dart';
 // import '../data/group_uploader.dart';
@@ -159,6 +160,7 @@ class _MainScreenState extends State<MainScreen> {
     ScheduleScreen(), 
     HomeworkScreen(),
     NewsScreen(),
+    TestCreationScreen(),
     SettingsScreen(),
   ];
 
@@ -222,6 +224,11 @@ void _onItemTapped(int index) {
             icon: Icon(Icons.article_outlined),
             selectedIcon: Icon(Icons.article),
             label: 'Новости',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.check_box_outline_blank),
+            selectedIcon: Icon(Icons.check_box),
+            label: 'Тест(ы)',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

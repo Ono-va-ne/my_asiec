@@ -174,7 +174,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(entry.task.length > 100 // Проверяем длину строки
-                            ? '${entry.task.substring(0, 100)}...' // Если больше 50, берем первые 50 и добавляем многоточие
+                            ? '${entry.task.substring(0, 100)}...' 
                             : entry.task,
                             style: TextStyle(
                                 color: Theme.of(context)
