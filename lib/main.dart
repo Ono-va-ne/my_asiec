@@ -9,7 +9,7 @@ import '../pages/schedule_screen.dart';
 import '../pages/news_screen.dart';
 import '../pages/settings_screen.dart';
 import '../pages/homework_screen.dart';
-import '../pages/tests_screen.dart';
+import 'pages/tests_screen.dart';
 
 import '../models/homework.dart';
 // import '../data/group_uploader.dart';
@@ -89,12 +89,14 @@ class MyApp extends StatelessWidget {
 
         scaffoldBackgroundColor: scaffoldBackgroundColor,
 
-        cardTheme: CardTheme(
-           elevation: 1.0,
-           color: cardBackgroundColor,
-           margin: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
-           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-        ),
+        cardTheme: CardThemeData(
+ elevation: 1.0,
+ color: cardBackgroundColor,
+ margin: EdgeInsets.symmetric(vertical: 6.0, horizontal: 8.0),
+ shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+ ),
+
+
 
         appBarTheme: AppBarTheme(
            elevation: brightness == Brightness.light ? 1.0 : 0.0,
@@ -160,7 +162,7 @@ class _MainScreenState extends State<MainScreen> {
     ScheduleScreen(), 
     HomeworkScreen(),
     NewsScreen(),
-    TestCreationScreen(),
+    TestsScreen(),
     SettingsScreen(),
   ];
 
@@ -226,9 +228,9 @@ void _onItemTapped(int index) {
             label: 'Новости',
           ),
           NavigationDestination(
-            icon: Icon(Icons.check_box_outline_blank),
+            icon: Icon(Icons.check_box_outlined),
             selectedIcon: Icon(Icons.check_box),
-            label: 'Тест(ы)',
+            label: 'Тесты',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
