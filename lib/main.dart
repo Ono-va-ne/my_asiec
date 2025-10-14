@@ -8,8 +8,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../pages/schedule_screen.dart';
 import '../pages/news_screen.dart';
 import '../pages/settings_screen.dart';
+import '../pages/me_screen.dart';
 import '../pages/homework_screen.dart';
-import 'pages/tests_screen.dart';
+import 'pages/forms/tests_screen.dart';
 
 import '../models/homework.dart';
 // import '../data/group_uploader.dart';
@@ -161,7 +162,6 @@ class _MainScreenState extends State<MainScreen> {
   static const List<Widget> _widgetOptions = <Widget>[
     ScheduleScreen(), 
     HomeworkScreen(),
-    NewsScreen(),
     TestsScreen(),
     SettingsScreen(),
   ];
@@ -221,11 +221,6 @@ void _onItemTapped(int index) {
             icon: Icon(Icons.assignment_outlined),
             selectedIcon: Icon(Icons.assignment),
             label: 'Домашка',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.article_outlined),
-            selectedIcon: Icon(Icons.article),
-            label: 'Новости',
           ),
           NavigationDestination(
             icon: Icon(Icons.check_box_outlined),

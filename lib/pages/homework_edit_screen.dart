@@ -123,6 +123,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
 
        // Копируем файл из временного пути (XFile) в нашу папку
        final File newFile = await File(photoFile.path).copy(newFilePath); // <--- Копируем файл!
+       if (!mounted) return [];
 
        localPaths.add(newFile.path); // Добавляем путь к новому файлу в список
 

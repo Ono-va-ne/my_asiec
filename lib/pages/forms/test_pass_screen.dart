@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../pages/test_answers_screen.dart';
+import 'test_answers_screen.dart';
 
 class TestPassScreen extends StatefulWidget {
   final String testId;

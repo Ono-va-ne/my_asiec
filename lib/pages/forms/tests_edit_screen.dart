@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/settings_service.dart';
+import '../../services/settings_service.dart';
 
 /// Перечисление для типов вопросов.
 enum QuestionType {

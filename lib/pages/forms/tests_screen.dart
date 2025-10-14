@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../pages/tests_edit_screen.dart';
-import '../pages/test_pass_screen.dart';
+import 'tests_edit_screen.dart';
+import 'test_pass_screen.dart';
 
 class TestsScreen extends StatelessWidget {
   const TestsScreen({super.key});
