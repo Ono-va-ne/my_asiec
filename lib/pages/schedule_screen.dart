@@ -1,9 +1,11 @@
+// ...existing code...
 import 'dart:io';
 
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/schedule_card.dart';
 
 import '../models/daily_schedule.dart';
@@ -17,6 +19,7 @@ import '../models/teacher_info.dart';
 import '../models/room_info.dart';
 
 import '../services/settings_service.dart';
+import '../services/groups_service.dart';
 
 import '../services/local_homework_service.dart'; // Импортируйте сервис
 import 'package:cloud_firestore/cloud_firestore.dart'; // Для Firebase
@@ -44,6 +47,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   final _firestore = FirebaseFirestore.instance;
   final _localHomeworkService = LocalHomeworkService();
+  final _groupsService = GroupsService();
 
   Stream<List<Homework>>? _homeworkStream;
 
@@ -70,7 +74,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
   void _setScheduleType(ScheduleType newType) {
-    dynamic defaultSelectedObject = null; // Переменная для объекта по умолчанию
+    dynamic defaultSelectedObject; // Переменная для объекта по умолчанию
 
     switch (newType) {
       case ScheduleType.grup:
@@ -116,7 +120,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
  @override
  void initState() {
     super.initState();
-    _initializeScheduleObjects(); // Инициализируем список И выбранную группу
+    // _initializeScheduleObjects(); // Инициализируем список И выбранную группу
+    _loadAvailableGroups();
     final firebaseStream = _firestore.collection('homework').snapshots().map((snapshot) =>
       snapshot.docs.map((doc) => Homework.fromJson(doc.data(), doc.id)).toList()
     );
@@ -126,21 +131,48 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       firebaseStream,
       (local, remote) => [...local, ...remote],
     );
-    // Загружаем данные, если группа выбрана
-    if (_selectedGroup != null) {
-        _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
-    } else {
-        // Ошибка - не удалось определить группу по умолчанию
-        setState(() {
-            _isLoading = false;
-            _errorMessage = "Группа по умолчанию не найдена или не выбрана в настройках.";
-        });
-    }
+    // // Загружаем данные, если группа выбрана
+    // if (_selectedGroup != null) {
+    //     _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
+    // } else {
+    //     // Ошибка - не удалось определить группу по умолчанию
+    //     setState(() {
+    //         _isLoading = false;
+    //         _errorMessage = "Группа по умолчанию не найдена или не выбрана в настройках.";
+    //     });
+    // }
  }
+   // Загружает группы из Supabase (GroupsService) и затем инициализирует объекты
+  Future<void> _loadAvailableGroups() async {
+    try {
+      final groups = await _groupsService.getGroups(); // GroupsService кеширует через Hive
+      // Если вернулся пустой список — оставляем локальные данные как fallback
+      if (groups.isEmpty) {
+        print('GroupsService вернул пустой список, используем локальные данные');
+        _availableGroups = availableGroupsData;
+      } else {
+        _availableGroups = groups;
+      }
+    } catch (e) {
+      print('Не удалось загрузить группы из Supabase: $e — используем локальные данные');
+      _availableGroups = availableGroupsData;
+    }
+
+    // После загрузки групп инициализируем выбор и (при наличии) загружаем расписание
+    _initializeScheduleObjects();
+    if (_selectedGroup != null) {
+      _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
+    } else {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = "Группа по умолчанию не найдена или не выбрана в настройках.";
+      });
+    }
+  }
 
  void _initializeScheduleObjects() {
     // Заполняем список доступных групп
-    _availableGroups = availableGroupsData;
+    // _availableGroups = availableGroupsData;
     _availableTeachers = availableTeachersData; // Заполняем список доступных преподавателей
     _availableRooms = availableRoomsData; // Заполняем список доступных аудиторий
 
@@ -292,7 +324,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   // --- Обновленная функция загрузки данных ---
   // Теперь принимает выбранную группу как параметр
   Future<void> _loadScheduleData(DateTime startDate, DateTime endDate, ScheduleType scheduleType, dynamic selectedObject) async {
-     // Проверяем mounted перед первым setState
+     // Проверяем mounted перед первом setState
      if (!mounted) return;
      setState(() {
       _isLoading = true;
@@ -362,23 +394,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           _dailySchedules = parsedData;
           _scheduleDateDisplay = '${_formatDateRangeForDisplay(_startDate, _endDate)}'; // Обновляем отображение
           _isLoading = false;
+          _errorMessage = null;
         });
-      } else { /* ... обработка ошибки сервера ... */ }
-    } catch (e) { // Ловим исключение
-      // ignore: unused_local_variable
-      String errorMessageText = 'Не удалось загрузить расписание: $e'; // Стандартное сообщение
-
-      // --- НОВАЯ ЛОГИКА ПРОВЕРКИ ИСКЛЮЧЕНИЯ ---
-      if (e is http.ClientException) { // Проверяем, является ли ошибка ClientException
-        if (e.innerException is SocketException) { // Проверяем, что innerException - SocketException
-          final socketException = e.innerException as SocketException;
-          if (socketException.osError != null && socketException.osError!.errno == 110 &&
-              socketException.message.contains('Connection timed out')) {
-            // --- Вот оно, наше исключение "Connection timed out" ---
-            errorMessageText = 'Сервер не отвечает. Пожалуйста, попробуйте позже.'; // Меняем сообщение
-          }
-        }
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Сервер вернул код ${response.statusCode}';
+        });
       }
+    } catch (e) { // Ловим исключение
+      String errorMessageText = 'Не удалось загрузить расписание: ${e.toString()}'; // Стандартное сообщение
+
+      // Попытка дать более понятный текст при сетевых ошибках
+      if (e is SocketException) {
+        errorMessageText = 'Проблемы с сетью. Проверьте подключение и попробуйте снова.';
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = errorMessageText;
+      });
+      print(errorMessageText);
     }
   }
 
@@ -515,8 +553,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                           } else if (_rasType == ScheduleType.aud) { // Раскомментируй, когда добавим RoomInfo
                             _selectedRoom = newValue as RoomInfo; // Обновляем _selectedRoom
                            }
-                          // --- ЯВНО ПЕРЕСТРАИВАЕМ _buildObjectSelector() ДЛЯ ОБНОВЛЕНИЯ UI! ---
-                          _buildObjectSelector(); // <--- ВЫЗЫВАЕМ _buildObjectSelector() ЕЩЕ РАЗ! (после setState)
                           _loadScheduleData(_startDate, _endDate, _rasType, newValue);
                         }
                       });
@@ -603,7 +639,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             children: [
               Text(
                   //_errorMessage!, // Используем сообщение об ошибке как есть
-                  'Не удалось загрузить расписание для группы ${_selectedGroup?.name ?? "N/A"}.',
+                  'Не удалось загрузить расписание для ${_rasType == ScheduleType.grup ? "группы" : _rasType == ScheduleType.prep ? "преподавателя" : "аудитории"} ${_selectedGroup?.name ?? _selectedTeacher?.name ?? _selectedRoom?.name ?? "N/A"}.',
                 style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 16),
                 textAlign: TextAlign.center,
               ),
@@ -614,7 +650,25 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ),
               SizedBox(height: 16),
               ElevatedButton(
-                  onPressed: _selectedGroup == null ? null : () => _loadScheduleData(_startDate, _endDate, _rasType, null),
+                  onPressed: () {
+                    dynamic selected;
+                    switch (_rasType) {
+                      case ScheduleType.grup:
+                        selected = _selectedGroup;
+                        break;
+                      case ScheduleType.prep:
+                        selected = _selectedTeacher;
+                        break;
+                      case ScheduleType.aud:
+                        selected = _selectedRoom;
+                        break;
+                    }
+                    if (selected != null) {
+                      _loadScheduleData(_startDate, _endDate, _rasType, selected);
+                    } else {
+                      _showSnackBar(context, "Сначала выберите объект");
+                    }
+                  },
                   child: Text('Повторить попытку')
               )
             ],
@@ -686,20 +740,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 }
 
-extension on OSError {
-  get errno => null;
-}
-
-extension on http.ClientException {
-  get innerException => null;
-}
-
-  @override
-  Widget build(BuildContext context) {
-    // TODO: implement build
-    throw UnimplementedError();
-  }
-
+// ...existing code...
 enum ScheduleType {
   grup,
   prep,

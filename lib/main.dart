@@ -4,13 +4,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../pages/schedule_screen.dart';
-import '../pages/news_screen.dart';
 import '../pages/settings_screen.dart';
-import '../pages/me_screen.dart';
 import '../pages/homework_screen.dart';
-import 'pages/forms/tests_screen.dart';
+import '../pages/formulas_screen.dart';
+import '../pages/formulas_specs_screen.dart';
 
 import '../models/homework.dart';
 // import '../data/group_uploader.dart';
@@ -46,6 +46,10 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     await settingsService.loadSettings();
     WidgetsFlutterBinding.ensureInitialized();
+    await Supabase.initialize(
+      url: 'https://zffxqnxjxhnmcdvifyyc.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmZnhxbnhqeGhubWNkdmlmeXljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNTY3NDMsImV4cCI6MjA3MTkzMjc0M30.Tan-ExOBrf3U8dxQyIlIZmuY_DHkvCFCk2QdTmFN_Sk',
+    );
     await Firebase.initializeApp();
     await Hive.initFlutter();
     if (!Hive.isAdapterRegistered(0)) {
@@ -162,43 +166,15 @@ class _MainScreenState extends State<MainScreen> {
   static const List<Widget> _widgetOptions = <Widget>[
     ScheduleScreen(), 
     HomeworkScreen(),
-    TestsScreen(),
+    FormulasScreen(),
+    SpecialtiesScreen(),
     SettingsScreen(),
   ];
 
 void _onItemTapped(int index) {
-    // if (index == 2) { 
-    //   showDialog(
-    //     context: context,
-    //     builder: (BuildContext context) {
-    //       return AlertDialog(
-    //         title: Row(
-    //           children: [
-    //             Icon(Icons.construction_outlined, color: Theme.of(context).colorScheme.primary), // Иконка "в разработке"
-    //             SizedBox(width: 8),
-    //             Text('В разработке'),
-    //           ],
-    //         ),
-    //         content: Text('Раздел "Новости" скоро появится! Работаю в поте лица (честно ¯\\_(ツ)_/¯)'),
-    //         actions: <Widget>[
-    //           TextButton(
-    //             child: Text('Понятно'),
-    //             onPressed: () {
-    //               Navigator.of(context).pop();
-    //             },
-    //           ),
-    //         ],
-    //         shape: RoundedRectangleBorder(
-    //           borderRadius: BorderRadius.circular(12.0)
-    //         ),
-    //       );
-    //     },
-    //   );
-    // } else {
       setState(() {
         _selectedIndex = index;
       });
-    // }
   }
   @override
   Widget build(BuildContext context) {
@@ -223,9 +199,14 @@ void _onItemTapped(int index) {
             label: 'Домашка',
           ),
           NavigationDestination(
-            icon: Icon(Icons.check_box_outlined),
-            selectedIcon: Icon(Icons.check_box),
-            label: 'Тесты',
+            icon: Icon(Icons.calculate_outlined),
+            selectedIcon: Icon(Icons.calculate),
+            label: 'Справочник',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calculate_outlined),
+            selectedIcon: Icon(Icons.calculate),
+            label: 'Справочник',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
