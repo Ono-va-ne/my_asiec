@@ -13,8 +13,12 @@ const String _defaultRoomIdKey = 'default_room_id';
 class SettingsService {
   // --- Notifiers для оповещения об изменениях ---
   // Используем ValueNotifier, чтобы MyApp мог слушать изменения темы
-  final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(ThemeMode.system);
-  final ValueNotifier<Color?> accentColorNotifier = ValueNotifier(null); // null означает цвет по умолчанию
+  final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier(
+    ThemeMode.system,
+  );
+  final ValueNotifier<Color?> accentColorNotifier = ValueNotifier(
+    null,
+  ); // null означает цвет по умолчанию
   final ValueNotifier<bool> materialYouNotifier = ValueNotifier(false);
 
   SharedPreferences? _prefs; // Экземпляр SharedPreferences
@@ -25,7 +29,8 @@ class SettingsService {
     _prefs = await SharedPreferences.getInstance();
 
     // Загрузка темы
-    final themeModeIndex = _prefs?.getInt(_themeModeKey) ?? ThemeMode.system.index;
+    final themeModeIndex =
+        _prefs?.getInt(_themeModeKey) ?? ThemeMode.system.index;
     themeModeNotifier.value = ThemeMode.values[themeModeIndex];
 
     // Загрузка акцентного цвета (храним как int)
@@ -49,24 +54,29 @@ class SettingsService {
   }
 
   Future<void> setAccentColor(Color? color) async {
-     if (_prefs == null) await loadSettings();
-     if (color != null) {
-        await _prefs?.setInt(_themeAccentColorKey, color.value);
-     } else {
-        await _prefs?.remove(_themeAccentColorKey); // Удаляем ключ, если цвет сброшен
-     }
+    if (_prefs == null) await loadSettings();
+    if (color != null) {
+      await _prefs?.setInt(_themeAccentColorKey, color.value);
+    } else {
+      await _prefs?.remove(
+        _themeAccentColorKey,
+      ); // Удаляем ключ, если цвет сброшен
+    }
     accentColorNotifier.value = color; // Уведомляем
   }
 
-   Future<void> setMaterialYou(bool enabled) async {
-     if (_prefs == null) await loadSettings();
-     await _prefs?.setBool(_themeMaterialYouKey, enabled);
-     materialYouNotifier.value = enabled; // Уведомляем
-   }
+  Future<void> setMaterialYou(bool enabled) async {
+    if (_prefs == null) await loadSettings();
+    await _prefs?.setBool(_themeMaterialYouKey, enabled);
+    materialYouNotifier.value = enabled; // Уведомляем
+  }
 
   Future<void> setDefaultRoomId(String? roomId) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_defaultRoomIdKey, roomId ?? ''); // Сохраняем ID или пустую строку, если null
+    await prefs.setString(
+      _defaultRoomIdKey,
+      roomId ?? '',
+    ); // Сохраняем ID или пустую строку, если null
   }
 
   String? getDefaultRoomId() {
@@ -78,7 +88,7 @@ class SettingsService {
     if (teacherId != null) {
       await _prefs?.setString(_defaultTeacherIdKey, teacherId);
     } else {
-       await _prefs?.remove(_defaultTeacherIdKey);
+      await _prefs?.remove(_defaultTeacherIdKey);
     }
     print('setDefaultTeacherId: $teacherId'); // Для отладки
     // Тут можно добавить notifier, если нужно
@@ -88,22 +98,20 @@ class SettingsService {
     return _prefs?.getString(_defaultTeacherIdKey);
   }
 
-
   Future<void> setDefaultGroupId(String? groupId) async {
     if (_prefs == null) await loadSettings();
     if (groupId != null) {
       await _prefs?.setString(_defaultGroupIdKey, groupId);
     } else {
-       await _prefs?.remove(_defaultGroupIdKey);
+      await _prefs?.remove(_defaultGroupIdKey);
     }
     // Тут можно добавить notifier, если нужно
   }
 
   String? getDefaultGroupId() {
-     // Возвращаем сразу из SharedPreferences (можно кэшировать, если надо)
-     return _prefs?.getString(_defaultGroupIdKey);
+    // Возвращаем сразу из SharedPreferences (можно кэшировать, если надо)
+    return _prefs?.getString(_defaultGroupIdKey);
   }
-
 }
 
 // --- Глобальный экземпляр сервиса (Singleton Pattern) ---

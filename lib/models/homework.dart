@@ -60,7 +60,10 @@ class Homework {
       subgroup: json['subgroup'] as String?,
       task: json['task'] as String,
       dueDate: (json['dueDate'] as Timestamp).toDate(),
-      photoUrls: (json['photoUrls'] as List<dynamic>?)?.map((item) => item as String).toList(),
+      photoUrls:
+          (json['photoUrls'] as List<dynamic>?)
+              ?.map((item) => item as String)
+              .toList(),
       dateAdded: (json['dateAdded'] as Timestamp).toDate(),
       isLocal: false,
     );

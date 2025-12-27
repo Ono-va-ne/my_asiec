@@ -1,11 +1,11 @@
 class ScheduleEntry {
   final String discipline; // Название дисциплины
-  final String teacher;    // Имя преподавателя
-  final String group;      // Группа
-  final String startTime;  // Время начала
-  final String endTime;    // Время окончания
-  final String building;   // Корпус
-  final String room;       // Аудитория
+  final String teacher; // Имя преподавателя
+  final String group; // Группа
+  final String startTime; // Время начала
+  final String endTime; // Время окончания
+  final String building; // Корпус
+  final String room; // Аудитория
   final DateTime date;
 
   ScheduleEntry({

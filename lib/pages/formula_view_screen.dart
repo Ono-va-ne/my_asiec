@@ -7,6 +7,7 @@ class FormulaViewScreen extends StatelessWidget {
   final String description;
   final String imageUrl;
   final String latexFormula;
+  final String tags;
 
   const FormulaViewScreen({
     super.key,
@@ -15,14 +16,13 @@ class FormulaViewScreen extends StatelessWidget {
     required this.description,
     required this.imageUrl,
     required this.latexFormula,
+    required this.tags,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-      ),
+      appBar: AppBar(title: Text(title)),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,7 +38,7 @@ class FormulaViewScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // LaTeX Formula
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -53,10 +53,7 @@ class FormulaViewScreen extends StatelessWidget {
             // Description
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Text(
-                description,
-                style: const TextStyle(fontSize: 16),
-              ),
+              child: Text(description, style: const TextStyle(fontSize: 16)),
             ),
           ],
         ),

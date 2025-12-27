@@ -67,7 +67,10 @@ class GroupsService {
 
       // Если вернулся уже список
       if (response is List) {
-        rows = (response as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        rows =
+            (response as List)
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .toList();
       } else {
         // Попробуем получить поле data (PostgrestResponse / PostgrestList и т.д.)
         dynamic dataField;
@@ -95,11 +98,21 @@ class GroupsService {
         }
 
         if (dataField is List) {
-          rows = (dataField as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-        } else if (response is Map && response.containsKey('data') && response['data'] is List) {
-          rows = (response['data'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          rows =
+              (dataField as List)
+                  .map((e) => Map<String, dynamic>.from(e as Map))
+                  .toList();
+        } else if (response is Map &&
+            response.containsKey('data') &&
+            response['data'] is List) {
+          rows =
+              (response['data'] as List)
+                  .map((e) => Map<String, dynamic>.from(e as Map))
+                  .toList();
         } else {
-          throw Exception('Unexpected response shape from Supabase: ${response.runtimeType}');
+          throw Exception(
+            'Unexpected response shape from Supabase: ${response.runtimeType}',
+          );
         }
       }
     } catch (e) {

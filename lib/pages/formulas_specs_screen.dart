@@ -27,17 +27,22 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(title: const Text('Специальности')),
         body: FutureBuilder<List<Map<String, dynamic>>>(
           future: _future,
           builder: (context, snap) {
-            if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-            if (snap.hasError) return Center(child: Text('Ошибка: ${snap.error}'));
+            if (snap.connectionState != ConnectionState.done)
+              return const Center(child: CircularProgressIndicator());
+            if (snap.hasError)
+              return Center(child: Text('Ошибка: ${snap.error}'));
             final items = snap.data ?? [];
             return GridView.builder(
               padding: const EdgeInsets.all(12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, childAspectRatio: 1, crossAxisSpacing: 1, mainAxisSpacing: 1),
+                crossAxisCount: 2,
+                childAspectRatio: 1,
+                crossAxisSpacing: 1,
+                mainAxisSpacing: 1,
+              ),
               itemCount: items.length,
               itemBuilder: (context, i) {
                 final sp = items[i];
@@ -46,10 +51,11 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => FormulasBySpecialtyScreen(
-                          specialtyId: sp['id'],
-                          specialtyName: sp['name'] ?? 'Специальность',
-                        ),
+                        builder:
+                            (_) => FormulasBySpecialtyScreen(
+                              specialtyId: sp['id'],
+                              specialtyName: sp['name'] ?? 'Специальность',
+                            ),
                       ),
                     );
                   },
@@ -63,7 +69,10 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                             children: [
                               Text(
                                 sp['name'] ?? 'Специальность',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 4),

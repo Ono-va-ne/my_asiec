@@ -30,15 +30,11 @@ class GroupDataUploader {
 
         if (docSnapshot.exists) {
           // Если документ существует, обновляем его
-          await docRef.update({
-            'name': group.name,
-          });
+          await docRef.update({'name': group.name});
           print('Группа ${group.name} с ID ${group.id} обновлена.');
         } else {
           // Если документ не существует, создаем его
-          await docRef.set({
-            'name': group.name,
-          });
+          await docRef.set({'name': group.name});
           print('Группа ${group.name} с ID ${group.id} добавлена.');
         }
       }
