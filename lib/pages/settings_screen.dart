@@ -3,7 +3,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart'; // Импортируем пакет для получения информации о приложении
 import '../services/settings_service.dart'; // Импортируем сервис
-import '../data/groups.dart'; // Импортируем список групп
+import '../data/groups.dart'; // Импортируем список групп (fallback)
+import '../services/groups_service.dart';
+import '../models/group_info.dart';
 import '../data/teachers.dart';
 import '../data/rooms.dart'; // Импортируем список аудиторий
 // import '../models/group_info.dart'; // Импортируем модель группы
@@ -21,7 +23,7 @@ Future<void> _launchTG(BuildContext context) async {
 }
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -32,12 +34,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _selectedTeacherId;
   String? _selectedRoomId;
   String _appVersion = 'Загрузка...';
+  final _groupsService = GroupsService();
+  List<GroupInfo> _supabaseGroups = [];
 
   // Инициализируем с пустыми значениями
   @override
   void initState() {
     super.initState();
     _loadAppVersion();
+    _loadGroups();
     // Загружаем текущую выбранную группу при инициализации
     _selectedGroupId = settingsService.getDefaultGroupId();
     _selectedTeacherId = settingsService.getDefaultTeacherId();
@@ -45,6 +50,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Мы не используем ValueListenableBuilder здесь, т.к. нам не нужно
     // динамически перестраивать весь экран при смене группы,
     // достаточно обновить Dropdown при выборе.
+  }
+
+  Future<void> _loadGroups() async {
+    try {
+      final groups = await _groupsService.getGroups();
+      if (mounted) setState(() => _supabaseGroups = groups);
+    } catch (e) {
+      print('Ошибка загрузки групп из Supabase: $e');
+    }
   }
 
   Future<void> _loadAppVersion() async {
@@ -98,7 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: EdgeInsets.symmetric(vertical: 8.0),
         children: [
           // --- Секция: Группа по умолчанию ---
-          _buildSectionHeader('Умолчания'),
+          _buildSectionHeader('Расписание'),
           ListTile(
             leading: Icon(Icons.group_outlined),
             title: Text('Группа'),
@@ -111,15 +125,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: _selectedGroupId,
                   hint: Text('Не выбрана'),
                   // Фильтруем список, чтобы не было ошибки, если сохраненный ID невалиден
-                  items:
-                      availableGroupsData
-                          .map(
-                            (group) => DropdownMenuItem<String>(
-                              value: group.id,
-                              child: Text(group.name),
-                            ),
-                          )
-                          .toList(),
+                  items: (_supabaseGroups.isNotEmpty ? _supabaseGroups : availableGroupsData)
+                      .map((group) => DropdownMenuItem<String>(
+                            value: group.id,
+                            child: Text(group.name),
+                          ))
+                      .toList(),
                   onChanged: (String? newGroupId) {
                     if (newGroupId != null) {
                       setState(() {
@@ -213,6 +224,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
+          ValueListenableBuilder<bool>(
+            valueListenable: settingsService.showBreaksInScheduleNotifier,
+            builder: (context, isBreaksEnabled, _) {
+              return SwitchListTile(
+                secondary: Icon(Icons.free_breakfast_outlined),
+                title: Text('Отображать перемены'),
+                value: isBreaksEnabled,
+                onChanged: (bool enabled) {
+                  settingsService.setShowBreaksInSchedule(enabled);
+                },
+              );
+            },
+          ),
+
           Divider(),
 
           // --- Секция: Тема ---
@@ -259,7 +284,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             builder: (context, isMaterialYouEnabled, _) {
               return SwitchListTile(
                 secondary: Icon(Icons.color_lens_outlined),
-                title: Text('Динамические цвета (Material You)'),
+                title: Text('Динамические оформление'),
                 subtitle: Text('Использовать цвета обоев (Android 12+)'),
                 value: isMaterialYouEnabled,
                 onChanged: (bool enabled) {
@@ -282,7 +307,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('О разработчике'),
+            title: Text('О приложении'),
             onTap: () {
               showDialog(
                 context: context,
@@ -292,7 +317,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       applicationVersion:
                           _appVersion, // TODO: Получать версию динамически
                       applicationIcon: svg, // Или иконка твоего приложения
-                      applicationLegalese: '©2025 Onovane',
+                      applicationLegalese: '©2026 Onovane',
                       children: [
                         Padding(
                           padding: const EdgeInsets.only(top: 16.0),

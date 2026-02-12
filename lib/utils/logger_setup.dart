@@ -63,15 +63,15 @@ Future<void> setupLogging() async {
     // logger = Logger(...) // Не можем пересоздать final logger
     // Вместо этого, создадим FileOutput здесь и передадим его как кастомный output
 
-    final fileOutput = FileOutput(
-      file: _logFile,
-      overrideExisting: false, // Не перезаписывать файл при старте, а добавлять
-      encoding: const SystemEncoding(), // Использовать кодировку системы
-      // TODO: Настроить ротацию логов!
-      // Например, чтобы файл не рос бесконечно:
-      // fileOutput.stream // FileOutput не предоставляет прямого API для ротации в v2
-      // Потребуется либо своя реализация, либо сторонний пакет (см. ниже)
-    );
+    // final fileOutput = FileOutput(
+    //   file: _logFile,
+    //   overrideExisting: false, // Не перезаписывать файл при старте, а добавлять
+    //   encoding: const SystemEncoding(), // Использовать кодировку системы
+    //   // TODO: Настроить ротацию логов!
+    //   // Например, чтобы файл не рос бесконечно:
+    //   // fileOutput.stream // FileOutput не предоставляет прямого API для ротации в v2
+    //   // Потребуется либо своя реализация, либо сторонний пакет (см. ниже)
+    // );
 
     // Переконфигурируем глобальный логгер
     Logger.level =

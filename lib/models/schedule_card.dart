@@ -5,6 +5,7 @@ import 'schedule_entry.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 import '../models/homework.dart'; // Импорт модели Homework
 import 'package:collection/collection.dart';
+import '../pages/homework_view_screen.dart';
 
 // import '../models/daily_schedule.dart';
 // import '../pages/schedule_screen.dart';
@@ -40,7 +41,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
   void initState() {
     super.initState();
     // Обновляем прогресс каждые 15 секунд чтобы индикатор плавно шёл
-    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (mounted) setState(() {});
     });
   }
@@ -58,15 +59,11 @@ class _ScheduleCardState extends State<ScheduleCard> {
     List<ScheduleEntry> allEntriesForDay,
   ) {
     final entry = widget.entry;
-    print(
-      "--- _getEntryStatus для занятия: ${entry.discipline} ${entry.startTime}-${entry.endTime} ---",
-    ); // Отладочный вывод в начале
+    // debug: _getEntryStatus for entry
 
     if (!isSameDay(entry.date, currentTime)) {
       // <--- НОВАЯ ПРОВЕРКА ДАТЫ!
-      print(
-        "  Дата занятия не сегодня, статус: normal",
-      ); // Отладка: проверка даты
+      // Дата не сегодня
       return ScheduleEntryStatus
           .normal; // Если дата занятия НЕ сегодня, то это обычная пара
     }
@@ -76,9 +73,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
     final endTime = _parseTime(entry.endTime);
 
     if (startTime == null || endTime == null) {
-      print(
-        "  Ошибка парсинга времени, статус: normal",
-      ); // Отладка: ошибка парсинга
+      // Ошибка парсинга времени
       return ScheduleEntryStatus
           .normal; // Не удалось распарсить время - считаем обычной
     }
@@ -96,26 +91,20 @@ class _ScheduleCardState extends State<ScheduleCard> {
       minute: endTime.minute,
     );
 
-    print(
-      "  Текущее время: $nowTime, Время начала занятия: $entryStartTimeOfDay, Время конца занятия: $entryEndTimeOfDay",
-    ); // Отладка: значения времени
+    // debug: current/entry times
 
     if (isCurrentTimeInEntry(nowTime, entryStartTimeOfDay, entryEndTimeOfDay)) {
-      print(
-        "  Текущее время попадает в интервал занятия, статус: current",
-      ); // Отладка: текущая пара
+      // current entry
       return ScheduleEntryStatus.current;
     } else if (isTimeBeforeEntry(
       nowTime,
       entryStartTimeOfDay,
       entryEndTimeOfDay,
     )) {
-      print(
-        "  Текущее время позже начала занятия, статус: next",
-      ); // Отладка: ближайшая пара
+      // next entry
       return ScheduleEntryStatus.next;
     } else {
-      print("  Текущее время не попадает в интервал занятия, статус: normal");
+      // normal status
     }
 
     // --- НОВАЯ ЛОГИКА для "ближайшей пары" ---
@@ -150,8 +139,9 @@ class _ScheduleCardState extends State<ScheduleCard> {
       futureEntries.sort((a, b) {
         final startTimeA = _parseTime(a.startTime);
         final startTimeB = _parseTime(b.startTime);
-        if (startTimeA == null || startTimeB == null)
+        if (startTimeA == null || startTimeB == null) {
           return 0; // Если время не распарсилось, не меняем порядок
+        }
         return startTimeA.hour.compareTo(startTimeB.hour) != 0
             ? startTimeA.hour.compareTo(startTimeB.hour)
             : startTimeA.minute.compareTo(startTimeB.minute);
@@ -197,13 +187,12 @@ class _ScheduleCardState extends State<ScheduleCard> {
   }
 
   bool isSameDay(DateTime entryDate, DateTime nowTime) {
-    print("--- isSameDay: сравниваем даты ---");
-    print("  Дата занятия: $entryDate, Дата сейчас: $nowTime");
+    // isSameDay comparison
     bool result =
         entryDate.year == nowTime.year &&
         entryDate.month == nowTime.month &&
         entryDate.day == nowTime.day;
-    print("  Результат: $result");
+    // result logged if needed
     return result;
   }
 
@@ -244,38 +233,21 @@ class _ScheduleCardState extends State<ScheduleCard> {
     TimeOfDay startTimeOfDay,
     TimeOfDay endTimeOfDay,
   ) {
-    print("--- isTimeBeforeEntry: Сравнение времени ---"); // Начало метода
-
-    print(
-      "  Текущее время (nowTime): $nowTime, Время начала занятия (startTimeOfDay): $startTimeOfDay",
-    ); // Значения времени
-
+    // isTimeBeforeEntry: compare times
     if (nowTime.hour < startTimeOfDay.hour) {
-      print(
-        "  Условие: $nowTime.hour < $startTimeOfDay.hour  => TRUE (Часы текущего времени МЕНЬШЕ часов начала занятия)",
-      ); // Условие 1 и результат TRUE
+      // condition 1 true
       return true;
     } else {
-      print(
-        "  Условие: $nowTime.hour < $startTimeOfDay.hour  => FALSE (Часы текущего времени НЕ МЕНЬШЕ часов начала занятия)",
-      ); // Условие 1 и результат FALSE
+      // condition 1 false
     }
-
     if (nowTime.hour == startTimeOfDay.hour &&
         nowTime.minute < startTimeOfDay.minute) {
-      print(
-        "  Условие: nowTime.hour == startTimeOfDay.hour && nowTime.minute < startTimeOfDay.minute  => TRUE (Часы равны, минуты текущего времени МЕНЬШЕ минут начала занятия)",
-      ); // Условие 2 и результат TRUE
+      // condition 2 true
       return true;
     } else {
-      print(
-        "  Условие: nowTime.hour == startTimeOfDay.hour && nowTime.minute < startTimeOfDay.minute  => FALSE (Условие 2 не выполнено)",
-      ); // Условие 2 и результат FALSE
+      // condition 2 false
     }
-
-    print(
-      "  Ни одно из условий не выполнено, возвращаем FALSE",
-    ); // Если дошли до сюда, значит, ни одно условие не выполнилось
+    // no conditions matched, return false
     return false;
   }
 
@@ -286,7 +258,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
       final dateTime = format.parse(timeString);
       return TimeOfDay.fromDateTime(dateTime);
     } catch (e) {
-      print("Ошибка парсинга времени: $timeString");
+      // Ошибка парсинга времени
       return null;
     }
   }
@@ -325,9 +297,9 @@ class _ScheduleCardState extends State<ScheduleCard> {
           hwDisciplineMain.contains(entryDisciplineMain);
       return disciplineMatch &&
           hw.group == widget.entry.group &&
-          hw.dueDate.year == widget.entry.date.year &&
-          hw.dueDate.month == widget.entry.date.month &&
-          hw.dueDate.day == widget.entry.date.day &&
+          hw.due_date.year == widget.entry.date.year &&
+          hw.due_date.month == widget.entry.date.month &&
+          hw.due_date.day == widget.entry.date.day &&
           subgroupMatch;
     });
 
@@ -368,21 +340,14 @@ class _ScheduleCardState extends State<ScheduleCard> {
     return InkWell(
       onTap:
           hasHomework
-              ? () {
-                showDialog(
-                  context: context,
-                  builder:
-                      (context) => AlertDialog(
-                        title: Text('Домашнее задание'),
-                        content: Text(foundHomework!.task),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text('Закрыть'),
-                          ),
-                        ],
-                      ),
-                );
+              ? () { // Если есть ДЗ, открываем экран просмотра
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          HomeworkViewScreen(homeworkEntry: foundHomework),
+                    ),
+                  );
               }
               : null,
       borderRadius: BorderRadius.circular(12.0),

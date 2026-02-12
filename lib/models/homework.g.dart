@@ -20,12 +20,12 @@ class HomeworkAdapter extends TypeAdapter<Homework> {
       id: fields[0] as String?,
       discipline: fields[1] as String,
       group: fields[2] as String,
-      groupId: fields[3] as String,
+      group_id: fields[3] as String,
       subgroup: fields[4] as String?,
       task: fields[5] as String,
-      dueDate: fields[6] as DateTime,
-      photoUrls: (fields[7] as List?)?.cast<String>(),
-      dateAdded: fields[8] as DateTime,
+      due_date: fields[6] as DateTime,
+      photo_urls: (fields[7] as List?)?.cast<String>(),
+      date_added: fields[8] as DateTime,
       isLocal: fields[9] as bool,
     );
   }
@@ -41,17 +41,17 @@ class HomeworkAdapter extends TypeAdapter<Homework> {
       ..writeByte(2)
       ..write(obj.group)
       ..writeByte(3)
-      ..write(obj.groupId)
+      ..write(obj.group_id)
       ..writeByte(4)
       ..write(obj.subgroup)
       ..writeByte(5)
       ..write(obj.task)
       ..writeByte(6)
-      ..write(obj.dueDate)
+      ..write(obj.due_date)
       ..writeByte(7)
-      ..write(obj.photoUrls)
+      ..write(obj.photo_urls)
       ..writeByte(8)
-      ..write(obj.dateAdded)
+      ..write(obj.date_added)
       ..writeByte(9)
       ..write(obj.isLocal);
   }

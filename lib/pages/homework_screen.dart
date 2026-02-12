@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/homework.dart';
 import 'homework_edit_screen.dart';
 import 'package:intl/intl.dart';
@@ -9,36 +9,51 @@ import '../services/settings_service.dart'; // Импортируем серви
 import '../pages/homework_view_screen.dart';
 
 class HomeworkScreen extends StatefulWidget {
-  const HomeworkScreen({Key? key}) : super(key: key);
+  const HomeworkScreen({super.key});
 
   @override
   _HomeworkScreenState createState() => _HomeworkScreenState();
 }
 
 class _HomeworkScreenState extends State<HomeworkScreen> {
-  final _firestore = FirebaseFirestore.instance;
+  final _client = Supabase.instance.client;
   final _localHomeworkService = LocalHomeworkService();
   String? _userGroupId; // ID группы пользователя из настроек
+  Stream<List<Homework>>? _combinedStream;
 
-  bool _isDueDateTodayOrFuture(DateTime dueDate) {
+  bool _isdue_dateTodayOrFuture(DateTime dueDate) {
     final now = DateTime.now();
-    // Создаем объекты DateTime, представляющие начало текущего дня и начало даты сдачи
     final todayStart = DateTime(now.year, now.month, now.day);
-    final dueDateStart = DateTime(
-      dueDate.year,
-      dueDate.month,
-      dueDate.day,
-    ); // Игнорируем время в дате сдачи
-
-    // Проверяем, является ли дата сдачи сегодня или позже сегодняшнего дня
-    return dueDateStart.isAtSameMomentAs(todayStart) ||
-        dueDateStart.isAfter(todayStart);
+    final dueDatestart = DateTime(dueDate.year, dueDate.month, dueDate.day);
+    return dueDatestart.isAtSameMomentAs(todayStart) || dueDatestart.isAfter(todayStart);
   }
 
   @override
   void initState() {
     super.initState();
-    _loadUserGroupId(); // Загружаем ID группы пользователя при инициализации
+    _setupAndLoadData();
+  }
+
+  void _setupAndLoadData() {
+    _loadUserGroupId();
+    final firebaseStream = _client
+        .from('homework')
+        .stream(primaryKey: ['id'])
+        .order('due_date')
+        .map((rows) => (rows as List)
+            .map((row) => Homework.fromJson(
+                row as Map<String, dynamic>, (row['id'] ?? '').toString()))
+            .toList());
+    final localStream = _localHomeworkService.getHomeworkStream();
+
+    _combinedStream = Rx.combineLatest2<List<Homework>, List<Homework>,
+        List<Homework>>(firebaseStream, localStream,
+        (firebaseHomeworks, localHomeworks) {
+      final allHomeworks = [...localHomeworks, ...firebaseHomeworks];
+      allHomeworks.sort((a, b) => a.due_date.compareTo(b.due_date));
+      return allHomeworks;
+    });
+    if (mounted) setState(() {});
   }
 
   // Метод для загрузки ID группы пользователя из настроек
@@ -49,50 +64,18 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     });
   }
 
+  Future<void> _refreshHomework() async {
+    // В данном случае потоки обновляются автоматически.
+    // Мы можем просто подождать немного для имитации загрузки
+    // и чтобы дать время потокам синхронизироваться, если есть задержки.
+    await Future.delayed(const Duration(seconds: 1));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final firebaseStream =
-        _firestore.collection('homework').orderBy('dueDate').snapshots();
-    final localStream = _localHomeworkService.getHomeworkStream();
-
-    // --- Объединяем два потока в один! ---
-    final combinedStream = Rx.combineLatest2<
-      QuerySnapshot,
-      List<Homework>,
-      List<Homework>
-    >(
-      // <--- Используем combineLatest2!
-      firebaseStream, // Первый поток (Firebase)
-      localStream, // Второй поток (Hive)
-      (firebaseSnapshot, localHomeworks) {
-        // Функция-комбинатор: принимает последние значения из обоих потоков
-        // Преобразуем документы из Firebase в List<Homework>
-        final firebaseHomeworks =
-            firebaseSnapshot.docs.map((doc) {
-              return Homework.fromJson(
-                doc.data() as Map<String, dynamic>,
-                doc.id,
-              );
-            }).toList();
-
-        // Объединяем списки: сначала локальные, потом из Firebase (или наоборот - как удобно)
-        // Важно: нужно убедиться, что нет дубликатов, если одна и та же запись может быть и там, и там (в нашем случае такого быть не должно, т.к. isLocal флаг)
-        final allHomeworks = [
-          ...localHomeworks,
-          ...firebaseHomeworks,
-        ]; // <--- Объединяем списки!
-
-        // Возможно, сортируем объединенный список по дате сдачи
-        allHomeworks.sort(
-          (a, b) => a.dueDate.compareTo(b.dueDate),
-        ); // <--- Сортируем по дате сдачи
-
-        return allHomeworks; // Возвращаем объединенный и отсортированный список
-      },
-    );
     return Scaffold(
       body: StreamBuilder<List<Homework>>(
-        stream: combinedStream,
+        stream: _combinedStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting ||
               snapshot.connectionState == ConnectionState.none) {
@@ -110,7 +93,20 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
           }
 
           if (homeworkEntries.isEmpty) {
-            return const Center(child: Text('Домашних заданий пока нет.'));
+            return RefreshIndicator(
+              onRefresh: _refreshHomework,
+              // child:
+              //     const Center(child: Text('Домашних заданий пока нет.')),
+              child: LayoutBuilder(builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: const Center(child: Text('Домашних заданий пока нет.')),
+                  ),
+                );
+              }),
+            );
           }
 
           // Фильтруем ДЗ по группе пользователя
@@ -119,18 +115,34 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                   .where(
                     (entry) =>
                         (_userGroupId == null ||
-                            (entry.groupId == _userGroupId)) &&
-                        _isDueDateTodayOrFuture(entry.dueDate),
+                            (entry.group_id == _userGroupId)) &&
+                        _isdue_dateTodayOrFuture(entry.due_date),
                   )
                   .toList();
 
           if (filteredHomeworkEntries.isEmpty) {
-            return const Center(
-              child: Text('Домашних заданий для вашей группы пока нет.'),
+            return RefreshIndicator(
+              onRefresh: _refreshHomework,
+              // child: const Center(
+              //   child: Text('Домашних заданий для вашей группы пока нет.'),
+              child: LayoutBuilder(builder: (context, constraints) {
+                return SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: const Center(
+                      child: Text('Домашних заданий для вашей группы пока нет.'),
+                    ),
+                  ),
+                );
+              }),
+              // ),
             );
           }
 
-          return ListView.builder(
+          return RefreshIndicator(
+            onRefresh: _refreshHomework,
+            child: ListView.builder(
             itemCount: filteredHomeworkEntries.length,
             itemBuilder: (context, index) {
               final entry = filteredHomeworkEntries[index];
@@ -182,23 +194,20 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                       '  Вызов удаления из Hive завершен.',
                     ); // Отладка: вызов завершен
                   } else {
-                    // Удалить из Firebase
+                    // Удалить из Supabase
                     print(
-                      '  Вызываем удаление из Firebase для ID: ${entry.id}',
-                    ); // Отладка: вызываем Firebase
+                      '  Вызываем удаление из Supabase для ID: ${entry.id}',
+                    );
                     try {
-                      await _firestore
-                          .collection('homework')
-                          .doc(entry.id!)
-                          .delete();
-                      print(
-                        '  Вызов удаления из Firebase завершен.',
-                      ); // Отладка: вызов завершен
+                      await _client
+                          .from('homework')
+                          .delete()
+                          .eq('id', entry.id!);
+                      print('  Вызов удаления из Supabase завершен.');
                     } catch (e) {
                       print(
-                        "Ошибка при удалении УДАЛЕННОГО ДЗ из Firebase: $e",
+                        "Ошибка при удалении УДАЛЕННОГО ДЗ из Supabase: $e",
                       );
-                      // TODO: Обработать ошибку удаления
                     }
                   }
                   print('Конец onDismissed.'); // Отладка: конец Dismissed
@@ -230,7 +239,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                         Text(entry.group),
                         const SizedBox(height: 4.0),
                         Text(
-                          'Срок сдачи: ${DateFormat('dd.MM.yyyy').format(entry.dueDate)}',
+                          'Срок сдачи: ${DateFormat('dd.MM.yyyy').format(entry.due_date)}',
                         ),
                       ],
                     ),
@@ -254,15 +263,15 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                         // Если есть подгруппа И есть хотя бы одна иконка, добавляем небольшой вертикальный отступ
                         if (entry.subgroup != null &&
                             (entry.isLocal ||
-                                (entry.photoUrls != null &&
-                                    entry.photoUrls!.isNotEmpty)))
+                                (entry.photo_urls != null &&
+                                    entry.photo_urls!.isNotEmpty)))
                           const SizedBox(height: 4),
 
                         // Отображаем иконки (если они нужны) в горизонтальном ряду
                         if (entry.isLocal ||
-                            (entry.photoUrls != null &&
+                            (entry.photo_urls != null &&
                                 entry
-                                    .photoUrls!
+                                    .photo_urls!
                                     .isNotEmpty)) // Показываем Row с иконками только если хотя бы одна иконка нужна
                           Row(
                             mainAxisSize:
@@ -284,15 +293,15 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
 
                               // Если есть иконка локального ДЗ И иконка фото, добавляем горизонтальный отступ
                               if (entry.isLocal &&
-                                  (entry.photoUrls != null &&
-                                      entry.photoUrls!.isNotEmpty))
+                                  (entry.photo_urls != null &&
+                                      entry.photo_urls!.isNotEmpty))
                                 const SizedBox(
                                   width: 4,
                                 ), // Небольшой горизонтальный отступ
                               // Иконка для ДЗ с фотографиями
-                              if (entry.photoUrls != null &&
+                              if (entry.photo_urls != null &&
                                   entry
-                                      .photoUrls!
+                                      .photo_urls!
                                       .isNotEmpty) // Показываем, если есть фото
                                 Icon(
                                   Icons.image, // Или Icons.photo
@@ -308,7 +317,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                     ),
                     onTap: () {
                       print(
-                        'Нажали на ДЗ: ${entry.discipline}, groupId: ${entry.groupId}',
+                        'Нажали на ДЗ: ${entry.discipline}, group_id: ${entry.group_id}',
                       );
                       Navigator.push(
                         context,
@@ -326,7 +335,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                 ),
               );
             },
-          );
+          ));
         },
       ),
       floatingActionButton: FloatingActionButton(

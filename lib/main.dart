@@ -3,13 +3,13 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_tex/flutter_tex.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../pages/schedule_screen.dart';
 import '../pages/settings_screen.dart';
 import '../pages/homework_screen.dart';
-import '../pages/formulas_screen.dart';
 import '../pages/formulas_specs_screen.dart';
 
 import '../models/homework.dart';
@@ -62,6 +62,7 @@ void main() async {
       // final uploader = GroupDataUploader();
       // uploader.uploadGroups();
       FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true);
+      await TeXRenderingServer.start();
       runApp(MyApp());
     },
     (error, stackTrace) {

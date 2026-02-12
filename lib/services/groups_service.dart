@@ -22,7 +22,7 @@ class GroupsService {
       final cached = box.get(_cacheKey);
       if (cached != null && cached is List) {
         try {
-          return (cached as List)
+          return (cached)
               .map((e) => GroupInfo.fromJson(Map<String, dynamic>.from(e)))
               .toList();
         } catch (_) {
@@ -50,7 +50,7 @@ class GroupsService {
           // Все попытки упали — вернём кэш, если есть, иначе бросим
           final cached = box.get(_cacheKey);
           if (cached != null && cached is List) {
-            return (cached as List)
+            return (cached)
                 .map((e) => GroupInfo.fromJson(Map<String, dynamic>.from(e)))
                 .toList();
           }
@@ -68,7 +68,7 @@ class GroupsService {
       // Если вернулся уже список
       if (response is List) {
         rows =
-            (response as List)
+            (response)
                 .map((e) => Map<String, dynamic>.from(e as Map))
                 .toList();
       } else {
@@ -87,7 +87,7 @@ class GroupsService {
             // при ошибке вернём кэш, если есть
             final cached = box.get(_cacheKey);
             if (cached != null && cached is List) {
-              return (cached as List)
+              return (cached)
                   .map((e) => GroupInfo.fromJson(Map<String, dynamic>.from(e)))
                   .toList();
             }
@@ -99,7 +99,7 @@ class GroupsService {
 
         if (dataField is List) {
           rows =
-              (dataField as List)
+              (dataField)
                   .map((e) => Map<String, dynamic>.from(e as Map))
                   .toList();
         } else if (response is Map &&
@@ -119,7 +119,7 @@ class GroupsService {
       // при ошибке парсинга вернём кэш если есть, иначе пробросим
       final cached = box.get(_cacheKey);
       if (cached != null && cached is List) {
-        return (cached as List)
+        return (cached)
             .map((e) => GroupInfo.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       }

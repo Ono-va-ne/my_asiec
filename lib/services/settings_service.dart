@@ -9,6 +9,7 @@ const String _themeMaterialYouKey = 'app_theme_material_you';
 const String _defaultGroupIdKey = 'app_default_group_id';
 const String _defaultTeacherIdKey = 'default_teacher_id';
 const String _defaultRoomIdKey = 'default_room_id';
+const String _showBreaksInScheduleKey = 'show_breaks_in_schedule';
 
 class SettingsService {
   // --- Notifiers для оповещения об изменениях ---
@@ -20,6 +21,7 @@ class SettingsService {
     null,
   ); // null означает цвет по умолчанию
   final ValueNotifier<bool> materialYouNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> showBreaksInScheduleNotifier = ValueNotifier(true); // По умолчанию показываем
 
   SharedPreferences? _prefs; // Экземпляр SharedPreferences
 
@@ -39,6 +41,10 @@ class SettingsService {
 
     // Загрузка Material You
     materialYouNotifier.value = _prefs?.getBool(_themeMaterialYouKey) ?? false;
+
+    // Загрузка настройки отображения перемен
+    showBreaksInScheduleNotifier.value =
+        _prefs?.getBool(_showBreaksInScheduleKey) ?? true; // По умолчанию true
 
     // Загрузка группы по умолчанию (просто загружаем, слушатель не нужен напрямую)
     // String? defaultGroupId = _prefs?.getString(_defaultGroupIdKey);
@@ -69,6 +75,12 @@ class SettingsService {
     if (_prefs == null) await loadSettings();
     await _prefs?.setBool(_themeMaterialYouKey, enabled);
     materialYouNotifier.value = enabled; // Уведомляем
+  }
+
+  Future<void> setShowBreaksInSchedule(bool show) async {
+    if (_prefs == null) await loadSettings();
+    await _prefs?.setBool(_showBreaksInScheduleKey, show);
+    showBreaksInScheduleNotifier.value = show;
   }
 
   Future<void> setDefaultRoomId(String? roomId) async {

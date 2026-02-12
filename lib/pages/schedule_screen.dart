@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
@@ -6,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/schedule_card.dart';
+import '../models/break_card.dart';
 
 import '../models/daily_schedule.dart';
 
@@ -22,7 +24,7 @@ import '../services/groups_service.dart';
 
 import '../services/local_homework_service.dart';
 import '../services/schedule_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Для Firebase
+// Используем Supabase для домашних заданий (импорт уже выше)
 import '../models/homework.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -45,7 +47,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  final _firestore = FirebaseFirestore.instance;
+  final _client = Supabase.instance.client;
   final _localHomeworkService = LocalHomeworkService();
   final _groupsService = GroupsService();
 
@@ -60,6 +62,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   RoomInfo? _selectedRoom;
 
   // Константы для запроса
+  bool _showBreaks = true;
+
   final String _scheduleApiUrl = 'https://asiec.ru/ras/ras.php';
   final String _dostup = 'true';
 
@@ -77,51 +81,56 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   void _setScheduleType(ScheduleType newType) {
+    // switching type
     dynamic defaultSelectedObject; // Переменная для объекта по умолчанию
 
+    // Выбираем объект по умолчанию в зависимости от нового типа
     switch (newType) {
       case ScheduleType.grup:
-        defaultSelectedObject =
-            _selectedGroup; // Пытаемся использовать _selectedGroup по умолчанию
+        defaultSelectedObject = _selectedGroup;
         if (defaultSelectedObject == null && _availableGroups.isNotEmpty) {
-          defaultSelectedObject =
-              _availableGroups
-                  .first; // Если нет сохраненной, берем первый из списка
+          defaultSelectedObject = _availableGroups.first;
         }
         break;
       case ScheduleType.prep:
-        defaultSelectedObject =
-            _selectedTeacher; // Пытаемся использовать _selectedTeacher по умолчанию
+        defaultSelectedObject = _selectedTeacher;
         if (defaultSelectedObject == null && _availableTeachers.isNotEmpty) {
-          defaultSelectedObject =
-              _availableTeachers
-                  .first; // Если нет сохраненного, берем первый из списка
+          defaultSelectedObject = _availableTeachers.first;
         }
         break;
       case ScheduleType.aud:
-        if (_availableRooms.isNotEmpty) {
-          defaultSelectedObject =
-              _availableRooms
-                  .first; // Для аудиторий всегда берем первый из списка, если есть
+        // Сначала пробуем использовать уже выбранную аудиторию
+        defaultSelectedObject = _selectedRoom;
+        if (defaultSelectedObject == null && _availableRooms.isNotEmpty) {
+          defaultSelectedObject = _availableRooms.first;
         }
         break;
     }
 
+    // Обновляем состояние UI: тип расписания и очищаем список
     setState(() {
       _rasType = newType; // Обновляем тип расписания
       _errorMessage = null; // Сбрасываем сообщение об ошибке
-      _dailySchedules.clear(); // Очищаем текущее расписание
+      _dailySchedules = []; // Очищаем текущее расписание (новый список, не мутируем кэш)
 
-      // --- ВЫЗЫВАЕМ _loadScheduleData С ID ПО УМОЛЧАНИЮ (ИЛИ ПЕРВЫМ ИЗ СПИСКА)! ---
+      // Если у нас есть объект по умолчанию — присваиваем его соответствующему полю,
+      // чтобы дропдаун сразу показал корректное значение.
       if (defaultSelectedObject != null) {
-        _loadScheduleData(
-          _startDate,
-          _endDate,
-          newType,
-          defaultSelectedObject,
-        ); // <--- Загружаем данные, если есть объект по умолчанию
+        if (newType == ScheduleType.grup) _selectedGroup = defaultSelectedObject as GroupInfo;
+        if (newType == ScheduleType.prep) _selectedTeacher = defaultSelectedObject as TeacherInfo;
+        if (newType == ScheduleType.aud) _selectedRoom = defaultSelectedObject as RoomInfo;
       }
     });
+
+    // Вызов загрузки данных — вне setState чтобы не выполнять асинхронную операцию внутри.
+    if (defaultSelectedObject != null) {
+      _loadScheduleData(
+        _startDate,
+        _endDate,
+        newType,
+        defaultSelectedObject,
+      ); // Загружаем данные
+    }
   }
 
   String _getRasTypeValue(ScheduleType type) {
@@ -138,17 +147,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   void initState() {
     super.initState();
+    _showBreaks = settingsService.showBreaksInScheduleNotifier.value;
+    settingsService.showBreaksInScheduleNotifier.addListener(() {
+      if (mounted) setState(() => _showBreaks = settingsService.showBreaksInScheduleNotifier.value);
+    });
     // _initializeScheduleObjects(); // Инициализируем список И выбранную группу
     _loadAvailableGroups();
-    final firebaseStream = _firestore
-        .collection('homework')
-        .snapshots()
-        .map(
-          (snapshot) =>
-              snapshot.docs
-                  .map((doc) => Homework.fromJson(doc.data(), doc.id))
-                  .toList(),
-        );
+    final firebaseStream = _client
+      .from('homework')
+      .stream(primaryKey: ['id'])
+      .map((rows) => (rows as List)
+        .map((row) => Homework.fromJson(row as Map<String, dynamic>, (row['id'] ?? '').toString()))
+        .toList());
     final localStream = _localHomeworkService.getHomeworkStream();
     _homeworkStream =
         Rx.combineLatest2<List<Homework>, List<Homework>, List<Homework>>(
@@ -433,6 +443,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     ScheduleType scheduleType,
     dynamic selectedObject,
   ) async {
+    // _loadScheduleData called
     // Проверяем mounted перед первом setState
     if (!mounted) return;
     setState(() {
@@ -442,11 +453,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       _scheduleDateDisplay =
           '${_formatDateRangeForDisplay(_startDate, _endDate)} (Загрузка...)';
       _dailySchedules = [];
-    });
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _dailySchedules.clear();
     });
     String objectId =
         ''; // Переменная для ID объекта (группы, преподавателя, аудитории)
@@ -480,7 +486,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       rasParamName: objectId, // Используем ID выбранной группы
       'calendar': startDateString,
       'calendar2': endDateString,
-      'ras': _getRasTypeValue(_rasType), // Конвертим ScheduleType в String
+      'ras': _getRasTypeValue(scheduleType), // Конвертим ScheduleType в String (use parameter)
     };
 
     // --- Попытка взять из кеша перед выполнением сетевого запроса ---
@@ -498,19 +504,32 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         _endDate = endDate;
         _dailySchedules = cached;
         _scheduleDateDisplay =
-            '${_formatDateRangeForDisplay(_startDate, _endDate)}';
+            _formatDateRangeForDisplay(_startDate, _endDate);
         _isLoading = false;
         _errorMessage = null;
       });
+      // loaded from cache
       return; // Данные из кеша, не делаем запрос
     }
 
     try {
-      final response = await http.post(
-        Uri.parse(_scheduleApiUrl),
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: body,
-      );
+
+      // about to POST
+      http.Response response;
+      try {
+        response = await http
+            .post(
+          Uri.parse(_scheduleApiUrl),
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: body,
+        )
+            .timeout(const Duration(seconds: 15));
+
+        // HTTP response received
+      } on TimeoutException catch (e) {
+        print('ScheduleScreen: HTTP request timed out: $e');
+        rethrow;
+      }
 
       if (!mounted) return;
 
@@ -530,10 +549,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           _endDate = endDate;
           _dailySchedules = parsedData;
           _scheduleDateDisplay =
-              '${_formatDateRangeForDisplay(_startDate, _endDate)}'; // Обновляем отображение
+              _formatDateRangeForDisplay(_startDate, _endDate); // Обновляем отображение
           _isLoading = false;
           _errorMessage = null;
         });
+        // loaded from network
       } else {
         if (!mounted) return;
         setState(() {
@@ -709,7 +729,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               // onChanged теперь принимает dynamic
               setState(() {
                 _errorMessage = null;
-                _dailySchedules.clear();
+                _dailySchedules = [];
                 if (newValue != null) {
                   if (_rasType == ScheduleType.grup) {
                     _selectedGroup =
@@ -822,71 +842,94 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
 
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                //_errorMessage!, // Используем сообщение об ошибке как есть
-                'Не удалось загрузить расписание для ${_rasType == ScheduleType.grup
-                    ? "группы"
-                    : _rasType == ScheduleType.prep
-                    ? "преподавателя"
-                    : "аудитории"} ${_selectedGroup?.name ?? _selectedTeacher?.name ?? _selectedRoom?.name ?? "N/A"}.',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                  fontSize: 16,
+      // Оборачиваем ошибочный экран в RefreshIndicator, чтобы можно было обновить
+      return RefreshIndicator(
+        onRefresh: _refreshSchedule,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 16.0),
+          children: [
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Не удалось загрузить расписание для ${_rasType == ScheduleType.grup
+                          ? "группы"
+                          : _rasType == ScheduleType.prep
+                              ? "преподавателя"
+                              : "аудитории"} ${_selectedGroup?.name ?? _selectedTeacher?.name ?? _selectedRoom?.name ?? "N/A"}.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    Text(
+                      _errorMessage!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        dynamic selected;
+                        switch (_rasType) {
+                          case ScheduleType.grup:
+                            selected = _selectedGroup;
+                            break;
+                          case ScheduleType.prep:
+                            selected = _selectedTeacher;
+                            break;
+                          case ScheduleType.aud:
+                            selected = _selectedRoom;
+                            break;
+                        }
+                        if (selected != null) {
+                          _loadScheduleData(_startDate, _endDate, _rasType, selected);
+                        } else {
+                          _showSnackBar(context, "Сначала выберите объект");
+                        }
+                      },
+                      child: Text('Повторить попытку'),
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
               ),
-              Text(
-                // Показываем саму ошибку ниже
-                _errorMessage!, // Тут само исключение
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  fontSize: 12,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  dynamic selected;
-                  switch (_rasType) {
-                    case ScheduleType.grup:
-                      selected = _selectedGroup;
-                      break;
-                    case ScheduleType.prep:
-                      selected = _selectedTeacher;
-                      break;
-                    case ScheduleType.aud:
-                      selected = _selectedRoom;
-                      break;
-                  }
-                  if (selected != null) {
-                    _loadScheduleData(_startDate, _endDate, _rasType, selected);
-                  } else {
-                    _showSnackBar(context, "Сначала выберите объект");
-                  }
-                },
-                child: Text('Повторить попытку'),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }
+
+    // Если расписание пустое — показываем текст внутри ListView, чтобы сработал pull-to-refresh
     if (_dailySchedules.isEmpty) {
-      return Center(
-        child: Text(
-          'Пусто ¯\\_(ツ)_/¯', // Добавили группу
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+      return RefreshIndicator(
+        onRefresh: _refreshSchedule,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.only(bottom: 16.0),
+          children: [
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 120.0),
+                child: Text(
+                  'Пусто ¯\\_(ツ)_/¯',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
+
     // Используем ListView для отображения дней и их пар
     return RefreshIndicator(
       onRefresh: _refreshSchedule,
@@ -938,21 +981,64 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   ),
                 )
               else
-                // Используем Column, т.к. пар обычно не так много за день,
-                // и это проще чем вложенный ListView.
-                // Если пар может быть ОЧЕНЬ много, можно заменить на ListView(shrinkWrap: true, physics: NeverScrollableScrollPhysics())
-                Column(
-                  children:
-                      dailySchedule.entries.map(
-                        (entry) {
-                          return ScheduleCard(
-                            entry: entry,
-                            allEntriesForDay: dailySchedule.entries,
-                            homeworks: allHomeworks,
-                          );
-                        },
-                      ).toList(), // Преобразуем результат map в список виджетов
-                ),
+                Builder(builder: (context) {
+                  // Сортируем пары по времени начала
+                  dailySchedule.entries.sort((a, b) {
+                    try {
+                      final timeA = TimeOfDay(
+                          hour: int.parse(a.startTime.split(':')[0]),
+                          minute: int.parse(a.startTime.split(':')[1]));
+                      final timeB = TimeOfDay(
+                          hour: int.parse(b.startTime.split(':')[0]),
+                          minute: int.parse(b.startTime.split(':')[1]));
+                      final minutesA = timeA.hour * 60 + timeA.minute;
+                      final minutesB = timeB.hour * 60 + timeB.minute;
+                      return minutesA.compareTo(minutesB);
+                    } catch (e) {
+                      return 0;
+                    }
+                  });
+
+                  List<Widget> scheduleWidgets = [];
+                  for (int i = 0; i < dailySchedule.entries.length; i++) {
+                    final entry = dailySchedule.entries[i];
+                    scheduleWidgets.add(ScheduleCard(
+                      entry: entry,
+                      allEntriesForDay: dailySchedule.entries,
+                      homeworks: allHomeworks,
+                    ));
+
+                    // Если включено отображение перемен и это не последняя пара
+                    if (_showBreaks && i < dailySchedule.entries.length - 1) {
+                      final nextEntry = dailySchedule.entries[i + 1];
+                      try {
+                        final endCurrent = TimeOfDay(
+                            hour: int.parse(entry.endTime.split(':')[0]),
+                            minute: int.parse(entry.endTime.split(':')[1]));
+                        final startNext = TimeOfDay(
+                            hour: int.parse(nextEntry.startTime.split(':')[0]),
+                            minute:
+                                int.parse(nextEntry.startTime.split(':')[1]));
+
+                        final endMinutes = endCurrent.hour * 60 + endCurrent.minute;
+                        final startMinutes = startNext.hour * 60 + startNext.minute;
+
+                        if (startMinutes > endMinutes) {
+                          scheduleWidgets.add(BreakCard(
+                            duration: Duration(minutes: startMinutes - endMinutes),
+                            startTime: entry.endTime,
+                            endTime: nextEntry.startTime,
+                            date: dailySchedule.date, // Передаем дату
+                          ));
+                        }
+                      } catch (e) {
+                        // Игнорируем ошибки парсинга времени для перемен
+                      }
+                    }
+                  }
+
+                  return Column(children: scheduleWidgets);
+                }),
 
               // Добавляем разделитель между днями, кроме последнего
               if (dayIndex < _dailySchedules.length - 1)
@@ -970,5 +1056,4 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 }
 
-// ...existing code...
 enum ScheduleType { grup, prep, aud }

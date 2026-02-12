@@ -46,13 +46,13 @@ class LocalHomeworkService {
     final localHomework = Homework(
       id: localId, // <--- Присваиваем сгенерированный ID
       discipline: homework.discipline,
-      groupId: homework.groupId,
+      group_id: homework.group_id,
       group: homework.group,
       subgroup: homework.subgroup,
       task: homework.task,
-      dueDate: homework.dueDate,
-      photoUrls: homework.photoUrls,
-      dateAdded: homework.dateAdded,
+      due_date: homework.due_date,
+      photo_urls: homework.photo_urls,
+      date_added: homework.date_added,
       isLocal: true, // <--- Явно помечаем как локальную!
     );
 

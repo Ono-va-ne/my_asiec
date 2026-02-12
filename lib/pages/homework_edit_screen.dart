@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:io';
 import '../models/homework.dart';
 import '../services/local_homework_service.dart';
-import '../data/groups.dart';
+// groups data now comes from Supabase via GroupsService
 import '../services/settings_service.dart'; // Импортируем SettingsService
 
 class HomeworkEditScreen extends StatefulWidget {
@@ -15,19 +14,19 @@ class HomeworkEditScreen extends StatefulWidget {
   // то здесь будет передаваться существующая запись о домашке
   final Homework? homeworkEntry;
 
-  const HomeworkEditScreen({Key? key, this.homeworkEntry}) : super(key: key);
+  const HomeworkEditScreen({super.key, this.homeworkEntry});
 
   @override
   _HomeworkEditScreenState createState() => _HomeworkEditScreenState();
 }
 
 class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
-  final _firestore = FirebaseFirestore.instance;
+  final _client = Supabase.instance.client;
   final _localHomeworkService = LocalHomeworkService();
   final _disciplineController = TextEditingController();
   final _subgroupController = TextEditingController();
   final _taskController = TextEditingController();
-  DateTime _selectedDueDate = DateTime.now();
+  DateTime _selecteddue_date = DateTime.now();
   bool _saveLocally = false;
   final _formKey = GlobalKey<FormState>();
   List<XFile> _selectedPhotos = [];
@@ -43,10 +42,10 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
     _fetchGroups();
     if (widget.homeworkEntry != null) {
       _disciplineController.text = widget.homeworkEntry!.discipline;
-      _selectedGroupId = widget.homeworkEntry!.groupId;
+      _selectedGroupId = widget.homeworkEntry!.group_id;
       _subgroupController.text = widget.homeworkEntry!.subgroup ?? '';
       _taskController.text = widget.homeworkEntry!.task;
-      _selectedDueDate = widget.homeworkEntry!.dueDate;
+      _selecteddue_date = widget.homeworkEntry!.due_date;
       // TODO: Обработать фото, если они есть
     } else {
       // Если это добавление новой домашки, проверяем настройки
@@ -80,25 +79,25 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
   }
 
   // --- Метод для выбора даты сдачи ---
-  Future<void> _selectDueDate(BuildContext context) async {
+  Future<void> _selectdue_date(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDueDate, // Начальная дата - текущая выбранная
+      initialDate: _selecteddue_date, // Начальная дата - текущая выбранная
       firstDate: DateTime.now(), // Нельзя выбрать дату в прошлом
       lastDate: DateTime(2101), // Достаточно далеко в будущем
     );
-    if (picked != null && picked != _selectedDueDate) {
+    if (picked != null && picked != _selecteddue_date) {
       setState(() {
-        _selectedDueDate = picked;
+        _selecteddue_date = picked;
       });
     }
   }
 
   Future<void> _pickImages() async {
     // Открываем диалог выбора нескольких изображений из галереи
-    final List<XFile>? pickedFiles = await _picker.pickMultiImage();
+    final List<XFile> pickedFiles = await _picker.pickMultiImage();
 
-    if (pickedFiles != null && pickedFiles.isNotEmpty) {
+    if (pickedFiles.isNotEmpty) {
       setState(() {
         _selectedPhotos = pickedFiles; // Обновляем список выбранных фото
       });
@@ -157,7 +156,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
   void _saveHomework() async {
     // Проверяем валидацию формы
     if (_formKey.currentState!.validate()) {
-      List<String> processedPhotoUrlsOrPaths = [];
+      List<String> processedphotoUrlsorpaths = [];
       // Проверяем, что группа выбрана
       if (_selectedGroupId == null || _selectedGroupName == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -174,16 +173,15 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
         if (shouldSaveLocally) {
           // --- Сохраняем фото ЛОКАЛЬНО (для Hive) ---
           print('Сохраняем фото ЛОКАЛЬНО...');
-          processedPhotoUrlsOrPaths = await _savePhotosLocally(
+          processedphotoUrlsorpaths = await _savePhotosLocally(
             _selectedPhotos,
           ); // <--- ВЫЗЫВАЕМ НАШ РЕАЛИЗОВАННЫЙ МЕТОД!
           print('Фото успешно сохранены локально.');
         } else {
-          // --- ДЛЯ УДАЛЕННЫХ (Firebase): Фото сейчас не поддерживаются из-за Blaze плана ---
-          print(
-            'Фото для удаленных записей временно не поддерживаются из-за ограничений Blaze плана.',
-          );
-          //processedPhotoUrlsOrPaths = await _uploadPhotosToFirebaseStorage(_selectedPhotos); // ЭТОТ МЕТОД ВЫЗЫВАТЬ НЕ БУДЕМ!
+          // --- Для удалённых записей: загружаем фото в Supabase Storage и получаем публичные URL ---
+          print('Загружаем фото в Supabase Storage...');
+          processedphotoUrlsorpaths = await _uploadPhotosToSupabaseStorage(_selectedPhotos);
+          print('Фото загружены в Supabase: ${processedphotoUrlsorpaths.length}');
         }
       }
 
@@ -191,129 +189,132 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
       // TODO: Обработать случай удаления фото при редактировании!
       // Объединяем старые и новые URLы/пути. Важно: сохраняем только те URLы/пути, которые были изначально (при редактировании)
       // ПЛЮС новые, которые мы только что обработали.
-      // Если мы редактируем локальную запись, photoUrls - это пути. Если удаленную, это URLы.
-      List<String> finalPhotoUrlsOrPaths = [];
+      // Если мы редактируем локальную запись, photo_urls - это пути. Если удаленную, это URLы.
+      List<String> finalphotoUrlsorpaths = [];
       // Добавляем старые пути/URLы из существующей записи (если редактируем)
-      if (widget.homeworkEntry?.photoUrls != null) {
-        finalPhotoUrlsOrPaths.addAll(widget.homeworkEntry!.photoUrls!);
+      if (widget.homeworkEntry?.photo_urls != null) {
+        finalphotoUrlsorpaths.addAll(widget.homeworkEntry!.photo_urls!);
       }
       // Добавляем новые пути/URLы, которые мы только что обработали
-      finalPhotoUrlsOrPaths.addAll(processedPhotoUrlsOrPaths);
+      finalphotoUrlsorpaths.addAll(processedphotoUrlsorpaths);
 
       // Если данные корректны, создаем объект Homework
       final homeworkToProcess = Homework(
         id: widget.homeworkEntry?.id, // Если редактируем, сохраняем старый ID
         discipline: _disciplineController.text.trim(),
         group: _selectedGroupName!, // Используем выбранное имя группы
-        groupId: _selectedGroupId!, // Используем выбранный ID группы
+        group_id: _selectedGroupId!, // Используем выбранный ID группы
         subgroup:
             _subgroupController.text.trim().isEmpty
                 ? null
                 : _subgroupController.text
                     .trim(), // Если поле подгруппы пустое, сохраняем null
         task: _taskController.text.trim(),
-        dueDate: _selectedDueDate,
-        dateAdded:
-            widget.homeworkEntry?.dateAdded ??
-            DateTime.now(), // Если редактируем, сохраняем старую дату добавления, иначе - текущую
-        photoUrls: finalPhotoUrlsOrPaths.isEmpty ? null : finalPhotoUrlsOrPaths,
+        due_date: _selecteddue_date,
+        date_added:
+          widget.homeworkEntry?.date_added ??
+          DateTime.now(), // Если редактируем, сохраняем старую дату добавления, иначе - текущую
+        photo_urls: finalphotoUrlsorpaths.isEmpty ? null : finalphotoUrlsorpaths,
         isLocal: widget.homeworkEntry?.isLocal ?? _saveLocally,
       );
 
-      // --- ЛОГИКА СОХРАНЕНИЯ В FIREBASE ---
+      // --- ЛОГИКА СОХРАНЕНИЯ ---
       try {
         if (homeworkToProcess.isLocal) {
           // --- Сохраняем/обновляем ЛОКАЛЬНО (в Hive) ---
           print(
             'Сохраняем/обновляем ЛОКАЛЬНО: ${homeworkToProcess.toJson()}',
-          ); // Локально toJson не совсем нужен, но для лога можно
+          );
           if (homeworkToProcess.id == null) {
-            // Добавляем новую локальную запись (ID будет сгенерирован в сервисе)
             await _localHomeworkService.addHomework(homeworkToProcess);
           } else {
-            // Обновляем существующую локальную запись
             await _localHomeworkService.updateHomework(homeworkToProcess);
           }
           print('Локальное ДЗ успешно сохранено/обновлено!');
         } else {
-          // --- Сохраняем/обновляем УДАЛЕННО (в Firebase) ---
+          // --- Сохраняем/обновляем УДАЛЕННО (в Supabase) ---
           print('Сохраняем/обновляем УДАЛЕННО: ${homeworkToProcess.toJson()}');
-          final homeworkMapForFirebase =
-              Homework(
-                // Создаем временный объект БЕЗ фото для сохранения в Firebase
-                id: homeworkToProcess.id,
-                discipline: homeworkToProcess.discipline,
-                group: homeworkToProcess.group,
-                groupId: homeworkToProcess.groupId,
-                task: homeworkToProcess.task,
-                dueDate: homeworkToProcess.dueDate,
-                dateAdded: homeworkToProcess.dateAdded,
-                photoUrls: null, // <--- Явно устанавливаем null для Firebase
-                isLocal:
-                    homeworkToProcess
-                        .isLocal, // isLocal все равно false для Firebase
-              ).toJson();
+          final homeworkMapForSupabase = Homework(
+            id: homeworkToProcess.id,
+            discipline: homeworkToProcess.discipline,
+            group: homeworkToProcess.group,
+            group_id: homeworkToProcess.group_id,
+            task: homeworkToProcess.task,
+            due_date: homeworkToProcess.due_date,
+            date_added: homeworkToProcess.date_added,
+            photo_urls: homeworkToProcess.photo_urls,
+            isLocal: homeworkToProcess.isLocal,
+          ).toJson();
+
           if (homeworkToProcess.id == null) {
-            // Добавляем новую удаленную запись
-            await _firestore.collection('homework').add(homeworkMapForFirebase);
+            await _client.from('homework').insert(homeworkMapForSupabase);
           } else {
-            await _firestore
-                .collection('homework')
-                .doc(homeworkMapForFirebase['id'])
-                .update(homeworkMapForFirebase);
+            await _client.from('homework').update(homeworkMapForSupabase).eq('id', homeworkMapForSupabase['id']);
           }
-          print('УДАЛЕННОЕ ДЗ успешно сохранено/обновлено (без фото).');
+
+          print('УДАЛЕННОЕ ДЗ успешно сохранено/обновлено.');
         }
 
-        // TODO: Возможно, показать SnackBar или другое сообщение об успехе
-        if (mounted) {
-          // Проверяем, что виджет все еще "жив"
-          Navigator.of(context).pop();
-        }
+        if (mounted) Navigator.of(context).pop();
       } catch (e) {
-        print("Ошибка при сохранении ДЗ в Firebase: $e"); // Логгируем ошибку
-        // TODO: Показать пользователю сообщение об ошибке
-        if (mounted) {
-          // Возможно, показать AlertDialog или SnackBar с ошибкой
-        }
+        print("Ошибка при сохранении ДЗ: $e");
       }
     }
   }
 
-  Future<List<String>> _uploadPhotosToFirebaseStorage(
+  Future<List<String>> _uploadPhotosToSupabaseStorage(
     List<XFile> photos,
   ) async {
-    print(
-      'ВНИМАНИЕ: _uploadPhotosToFirebaseStorage вызван, но фото для удаленных записей сейчас НЕ загружаются!',
-    );
-    // ... (код загрузки, но он не выполнится, если мы не вызываем этот метод)
-    return []; // Возвращаем пустой список, т.к. загрузка не производится
+    // Задайте имя вашего bucket'а здесь
+    const String bucket = 'files';
+    final List<String> uploadedUrls = [];
+    try {
+      for (final photo in photos) {
+        // final bytes = await File(photo.path).readAsBytes(); // not used with upload(File)
+        final String ext = photo.name.contains('.') ? photo.name.split('.').last : 'jpg';
+        final String filename = '${const Uuid().v4()}.$ext';
+        // Сохраняем в подпапке homework для удобства
+        final filePath = 'homework/$filename';
+
+        try {
+          // Попытка загрузить файл (основной путь)
+          final res = await _client.storage.from(bucket).upload(filePath, File(photo.path));
+          // Некоторые версии SDK возвращают ответ; логируем его
+          print('Supabase upload result for $filePath: $res');
+
+          // Попробуем получить публичный URL (работает для публичного bucket'а)
+          final publicUrl = _client.storage.from(bucket).getPublicUrl(filePath);
+          uploadedUrls.add(publicUrl.toString());
+          print('Uploaded $filePath -> $publicUrl');
+        } catch (e) {
+          print('Ошибка при загрузке $filePath в Supabase Storage: $e');
+        }
+      }
+    } catch (e) {
+      print('Ошибка при загрузке фото в Supabase Storage: $e');
+    }
+    return uploadedUrls;
   }
 
-  // --- Метод для загрузки списка групп из Firebase ---
+  // --- Метод для загрузки списка групп из Supabase ---
   Future<void> _fetchGroups() async {
     try {
-      final querySnapshot = await _firestore.collection('groups').get();
-      final groupsMap = <String, String>{};
-      for (final doc in querySnapshot.docs) {
-        groupsMap[doc.id] = doc.get('name');
-      }
+      final data = await _client.from('groups').select();
+      final List rows = (data as dynamic) as List? ?? [];
+      final List<Map<String, dynamic>> fetched = rows.map((r) {
+        try {
+          return {
+            'id': r['id'].toString(),
+            'name': r['name'].toString(),
+          };
+        } catch (_) {
+          return {'id': '', 'name': ''};
+        }
+      }).where((m) => (m['id'] as String).isNotEmpty).toList();
 
-      final sortedGroups =
-          availableGroupsData.map((groupInfo) {
-            return {'id': groupInfo.id, 'name': groupInfo.name};
-          }).toList();
-
-      final filteredAndSortedGroups =
-          sortedGroups
-              .where((group) => groupsMap.containsKey(group['id']))
-              .toList();
-
-      if (!mounted) return; // Проверка на mounted
+      if (!mounted) return;
       setState(() {
-        _groups = filteredAndSortedGroups;
-        // Если _selectedGroupId уже установлен (например, из настроек или при редактировании),
-        // пытаемся найти соответствующее имя группы.
+        _groups = fetched;
         if (_selectedGroupId != null) {
           try {
             _selectedGroupName =
@@ -321,22 +322,16 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
                   (group) => group['id'] == _selectedGroupId,
                 )['name'];
           } catch (e) {
-            print("Группа с ID $_selectedGroupId не найдена в списке.");
             _selectedGroupId = null;
             _selectedGroupName = null;
           }
         }
-        // Если _selectedGroupId все еще null (ничего не выбрано и нет в настройках),
-        // и это добавление новой домашки, выбираем первую группу из списка.
         if (_selectedGroupId == null &&
             widget.homeworkEntry == null &&
             _groups.isNotEmpty) {
           _selectedGroupId = _groups.first['id'];
           _selectedGroupName = _groups.first['name'];
         }
-        print(
-          "Selected Group ID: $_selectedGroupId, Name: $_selectedGroupName",
-        );
       });
     } catch (e) {
       print("Ошибка при загрузке групп: $e");
@@ -382,7 +377,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
               const SizedBox(height: 12.0),
               // --- Выпадающий список для выбора группы ---
               DropdownButtonFormField<String>(
-                value: _selectedGroupName,
+                initialValue: _selectedGroupName,
                 decoration: const InputDecoration(labelText: 'Группа'),
                 items:
                     _groups.map((Map<String, dynamic> group) {
@@ -442,12 +437,12 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
               ListTile(
                 title: const Text('Срок сдачи'),
                 subtitle: Text(
-                  '${_selectedDueDate.day}.${_selectedDueDate.month}.${_selectedDueDate.year}', // Форматируем дату для отображения
+                  '${_selecteddue_date.day}.${_selecteddue_date.month}.${_selecteddue_date.year}', // Форматируем дату для отображения
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 trailing: const Icon(Icons.calendar_today),
                 onTap:
-                    () => _selectDueDate(
+                    () => _selectdue_date(
                       context,
                     ), // При нажатии открываем DatePicker
               ),
@@ -487,7 +482,15 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
                       return ListTile(
                         leading: const Icon(Icons.image), // Иконка фото
                         title: Text(photo.name), // Название файла
-                        // TODO: Добавить кнопку удаления фото из списка
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () {
+                            setState(() {
+                              _selectedPhotos.removeAt(index);
+                            });
+                          },
+                          tooltip: 'Удалить фото',
+                        ),
                       );
                     },
                   ),

@@ -1,70 +1,39 @@
-// В файле lib/screens/homework_view_screen.dart
+// Clean, complete implementation of homework view screen
+import 'dart:io';
 
 import 'package:flutter/material.dart';
-import '../models/homework.dart'; // Импортируем нашу модель Homework
-import 'homework_edit_screen.dart'; // Импортируем экран редактирования ДЗ
-import 'package:intl/intl.dart'; // Для форматирования даты
-import 'dart:io'; // Для работы с File
-import 'package:open_file/open_file.dart'; // Для открытия файла в приложении'
+import 'package:intl/intl.dart';
 
-// Возможно, понадобится cached_network_image для удаленных фото
-// import 'package:cached_network_image/cached_network_image.dart';
-import 'package:path_provider/path_provider.dart'; // Для получения пути к директории документов
+import '../models/homework.dart';
+import 'homework_edit_screen.dart';
 
 class HomeworkViewScreen extends StatelessWidget {
-  // Экран принимает объект Homework для отображения
   final Homework homeworkEntry;
 
-  const HomeworkViewScreen({Key? key, required this.homeworkEntry})
-    : super(key: key);
+  const HomeworkViewScreen({super.key, required this.homeworkEntry});
 
-  // Вспомогательный метод для отображения одного фото
-  Widget _buildPhotoWidget(String photoPathOrUrl) {
-    // TODO: Здесь нужно будет различать локальные пути и URLы Firebase Storage
-    // Сейчас мы знаем, что для локальных записей здесь будут ПУТИ, для удаленных - URLы (пока пустые)
-    // Если homeworkEntry.isLocal, это локальный путь.
-    // Если !homeworkEntry.isLocal, это URL из Firebase Storage (сейчас null/пустой).
-
+  Widget _buildPhotoWidget(BuildContext context, String photoPathOrUrl) {
     if (homeworkEntry.isLocal) {
-      // --- Отображаем ЛОКАЛЬНОЕ фото по пути ---
       final File localFile = File(photoPathOrUrl);
       return FutureBuilder<bool>(
-        // Используем FutureBuilder, чтобы проверить существование файла асинхронно
-        future: localFile.exists(), // Проверяем, существует ли файл
+        future: localFile.exists(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done &&
-              snapshot.hasData &&
-              snapshot.data == true) {
-            // Если файл существует, отображаем его и делаем кликабельным
+          if (snapshot.connectionState == ConnectionState.done && snapshot.hasData && snapshot.data == true) {
             return GestureDetector(
-              onTap: () async {
-                // Используем open_file для открытия файла
-                try {
-                  final result = await OpenFile.open(localFile.path);
-                  // print('OpenFile result: ${result.message}');
-                } catch (e) {
-                  print('Error opening file: $e');
-                  // Опционально: показать SnackBar или диалог пользователю
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Не удалось открыть файл. Убедитесь, что установлено приложение для просмотра этого типа файлов.',
-                      ),
-                    ),
-                  );
-                }
+              onTap: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => _FullScreenImageViewer(imagePath: localFile.path, isLocal: true),
+                ));
               },
               child: Image.file(
                 localFile,
-                fit: BoxFit.cover, // Как изображение будет вписываться
-                width: 100, // Ширина миниатюры
-                height: 100, // Высота миниатюры
+                fit: BoxFit.cover,
+                width: 100,
+                height: 100,
               ),
             );
           } else {
-            // Если файл не существует или ошибка
             return const SizedBox(
-              // Пустой бокс или иконка ошибки
               width: 100,
               height: 100,
               child: Icon(Icons.broken_image, color: Colors.grey),
@@ -73,37 +42,43 @@ class HomeworkViewScreen extends StatelessWidget {
         },
       );
     } else {
-      // --- Отображаем УДАЛЕННОЕ фото по URL ---
-      // Пока что фото для удаленных записей не загружаются/сохраняются
-      // Просто показываем заглушку или иконку, если URL пустой/нет.
       if (photoPathOrUrl.isNotEmpty) {
-        // TODO: Реализовать загрузку из Firebase Storage по URL
-        // С использованием CachedNetworkImage
-        print(
-          'Внимание: Попытка отобразить удаленное фото по URL: $photoPathOrUrl',
+        return GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => _FullScreenImageViewer(imagePath: photoPathOrUrl, isLocal: false),
+            ));
+          },
+          child: Image.network(
+            photoPathOrUrl,
+            fit: BoxFit.cover,
+            width: 100,
+            height: 100,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return SizedBox(
+                width: 100,
+                height: 100,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: progress.expectedTotalBytes != null
+                        ? progress.cumulativeBytesLoaded / (progress.expectedTotalBytes ?? 1)
+                        : null,
+                  ),
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return const SizedBox(
+                width: 100,
+                height: 100,
+                child: Icon(Icons.broken_image, color: Colors.grey),
+              );
+            },
+          ),
         );
-        return const SizedBox(
-          // Заглушка для удаленных фото
-          width: 100,
-          height: 100,
-          child: Icon(
-            Icons.cloud_off,
-            color: Colors.grey,
-          ), // Иконка, показывающая, что фото удаленное/недоступно
-        );
-        /*
-         // Пример с CachedNetworkImage (потребуется добавить пакет):
-         return CachedNetworkImage(
-           imageUrl: photoPathOrUrl,
-           fit: BoxFit.cover,
-           width: 100,
-           height: 100,
-           placeholder: (context, url) => CircularProgressIndicator(), // Пока грузится
-           errorWidget: (context, url, error) => Icon(Icons.error), // Если ошибка
-         );
-         */
       } else {
-        return const SizedBox.shrink(); // Не отображаем ничего, если URL пустой
+        return const SizedBox.shrink();
       }
     }
   }
@@ -112,23 +87,15 @@ class HomeworkViewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Домашнее задание'), // Заголовок - предмет ДЗ
+        title: Text('Домашнее задание'),
         actions: [
-          // --- Кнопка "Редактировать" ---
           IconButton(
             icon: const Icon(Icons.edit),
             tooltip: 'Редактировать',
             onPressed: () {
-              // При нажатии открываем экран редактирования, передавая текущий объект ДЗ
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder:
-                      (context) => HomeworkEditScreen(
-                        homeworkEntry:
-                            homeworkEntry, // <--- ПЕРЕДАЕМ ОБЪЕКТ ДЗ ДЛЯ РЕДАКТИРОВАНИЯ!
-                      ),
-                ),
+                MaterialPageRoute(builder: (context) => HomeworkEditScreen(homeworkEntry: homeworkEntry)),
               );
             },
           ),
@@ -137,65 +104,86 @@ class HomeworkViewScreen extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
-          // Используем ListView для прокрутки
           children: [
-            // --- Отображаем предмет и подгруппу (если есть) ---
             Text(
               '${homeworkEntry.discipline}${homeworkEntry.subgroup != null ? ' / ${homeworkEntry.subgroup}' : ''}',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ), // Стиль заголовка
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8.0),
             Text(
-              'Срок сдачи: ${DateFormat('dd.MM.yyyy').format(homeworkEntry.dueDate)} ${homeworkEntry.isLocal ? '(Локально)' : ''}', // Срок сдачи
-              style:
-                  Theme.of(context).textTheme.bodyLarge, // Стиль подзаголовка
+              'Срок сдачи: ${DateFormat('dd.MM.yyyy').format(homeworkEntry.due_date)} ${homeworkEntry.isLocal ? '(Локально)' : ''}',
+              style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 16.0),
             Text(
               'Задание:',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ), // Стиль заголовка задания
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4.0),
-            Text(
-              homeworkEntry.task, // Текст задания
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            Text(homeworkEntry.task, style: Theme.of(context).textTheme.bodyMedium),
             const SizedBox(height: 16.0),
-
-            // --- Отображаем фото, если они есть ---
-            if (homeworkEntry.photoUrls != null &&
-                homeworkEntry.photoUrls!.isNotEmpty)
+            if (homeworkEntry.photo_urls != null && homeworkEntry.photo_urls!.isNotEmpty)
               Column(
-                // Используем Column для отображения списка фото
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Фотографии:',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  Text('Фотографии:', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8.0),
-                  // Используем Wrap или GridView для отображения миниатюр
-                  // Wrap - проще, если фото немного
                   Wrap(
-                    // Wrap автоматически переносит элементы на новую строку
-                    spacing: 8.0, // Горизонтальный отступ между фото
-                    runSpacing: 8.0, // Вертикальный отступ между рядами фото
-                    children:
-                        homeworkEntry.photoUrls!.map((photoPathOrUrl) {
-                          return _buildPhotoWidget(
-                            photoPathOrUrl,
-                          ); // Вызываем вспомогательный метод для каждого фото
-                        }).toList(),
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children: homeworkEntry.photo_urls!.map((photoPathOrUrl) => _buildPhotoWidget(context, photoPathOrUrl)).toList(),
                   ),
                 ],
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// Full screen viewer with zoom/pan
+class _FullScreenImageViewer extends StatelessWidget {
+  final String imagePath;
+  final bool isLocal;
+
+  const _FullScreenImageViewer({Key? key, required this.imagePath, required this.isLocal}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          panEnabled: true,
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: SizedBox.expand( // <-- Добавляем SizedBox.expand
+            child: isLocal
+                ? Image.file(
+                    File(imagePath),
+                    fit: BoxFit.contain, // <-- Добавляем fit: BoxFit.contain
+                  )
+                : Image.network(
+                    imagePath,
+                    fit: BoxFit.contain, // <-- Добавляем fit: BoxFit.contain
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(child: CircularProgressIndicator());
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(child: Icon(Icons.broken_image, color: Colors.white, size: 48));
+                    },
+                  ),
+          ),
         ),
       ),
     );
