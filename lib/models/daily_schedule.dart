@@ -13,18 +13,17 @@ class DailySchedule {
   DailySchedule({required this.date, required this.entries});
 }
 
-  
 DateTime? _parseDateFromHtml(String? htmlDateString) {
-    if (htmlDateString == null || !htmlDateString.contains(',')) return null;
-    try {
-        final datePart = htmlDateString.split(',').last.trim(); // "15.10.2024"
-        // Используем DateFormat для парсинга строки в DateTime
-        return DateFormat('dd.MM.yyyy').parseStrict(datePart);
-    } catch (e) {
-        print("Не удалось распознать дату из HTML: '$htmlDateString'. Ошибка: $e");
-        return null;
-    }
+  if (htmlDateString == null || !htmlDateString.contains(',')) return null;
+  try {
+    final datePart = htmlDateString.split(',').last.trim(); // "15.10.2024"
+    // Используем DateFormat для парсинга строки в DateTime
+    return DateFormat('dd.MM.yyyy').parseStrict(datePart);
+  } catch (e) {
+    print("Не удалось распознать дату из HTML: '$htmlDateString'. Ошибка: $e");
+    return null;
   }
+}
 
 Map<String, String>? _parseTime(String timeString) {
   // Ищем совпадение с форматом "ЧИСЛО (ЧАС:МИН - ЧАС:МИН)"
@@ -34,10 +33,7 @@ Map<String, String>? _parseTime(String timeString) {
   if (match != null && match.groupCount == 2) {
     // Если найдено совпадение, извлекаем группы
     // group(1) - время начала, group(2) - время конца
-    return {
-      'start': match.group(1)!,
-      'end': match.group(2)!,
-    };
+    return {'start': match.group(1)!, 'end': match.group(2)!};
   } else {
     // Если формат не совпал, возвращаем null
     print("Не удалось распознать время: $timeString");
@@ -61,7 +57,8 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
 
   final rows = tbody.querySelectorAll('tr');
   final List<DailySchedule> resultList = [];
-  List<ScheduleEntry>? currentDayEntries; // Список пар для текущего обрабатываемого дня
+  List<ScheduleEntry>?
+  currentDayEntries; // Список пар для текущего обрабатываемого дня
   DateTime? currentDayDate; // Дата текущего обрабатываемого дня
 
   for (final row in rows) {
@@ -70,49 +67,61 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
     // 1. Проверяем строку с датой
     if (cells.length == 1 && cells.first.attributes['colspan'] == '6') {
       final htmlDateString = cells.first.text.trim();
-      final parsedDate = _parseDateFromHtml(htmlDateString); // Используем существующий хелпер
+      final parsedDate = _parseDateFromHtml(
+        htmlDateString,
+      ); // Используем существующий хелпер
 
       if (parsedDate != null) {
         // Если мы уже обрабатывали какой-то день до этого,
         // сохраняем его результаты перед тем, как начать новый.
         if (currentDayDate != null && currentDayEntries != null) {
-           // Добавляем предыдущий день (даже если пар не было)
-           resultList.add(DailySchedule(
+          // Добавляем предыдущий день (даже если пар не было)
+          resultList.add(
+            DailySchedule(
               date: currentDayDate,
               // Важно создать копию списка, чтобы будущие добавления не влияли на этот день
-              entries: List.from(currentDayEntries)
-           ));
-           print("Сохранен день: $currentDayDate с ${currentDayEntries.length} парами.");
+              entries: List.from(currentDayEntries),
+            ),
+          );
+          print(
+            "Сохранен день: $currentDayDate с ${currentDayEntries.length} парами.",
+          );
         }
-         // Начинаем новый день
-         currentDayDate = parsedDate;
-         currentDayEntries = []; // Создаем новый пустой список для этого дня
-         print("Найдена дата в HTML: $currentDayDate");
+        // Начинаем новый день
+        currentDayDate = parsedDate;
+        currentDayEntries = []; // Создаем новый пустой список для этого дня
+        print("Найдена дата в HTML: $currentDayDate");
       } else {
-         print("Не удалось распознать дату в строке: $htmlDateString");
-         // Если не смогли распознать дату, то последующие пары не будут добавлены
-         // Можно решить игнорировать пары до следующей валидной даты
-         currentDayDate = null;
-         currentDayEntries = null;
+        print("Не удалось распознать дату в строке: $htmlDateString");
+        // Если не смогли распознать дату, то последующие пары не будут добавлены
+        // Можно решить игнорировать пары до следующей валидной даты
+        currentDayDate = null;
+        currentDayEntries = null;
       }
       continue; // Переходим к следующей строке
     }
 
     // 2. Проверяем строку с парой (и есть ли текущий день для добавления)
-    if (currentDayDate != null && currentDayEntries != null && cells.length >= 6) {
+    if (currentDayDate != null &&
+        currentDayEntries != null &&
+        cells.length >= 6) {
       try {
         final timeString = cells[0].text.trim();
+        final group = cells[1].text.trim();
         final discipline = cells[2].text.trim();
         final teacher = cells[3].text.trim();
         final building = cells[4].text.trim();
         final room = cells[5].text.trim();
-        final timeParts = _parseTime(timeString); // Используем старый хелпер _parseTime
+        final timeParts = _parseTime(
+          timeString,
+        ); // Используем старый хелпер _parseTime
 
         ScheduleEntry entry = ScheduleEntry(
           discipline: discipline,
           teacher: teacher,
           startTime: timeParts?['start'] ?? '',
           endTime: timeParts?['end'] ?? '',
+          group: group,
           building: building,
           room: room,
           date: currentDayDate,
@@ -122,16 +131,23 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
         print("Ошибка парсинга строки с парой: $e. Строка: ${row.innerHtml}");
       }
     } else if (cells.length >= 6 && currentDayDate == null) {
-         print("Найдена строка с парой, но не определена текущая дата. Пропуск: ${row.innerHtml}");
+      print(
+        "Найдена строка с парой, но не определена текущая дата. Пропуск: ${row.innerHtml}",
+      );
     }
   }
 
   // Добавляем последний обрабатываемый день в результат, если он не пустой
-  if (currentDayDate != null && currentDayEntries != null && currentDayEntries.isNotEmpty) {
-    resultList.add(DailySchedule(date: currentDayDate, entries: currentDayEntries));
-  } else if (currentDayDate != null && (currentDayEntries == null || currentDayEntries.isEmpty)) {
-      // Если нашли дату, но для нее не было пар, все равно добавим ее с пустым списком
-      resultList.add(DailySchedule(date: currentDayDate, entries: []));
+  if (currentDayDate != null &&
+      currentDayEntries != null &&
+      currentDayEntries.isNotEmpty) {
+    resultList.add(
+      DailySchedule(date: currentDayDate, entries: currentDayEntries),
+    );
+  } else if (currentDayDate != null &&
+      (currentDayEntries == null || currentDayEntries.isEmpty)) {
+    // Если нашли дату, но для нее не было пар, все равно добавим ее с пустым списком
+    resultList.add(DailySchedule(date: currentDayDate, entries: []));
   }
 
   // Сортируем результат по дате на всякий случай

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "675215871075",
+    "project_id": "my-asiec",
+    "storage_bucket": "my-asiec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:675215871075:android:9f21ad229e2b7309dabc56",
+        "android_client_info": {
+          "package_name": "com.onovane.my_asiec"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAC4oCSfWGFNpvTzyqu9lrg0J6MzZo0qHA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

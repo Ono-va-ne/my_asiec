@@ -56,10 +56,11 @@ ParsedSchedule parseScheduleHtml(String htmlString) {
         // 9. Извлекаем данные из ячеек по их порядку
         // Важно: trim() удаляет лишние пробелы и переносы строк по краям
         final timeString = cells[0].text.trim(); // "1 (8:00 - 9:20)"
+        final group = cells[1].text.trim();
         final discipline = cells[2].text.trim();
         final teacher = cells[3].text.trim();
         final building = cells[4].text.trim(); // 'Корпус 1' из ter_pc
-        final room = cells[5].text.trim();     // '114' из aud_pc
+        final room = cells[5].text.trim(); // '114' из aud_pc
 
         // 10. Парсим время начала и конца из timeString
         final timeParts = _parseTime(timeString); // Используем хелпер
@@ -69,10 +70,13 @@ ParsedSchedule parseScheduleHtml(String htmlString) {
           discipline: discipline,
           teacher: teacher,
           startTime: timeParts?['start'] ?? '', // Безопасно извлекаем время
-          endTime: timeParts?['end'] ?? '',   // или оставляем пустым, если не распарсилось
+          endTime:
+              timeParts?['end'] ??
+              '', // или оставляем пустым, если не распарсилось
+          group: group,
           building: building,
           room: room,
-          date: DateTime.parse(scheduleDate ?? DateTime.now().toString()), 
+          date: DateTime.parse(scheduleDate ?? DateTime.now().toString()),
         );
         scheduleEntries.add(entry); // Добавляем в список
       } catch (e) {
@@ -95,10 +99,7 @@ Map<String, String>? _parseTime(String timeString) {
   if (match != null && match.groupCount == 2) {
     // Если найдено совпадение, извлекаем группы
     // group(1) - время начала, group(2) - время конца
-    return {
-      'start': match.group(1)!,
-      'end': match.group(2)!,
-    };
+    return {'start': match.group(1)!, 'end': match.group(2)!};
   } else {
     // Если формат не совпал, возвращаем null
     print("Не удалось распознать время: $timeString");

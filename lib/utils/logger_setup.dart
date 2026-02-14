@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'package:logger/logger.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/foundation.dart' show FlutterErrorDetails, kDebugMode; // Для проверки режима
+import 'package:flutter/foundation.dart'
+    show FlutterErrorDetails, kDebugMode; // Для проверки режима
 
 late final File _logFile; // Объявляем файл на уровне модуля
 
@@ -62,24 +63,26 @@ Future<void> setupLogging() async {
     // logger = Logger(...) // Не можем пересоздать final logger
     // Вместо этого, создадим FileOutput здесь и передадим его как кастомный output
 
-    final fileOutput = FileOutput(
-      file: _logFile,
-      overrideExisting: false, // Не перезаписывать файл при старте, а добавлять
-      encoding: const SystemEncoding(), // Использовать кодировку системы
-      // TODO: Настроить ротацию логов!
-      // Например, чтобы файл не рос бесконечно:
-      // fileOutput.stream // FileOutput не предоставляет прямого API для ротации в v2
-      // Потребуется либо своя реализация, либо сторонний пакет (см. ниже)
+    // final fileOutput = FileOutput(
+    //   file: _logFile,
+    //   overrideExisting: false, // Не перезаписывать файл при старте, а добавлять
+    //   encoding: const SystemEncoding(), // Использовать кодировку системы
+    //   // TODO: Настроить ротацию логов!
+    //   // Например, чтобы файл не рос бесконечно:
+    //   // fileOutput.stream // FileOutput не предоставляет прямого API для ротации в v2
+    //   // Потребуется либо своя реализация, либо сторонний пакет (см. ниже)
+    // );
+
+    // Переконфигурируем глобальный логгер
+    Logger.level =
+        kDebugMode ? Level.debug : Level.info; // Устанавливаем уровень
+    logger.i(
+      "Логгер инициализирован. Логи будут сохраняться в: ${_logFile.path}",
     );
-
-     // Переконфигурируем глобальный логгер
-     Logger.level = kDebugMode ? Level.debug : Level.info; // Устанавливаем уровень
-     logger.i("Логгер инициализирован. Логи будут сохраняться в: ${_logFile.path}");
-     // Заменяем MultiOutput или добавляем FileOutput, если его не было
-     // К сожалению, стандартный MultiOutput не позволяет легко модифицировать список.
-     // Проще всего создать новый логгер, но т.к. logger final, сделаем это
-     // в main() перед runApp()
-
+    // Заменяем MultiOutput или добавляем FileOutput, если его не было
+    // К сожалению, стандартный MultiOutput не позволяет легко модифицировать список.
+    // Проще всего создать новый логгер, но т.к. logger final, сделаем это
+    // в main() перед runApp()
   } catch (e, stackTrace) {
     // Если произошла ошибка при настройке логирования, выводим в консоль
     print('Ошибка настройки логирования в файл: $e\n$stackTrace');
@@ -90,30 +93,30 @@ Future<void> setupLogging() async {
 Future<String?> getLogFilePath() async {
   // Убедимся, что _logFile инициализирован
   if (!_logFile.existsSync() && _logFile.path.isNotEmpty) {
-      await setupLogging(); // Попробуем инициализировать, если еще не было
+    await setupLogging(); // Попробуем инициализировать, если еще не было
   }
   // Проверяем еще раз после попытки инициализации
   if (_logFile.existsSync()) {
-      return _logFile.path;
+    return _logFile.path;
   } else if (_logFile.path.isNotEmpty) {
-      print("Лог файл ${_logFile.path} все еще не существует.");
-      return null;
+    print("Лог файл ${_logFile.path} все еще не существует.");
+    return null;
   } else {
-       print("Путь к лог файлу не был инициализирован.");
-       return null;
+    print("Путь к лог файлу не был инициализирован.");
+    return null;
   }
 }
 
 // Опционально: Функция для очистки лог файла
 Future<void> clearLogFile() async {
-   if (_logFile.existsSync()) {
-      try {
-         await _logFile.writeAsString(''); // Перезаписываем пустым содержимым
-         logger.i("Лог файл очищен.");
-      } catch (e) {
-         logger.e("Ошибка при очистке лог файла", error: e);
-      }
-   }
+  if (_logFile.existsSync()) {
+    try {
+      await _logFile.writeAsString(''); // Перезаписываем пустым содержимым
+      logger.i("Лог файл очищен.");
+    } catch (e) {
+      logger.e("Ошибка при очистке лог файла", error: e);
+    }
+  }
 }
 
 // --- Логирование неперехваченных ошибок ---
@@ -122,7 +125,8 @@ void recordFlutterError(FlutterErrorDetails details) {
   logger.e(
     'Неперехваченная ошибка Flutter!',
     error: details.exception,
-    stackTrace: details.stack ?? StackTrace.current, // Предоставляем stack trace
+    stackTrace:
+        details.stack ?? StackTrace.current, // Предоставляем stack trace
     // Можно добавить details.library, details.context для доп. информации
   );
 }

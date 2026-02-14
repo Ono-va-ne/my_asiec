@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"my-asiec","appId":"1:675215871075:android:9f21ad229e2b7309dabc56","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"my-asiec","configurations":{"android":"1:675215871075:android:9f21ad229e2b7309dabc56","ios":"1:675215871075:ios:5bb12fb8b1cb5dacdabc56"}}}}}}
