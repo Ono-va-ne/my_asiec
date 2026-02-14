@@ -90,10 +90,10 @@ class _BreakCardState extends State<BreakCard> {
       clipBehavior: Clip.antiAlias, // Важно для правильного отображения фона
       shape: RoundedRectangleBorder(
         side: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha: 0.25),
           width: 1,
         ),
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: BorderRadius.circular(10.0),
       ),
       color: theme.scaffoldBackgroundColor,
       child: Stack(

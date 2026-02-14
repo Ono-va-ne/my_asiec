@@ -147,7 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ListTile(
             leading: Icon(Icons.person_outlined),
-            title: Text('Преподаватель'),
+            title: Text('Препод.'),
             // subtitle: Text('Будет выбран при запуске приложения'),
             trailing: SizedBox(
               width: 200,
@@ -187,7 +187,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ListTile(
             leading: Icon(Icons.room_outlined),
-            title: Text('Аудитория'),
+            title: Text('Ауд.'),
             trailing: SizedBox(
               width: 200,
               child: DropdownButtonHideUnderline(
@@ -290,44 +290,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 onChanged: (bool enabled) {
                   settingsService.setMaterialYou(enabled);
                 },
-              );
-            },
-          ),
-
-          // TODO: Добавить выбор акцентного цвета (пока пропускаем для простоты)
-          // Можно сделать ряд цветных кружков или еще один Dropdown
-          Divider(),
-
-          // --- Секция: О приложении/разработчике ---
-          _buildSectionHeader('Дополнительно'),
-          ListTile(
-            leading: svgTg,
-            title: Text('Официальный Telegram канал'),
-            onTap: () => _launchTG(context),
-          ),
-          ListTile(
-            leading: Icon(Icons.info_outline),
-            title: Text('О приложении'),
-            onTap: () {
-              showDialog(
-                context: context,
-                builder:
-                    (context) => AboutDialog(
-                      applicationName: 'МойАПЭК', // Название приложения
-                      applicationVersion:
-                          _appVersion, // TODO: Получать версию динамически
-                      applicationIcon: svg, // Или иконка твоего приложения
-                      applicationLegalese: '©2026 Onovane',
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16.0),
-                          child: Text(
-                            'Автор: Попков Дмитрий (9ОИБ231)\nИдея: Никифоров Максим (11ОИБ232)\nРазработано с ❤️ с помощью Flutter',
-                          ),
-                        ),
-                        // TODO: Добавь сюда ссылки на себя (VK, GitHub, Telegram)
-                      ],
-                    ),
               );
             },
           ),

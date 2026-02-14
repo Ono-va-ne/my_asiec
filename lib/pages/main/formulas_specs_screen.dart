@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../pages/formulas_by_speciality_screen.dart';
+import '../formulas_by_speciality_screen.dart';
 
 class SpecialtiesScreen extends StatefulWidget {
   const SpecialtiesScreen({super.key});
@@ -42,7 +42,7 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
               padding: const EdgeInsets.all(12),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                childAspectRatio: 1,
+                childAspectRatio: 1.15,
                 crossAxisSpacing: 1,
                 mainAxisSpacing: 1,
               ),
@@ -65,33 +65,7 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                   child: Card(
                     clipBehavior: Clip.hardEdge,
                     child: Stack(
-                      children: [
-                        Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                children: [
-                                  Text(
-                                    sp['name'] ?? 'Специальность',
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    sp['description'] ?? '',
-                                    style: const TextStyle(fontSize: 14),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        // SVG icon in top-right corner (supports inline SVG string or URL)
+                      children: [// SVG icon is now the first child, so it's in the background.
                         Builder(builder: (context) {
                           final iconData = sp['icon'];
                           if (iconData == null) return const SizedBox.shrink();
@@ -101,17 +75,17 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                           if (trimmed.startsWith('<svg')) {
                             iconWidget = SvgPicture.string(
                               iconData,
-                              width: 96,
-                              height: 96,
+                              width: 64,
+                              height: 64,
                               fit: BoxFit.contain,
-                              colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary.withAlpha(155), BlendMode.modulate),
-                              placeholderBuilder: (ctx) => const SizedBox(width: 128, height: 128),
+                              colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primary.withAlpha(100), BlendMode.modulate),
+                              placeholderBuilder: (ctx) => const SizedBox(width: 64, height: 64),
                             );
                           } else {
                             iconWidget = SvgPicture.network(
                               iconData,
-                              width: 128,
-                              height: 128,
+                              width: 64,
+                              height: 64,
                               fit: BoxFit.contain,
                               colorFilter: ColorFilter.mode(Theme.of(context).colorScheme.primaryContainer, BlendMode.modulate),
                               placeholderBuilder: (ctx) => const SizedBox(width: 128, height: 128, child: Center(child: SizedBox(width:12,height:12,child:CircularProgressIndicator(strokeWidth:2)))),
@@ -123,12 +97,24 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                             bottom: 10,
                             right: 10,
                             child: SizedBox(
-                              width: 96,
-                              height: 96,
+                              width: 64,
+                              height: 64,
                               child: iconWidget,
                             ),
                           );
                         }),
+                        // The text is now the second child, so it's in the foreground.
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            sp['name'] ?? 'Специальность',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.left,
+                          ),
+                        ),
                       ],
                     ),
                   ),

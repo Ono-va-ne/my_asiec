@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/homework.dart';
-import 'homework_edit_screen.dart';
+import '../../models/homework.dart';
+import '../homework_edit_screen.dart';
 import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
-import '../services/local_homework_service.dart';
-import '../services/settings_service.dart'; // Импортируем сервис настроек
-import '../pages/homework_view_screen.dart';
+import '../../services/local_homework_service.dart';
+import '../../services/settings_service.dart'; // Импортируем сервис настроек
+import '../homework_view_screen.dart';
 
 class HomeworkScreen extends StatefulWidget {
   const HomeworkScreen({super.key});

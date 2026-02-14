@@ -10,6 +10,10 @@ const String _defaultGroupIdKey = 'app_default_group_id';
 const String _defaultTeacherIdKey = 'default_teacher_id';
 const String _defaultRoomIdKey = 'default_room_id';
 const String _showBreaksInScheduleKey = 'show_breaks_in_schedule';
+const String _pomodoroWorkDurationKey = 'pomodoro_work_duration';
+const String _pomodoroShortBreakDurationKey = 'pomodoro_short_break_duration';
+const String _pomodoroLongBreakDurationKey = 'pomodoro_long_break_duration';
+
 
 class SettingsService {
   // --- Notifiers для оповещения об изменениях ---
@@ -22,6 +26,11 @@ class SettingsService {
   ); // null означает цвет по умолчанию
   final ValueNotifier<bool> materialYouNotifier = ValueNotifier(false);
   final ValueNotifier<bool> showBreaksInScheduleNotifier = ValueNotifier(true); // По умолчанию показываем
+  // Notifiers для Pomodoro (в минутах)
+  final ValueNotifier<int> pomodoroWorkDurationNotifier = ValueNotifier(25);
+  final ValueNotifier<int> pomodoroShortBreakDurationNotifier = ValueNotifier(5);
+  final ValueNotifier<int> pomodoroLongBreakDurationNotifier = ValueNotifier(15);
+
 
   SharedPreferences? _prefs; // Экземпляр SharedPreferences
 
@@ -45,6 +54,15 @@ class SettingsService {
     // Загрузка настройки отображения перемен
     showBreaksInScheduleNotifier.value =
         _prefs?.getBool(_showBreaksInScheduleKey) ?? true; // По умолчанию true
+
+    // Загрузка настроек Pomodoro (в минутах)
+    pomodoroWorkDurationNotifier.value =
+        _prefs?.getInt(_pomodoroWorkDurationKey) ?? 25;
+    pomodoroShortBreakDurationNotifier.value =
+        _prefs?.getInt(_pomodoroShortBreakDurationKey) ?? 5;
+    pomodoroLongBreakDurationNotifier.value =
+        _prefs?.getInt(_pomodoroLongBreakDurationKey) ?? 15;
+
 
     // Загрузка группы по умолчанию (просто загружаем, слушатель не нужен напрямую)
     // String? defaultGroupId = _prefs?.getString(_defaultGroupIdKey);
@@ -81,6 +99,24 @@ class SettingsService {
     if (_prefs == null) await loadSettings();
     await _prefs?.setBool(_showBreaksInScheduleKey, show);
     showBreaksInScheduleNotifier.value = show;
+  }
+
+  Future<void> setPomodoroWorkDuration(int minutes) async {
+    if (_prefs == null) await loadSettings();
+    await _prefs?.setInt(_pomodoroWorkDurationKey, minutes);
+    pomodoroWorkDurationNotifier.value = minutes;
+  }
+
+  Future<void> setPomodoroShortBreakDuration(int minutes) async {
+    if (_prefs == null) await loadSettings();
+    await _prefs?.setInt(_pomodoroShortBreakDurationKey, minutes);
+    pomodoroShortBreakDurationNotifier.value = minutes;
+  }
+
+  Future<void> setPomodoroLongBreakDuration(int minutes) async {
+    if (_prefs == null) await loadSettings();
+    await _prefs?.setInt(_pomodoroLongBreakDurationKey, minutes);
+    pomodoroLongBreakDurationNotifier.value = minutes;
   }
 
   Future<void> setDefaultRoomId(String? roomId) async {

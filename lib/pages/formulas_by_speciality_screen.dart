@@ -127,7 +127,7 @@ class _FormulasBySpecialtyScreenState extends State<FormulasBySpecialtyScreen> {
             _loading
                 ? const Center(child: CircularProgressIndicator())
                 : (_allItems.isEmpty)
-                ? const Center(child: Text('Формулы не найдены'))
+                ? const Center(child: Text('Ничего не найдено'))
                 : Column(
                   children: [
                     Padding(

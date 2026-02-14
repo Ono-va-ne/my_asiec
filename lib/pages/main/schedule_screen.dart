@@ -6,26 +6,26 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/schedule_card.dart';
-import '../models/break_card.dart';
+import '../../models/schedule_card.dart';
+import '../../models/break_card.dart';
 
-import '../models/daily_schedule.dart';
+import '../../models/daily_schedule.dart';
 
-import '../data/groups.dart';
-import '../data/rooms.dart';
-import '../data/teachers.dart';
+import '../../data/groups.dart';
+import '../../data/rooms.dart';
+import '../../data/teachers.dart';
 
-import '../models/group_info.dart';
-import '../models/teacher_info.dart';
-import '../models/room_info.dart';
+import '../../models/group_info.dart';
+import '../../models/teacher_info.dart';
+import '../../models/room_info.dart';
 
-import '../services/settings_service.dart';
-import '../services/groups_service.dart';
+import '../../services/settings_service.dart';
+import '../../services/groups_service.dart';
 
-import '../services/local_homework_service.dart';
-import '../services/schedule_service.dart';
+import '../../services/local_homework_service.dart';
+import '../../services/schedule_service.dart';
 // Используем Supabase для домашних заданий (импорт уже выше)
-import '../models/homework.dart';
+import '../../models/homework.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -629,12 +629,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
           ButtonSegment(
             value: ScheduleType.prep,
-            label: Text('Преподаватель'),
+            label: Text('Препод.'),
             icon: Icon(Icons.person),
           ),
           ButtonSegment(
             value: ScheduleType.aud,
-            label: Text('Аудитория'),
+            label: Text('Ауд.'),
             icon: Icon(Icons.meeting_room),
           ),
         ],

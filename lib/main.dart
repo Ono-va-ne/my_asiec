@@ -7,41 +7,33 @@ import 'package:flutter_tex/flutter_tex.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../pages/schedule_screen.dart';
-import '../pages/settings_screen.dart';
-import '../pages/homework_screen.dart';
-import '../pages/formulas_specs_screen.dart';
+import 'pages/main/schedule_screen.dart';
+import 'pages/main/homework_screen.dart';
+import 'pages/main/formulas_specs_screen.dart';
+import 'pages/main/more_screen.dart';
 
 import '../models/homework.dart';
 // import '../data/group_uploader.dart';
 
 import 'dart:io';
 import 'dart:async';
+import '../services/notification_service.dart';
+import '../services/pomodoro_service.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../services/settings_service.dart';
 import '../utils/logger_setup.dart';
 // import 'package:http/http.dart' as http;
 
-// Класс для обхода проверки SSL (ТОЛЬКО ДЛЯ РАЗРАБОТКИ!)
-class MyHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context)
-      ..badCertificateCallback =
-          (X509Certificate cert, String host, int port) =>
-              true; // Принимаем любой сертификат
-  }
-}
 
 void main() async {
   await runZonedGuarded<Future<void>>(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
-      // Применяем обход проверки SSL глобально
-      HttpOverrides.global = MyHttpOverrides();
 
+      await NotificationService().init();
       WidgetsFlutterBinding.ensureInitialized();
+      pomodoroService.init(); // Инициализируем сервис Pomodoro
       await initializeDateFormatting('ru_RU', null);
 
       WidgetsFlutterBinding.ensureInitialized();
@@ -191,7 +183,9 @@ class _MainScreenState extends State<MainScreen> {
     HomeworkScreen(),
     // FormulasScreen(),
     SpecialtiesScreen(),
-    SettingsScreen(),
+    // PomodoroScreen(),
+    // SettingsScreen(),
+    MoreScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -203,37 +197,45 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
-
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _widgetOptions,
+      ),
+      // body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         destinations: const <Widget>[
           NavigationDestination(
-            icon: Icon(Icons.schedule_outlined),
-            selectedIcon: Icon(Icons.schedule),
+            icon: Icon(Icons.access_time),
+            selectedIcon: Icon(Icons.access_time_filled),
             label: 'Расписание',
           ),
           NavigationDestination(
             icon: Icon(Icons.assignment_outlined),
             selectedIcon: Icon(Icons.assignment),
-            label: 'Домашка',
+            label: 'Задания',
           ),
-          // NavigationDestination(
-          //   icon: Icon(Icons.calculate_outlined),
-          //   selectedIcon: Icon(Icons.calculate),
-          //   label: 'Справочник',
-          // ),
           NavigationDestination(
-            icon: Icon(Icons.calculate_outlined),
-            selectedIcon: Icon(Icons.calculate),
+            icon: Icon(Icons.bookmark_border),
+            selectedIcon: Icon(Icons.bookmark),
             label: 'Справочник',
           ),
+          // NavigationDestination(
+          //   icon: Icon(Icons.timer_outlined),
+          //   selectedIcon: Icon(Icons.timer),
+          //   label: 'Pomodoro',
+          // ),
+          // NavigationDestination(
+          //   icon: Icon(Icons.settings_outlined),
+          //   selectedIcon: Icon(Icons.settings),
+          //   label: 'Настройки',
+          // ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Настройки',
+            icon: Icon(Icons.more_horiz),
+            selectedIcon: Icon(Icons.more_horiz),
+            label: 'Больше',
           ),
         ],
       ),
