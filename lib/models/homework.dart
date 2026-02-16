@@ -39,6 +39,7 @@ class Homework {
   });
   Map<String, dynamic> toJson() {
     return {
+      'id': id, // ID нужен для операции update в Supabase
       'discipline': discipline,
       'group': group,
       'group_id': group_id,

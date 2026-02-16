@@ -68,6 +68,25 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     // В данном случае потоки обновляются автоматически.
     // Мы можем просто подождать немного для имитации загрузки
     // и чтобы дать время потокам синхронизироваться, если есть задержки.
+    _loadUserGroupId();
+    final firebaseStream = _client
+        .from('homework')
+        .stream(primaryKey: ['id'])
+        .order('due_date')
+        .map((rows) => (rows as List)
+            .map((row) => Homework.fromJson(
+                row as Map<String, dynamic>, (row['id'] ?? '').toString()))
+            .toList());
+    final localStream = _localHomeworkService.getHomeworkStream();
+
+    _combinedStream = Rx.combineLatest2<List<Homework>, List<Homework>,
+        List<Homework>>(firebaseStream, localStream,
+        (firebaseHomeworks, localHomeworks) {
+      final allHomeworks = [...localHomeworks, ...firebaseHomeworks];
+      allHomeworks.sort((a, b) => a.due_date.compareTo(b.due_date));
+      return allHomeworks;
+    });
+    if (mounted) setState(() {});
     await Future.delayed(const Duration(seconds: 1));
   }
 

@@ -234,22 +234,13 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
         } else {
           // --- Сохраняем/обновляем УДАЛЕННО (в Supabase) ---
           print('Сохраняем/обновляем УДАЛЕННО: ${homeworkToProcess.toJson()}');
-          final homeworkMapForSupabase = Homework(
-            id: homeworkToProcess.id,
-            discipline: homeworkToProcess.discipline,
-            group: homeworkToProcess.group,
-            group_id: homeworkToProcess.group_id,
-            task: homeworkToProcess.task,
-            due_date: homeworkToProcess.due_date,
-            date_added: homeworkToProcess.date_added,
-            photo_urls: homeworkToProcess.photo_urls,
-            isLocal: homeworkToProcess.isLocal,
-          ).toJson();
+          // Метод toJson() теперь возвращает все необходимые поля, кроме id
+          final homeworkMapForSupabase = homeworkToProcess.toJson();
 
           if (homeworkToProcess.id == null) {
             await _client.from('homework').insert(homeworkMapForSupabase);
           } else {
-            await _client.from('homework').update(homeworkMapForSupabase).eq('id', homeworkMapForSupabase['id']);
+            await _client.from('homework').update(homeworkMapForSupabase).eq('id', homeworkToProcess.id!);
           }
 
           print('УДАЛЕННОЕ ДЗ успешно сохранено/обновлено.');
