@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'notification_service.dart';
 import 'settings_service.dart';
 import 'package:home_widget/home_widget.dart';
+import '../l10n/app_localizations.dart';
+
 
 enum PomodoroSession { work, shortBreak, longBreak }
 
@@ -16,6 +18,8 @@ class PomodoroService {
 
   // --- Dependencies ---
   final NotificationService _notificationService = NotificationService();
+  AppLocalizations? _l10n;
+
 
   // --- State Notifiers (чтобы UI мог слушать изменения) ---
   final ValueNotifier<int> remainingTime = ValueNotifier(0);
@@ -49,15 +53,21 @@ class PomodoroService {
     settingsService.pomodoroLongBreakDurationNotifier.removeListener(_onSettingsChanged);
   }
 
+  // --- Метод для установки локализации из UI ---
+  void setLocalizations(AppLocalizations l10n) {
+    _l10n = l10n;
+  }
+
   // --- Getters for computed properties ---
   String get sessionTitle {
+    if (_l10n == null) return 'Work'; // Fallback
     switch (currentSession.value) {
       case PomodoroSession.work:
-        return 'Рабочий цикл';
+        return _l10n!.pomodoroWorkCycle;
       case PomodoroSession.shortBreak:
-        return 'Короткий перерыв';
+        return _l10n!.pomodoroShortBreak;
       case PomodoroSession.longBreak:
-        return 'Длинный перерыв';
+        return _l10n!.pomodoroLongBreak;
     }
   }
 
@@ -85,7 +95,8 @@ class PomodoroService {
       } else {
         _timer?.cancel();
         isTimerRunning.value = false; // Останавливаем таймер
-        _notificationService.showCompletionNotification(sessionTitle, 'Время вышло! Запуск следующего цикла через 5 секунд...');
+        final notificationBody = _l10n!.notificationTimeOut;
+        _notificationService.showCompletionNotification(sessionTitle, notificationBody);
         
         // Ждем 5 секунд, чтобы звук уведомления успел проиграться
         Future.delayed(const Duration(seconds: 5), () {
@@ -142,7 +153,19 @@ class PomodoroService {
     // Автоматически запускаем следующую сессию
     startTimer();
   }
-
+  // --- Метод для предсказания следующей сессии ---
+  String get nextSessionTitle {
+    if (_l10n == null) return 'Break'; // Fallback
+    if (currentSession.value == PomodoroSession.work) {
+      if ((workSessionCount.value + 1) % _sessionsBeforeLongBreak == 0) {
+        return _l10n!.pomodoroLongBreak;
+      } else {
+        return _l10n!.pomodoroShortBreak;
+      }
+    } else {
+      return _l10n!.pomodoroWorkCycle;
+    }
+  }
   // --- Private Helpers ---
   void _loadDurationsFromSettings() {
     _workDuration = settingsService.pomodoroWorkDurationNotifier.value * 60;
@@ -189,3 +212,10 @@ class PomodoroService {
 
 // --- Global instance (Singleton) ---
 final pomodoroService = PomodoroService();
+
+// Вспомогательный класс для доступа к контексту, если он нужен вне виджетов
+// Это может быть полезно для сервисов, которые не имеют прямого доступа к BuildContext
+class NavigatorService {
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+}

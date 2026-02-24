@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
+import '../l10n/app_localizations.dart';
 
 class BreakCard extends StatefulWidget {
   final Duration duration;
@@ -53,6 +54,7 @@ class _BreakCardState extends State<BreakCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final breakMinutes = widget.duration.inMinutes;
     final now = DateTime.now();
@@ -85,7 +87,7 @@ class _BreakCardState extends State<BreakCard> {
     }
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      margin: const EdgeInsets.symmetric(horizontal: 16.0),
       elevation: 0,
       clipBehavior: Clip.antiAlias, // Важно для правильного отображения фона
       shape: RoundedRectangleBorder(
@@ -114,11 +116,18 @@ class _BreakCardState extends State<BreakCard> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Перемена: $breakMinutes мин.',
+                Text(breakMinutes <= 10
+                    ? '${l10n.scheduleShortBreak}: $breakMinutes ${l10n.minute}'
+                    : breakMinutes > 10 && breakMinutes <= 30
+                        ? '${l10n.scheduleLongBreak}: $breakMinutes ${l10n.minute}'
+                        : '${l10n.scheduleWindow}: $breakMinutes ${l10n.minute}'
+                  ,
                   style: TextStyle(
                     fontSize: 13.0,
                     color: theme.colorScheme.onSurfaceVariant,
+                    fontVariations: [
+                      const FontVariation('wdth', 150),
+                    ]
                   ),
                 ),
                 Text(

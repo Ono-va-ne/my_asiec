@@ -13,17 +13,9 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
-        maven(url = "https://artifactory-external.vkpartner.ru/artifactory/vkid-sdk-android/")
     }
 }
 
-dependencyResolutionManagement {
-    repositories {
-        maven{
-            url = uri("https://artifactory-external.vkpartner.ru/artifactory/vkid-sdk-android/")
-        }
-    }
-}
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"

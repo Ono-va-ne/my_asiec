@@ -8,24 +8,20 @@ import 'package:rxdart/rxdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/schedule_card.dart';
 import '../../models/break_card.dart';
-
 import '../../models/daily_schedule.dart';
-
 import '../../data/groups.dart';
 import '../../data/rooms.dart';
 import '../../data/teachers.dart';
-
 import '../../models/group_info.dart';
 import '../../models/teacher_info.dart';
 import '../../models/room_info.dart';
-
 import '../../services/settings_service.dart';
 import '../../services/groups_service.dart';
-
 import '../../services/local_homework_service.dart';
 import '../../services/schedule_service.dart';
 // Используем Supabase для домашних заданий (импорт уже выше)
 import '../../models/homework.dart';
+import '../../l10n/app_localizations.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -330,11 +326,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       lastDate: DateTime(
         _endDate.year + 2,
       ), // Последняя доступная дата (+2 года от текущего)
-      locale: const Locale('ru', 'RU'), // Локализация для пикера
-      helpText: 'Выберите диапазон дат',
-      cancelText: 'Отмена',
-      confirmText: 'Выбрать',
-      saveText: 'Выбрать',
       builder: (context, child) {
         final currentTheme = Theme.of(context);
 
@@ -588,7 +579,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   // Функция для форматирования диапазона для отображения
   String _formatDateRangeForDisplay(DateTime start, DateTime end) {
-    final ruLocale = 'ru_RU';
+    final locale = Localizations.localeOf(context).toString();
     try {
       // Если даты совпадают, показываем одну дату
       if (start.year == end.year &&
@@ -596,20 +587,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           start.day == end.day) {
         return DateFormat(
           'd MMMM yyyy',
-          ruLocale,
+          locale,
         ).format(start); // Добавим год для ясности
       }
       // Если даты в одном месяце и году
       else if (start.year == end.year && start.month == end.month) {
-        return '${DateFormat('d', ruLocale).format(start)} - ${DateFormat('d MMMM yyyy', ruLocale).format(end)}';
+        return '${DateFormat('d', locale).format(start)} - ${DateFormat('d MMMM yyyy', locale).format(end)}';
       }
       // Если даты в одном году, но разных месяцах
       else if (start.year == end.year) {
-        return '${DateFormat('d MMMM', ruLocale).format(start)} - ${DateFormat('d MMMM yyyy', ruLocale).format(end)}';
+        return '${DateFormat('d MMMM', locale).format(start)} - ${DateFormat('d MMMM yyyy', locale).format(end)}';
       }
       // Иначе показываем полный диапазон
       else {
-        return '${DateFormat('d MMMM yyyy', ruLocale).format(start)} - ${DateFormat('d MMMM yyyy', ruLocale).format(end)}';
+        return '${DateFormat('d MMMM yyyy', locale).format(start)} - ${DateFormat('d MMMM yyyy', locale).format(end)}';
       }
     } catch (e) {
       print("Ошибка форматирования диапазона дат: $e");
@@ -617,24 +608,24 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
-  Widget _buildScheduleTypeButtons() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, left: 16.0, right: 16.0),
-      child: SegmentedButton<ScheduleType>(
-        segments: const [
-          ButtonSegment(
-            value: ScheduleType.grup,
-            label: Text('Группа'),
-            icon: Icon(Icons.group),
+  Widget _buildScheduleTypeButtons(Orientation orientation) {
+    final isLandscape = orientation == Orientation.landscape;
+
+    return SegmentedButton<ScheduleType>(
+      segments: [
+        ButtonSegment(
+          value: ScheduleType.grup,
+          label: isLandscape ? null : Text(AppLocalizations.of(context)!.group),
+          icon: const Icon(Icons.group),
           ),
           ButtonSegment(
             value: ScheduleType.prep,
-            label: Text('Препод.'),
+            label: isLandscape ? null : Text(AppLocalizations.of(context)!.teacher),
             icon: Icon(Icons.person),
           ),
           ButtonSegment(
             value: ScheduleType.aud,
-            label: Text('Ауд.'),
+            label: isLandscape ? null : Text(AppLocalizations.of(context)!.room),
             icon: Icon(Icons.meeting_room),
           ),
         ],
@@ -644,7 +635,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             _setScheduleType(newSelection.first);
           }
         },
-      ),
     );
   }
 
@@ -656,7 +646,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     switch (_rasType) {
       case ScheduleType.grup:
         rasParamName = 'gruppa'; // Имя параметра для групп
-        hintText = 'Выберите группу';
+        hintText = AppLocalizations.of(context)!.group;
         items =
             _availableGroups.map((group) {
               // Используем _groupList
@@ -669,7 +659,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         break;
       case ScheduleType.prep:
         rasParamName = 'prepod';
-        hintText = 'Выберите преподавателя'; // Hint для преподавателей
+        hintText = AppLocalizations.of(context)!.teacher; // Hint для преподавателей
         items =
             _availableTeachers.map((teacher) {
               // Используем _groupList
@@ -682,7 +672,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         break;
       case ScheduleType.aud:
         rasParamName = 'auditoria';
-        hintText = 'Выберите аудиторию'; // Hint для аудиторий
+        hintText = AppLocalizations.of(context)!.room; // Hint для аудиторий
         items =
             _availableRooms.map((room) {
               // Используем _groupList
@@ -695,59 +685,44 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         break;
     }
 
-    return Padding(
-      // Оборачиваем Padding
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16.0,
-        vertical: 0.0,
-      ), // Уменьшаем вертикальный отступ
-      child: DropdownButtonHideUnderline(
-        // Убираем стандартное подчеркивание
-        child: Container(
-          // Оборачиваем в контейнер для фона и скругления
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8.0),
-            border: Border.all(color: Colors.grey.shade500), // Легкая граница
+    return DropdownButtonHideUnderline(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8.0),
+          border: Border.all(color: Colors.grey.shade500),
+        ),
+        child: DropdownButton<dynamic>(
+          value: _rasType == ScheduleType.grup
+              ? _selectedGroup
+              : _rasType == ScheduleType.prep
+                  ? _selectedTeacher
+                  : _rasType == ScheduleType.aud
+                      ? _selectedRoom
+                      : null,
+          hint: Text(hintText),
+          isExpanded: true,
+          icon: Icon(
+            Icons.group_outlined,
+            color: Theme.of(context).colorScheme.primary,
           ),
-          child: DropdownButton<dynamic>(
-            value:
-                _rasType == ScheduleType.grup
-                    ? _selectedGroup // Для групп - _selectedGroup
-                    : _rasType == ScheduleType.prep
-                    ? _selectedTeacher // Для преподавателей - _selectedTeacher
-                    : _rasType == ScheduleType.aud
-                    ? _selectedRoom // Для аудиторий - _selectedRoom
-                    : null,
-            hint: Text(hintText), // Динамический hintText
-            isExpanded: true, // Растягиваем на всю ширину
-            icon: Icon(
-              Icons.group_outlined,
-              color: Theme.of(context).colorScheme.primary,
-            ), // Иконка справа
-            onChanged: (dynamic newValue) {
-              // onChanged теперь принимает dynamic
-              setState(() {
-                _errorMessage = null;
-                _dailySchedules = [];
-                if (newValue != null) {
-                  if (_rasType == ScheduleType.grup) {
-                    _selectedGroup =
-                        newValue as GroupInfo; // Обновляем _selectedGroup
-                  } else if (_rasType == ScheduleType.prep) {
-                    _selectedTeacher =
-                        newValue as TeacherInfo; // Обновляем _selectedTeacher
-                  } else if (_rasType == ScheduleType.aud) {
-                    // Раскомментируй, когда добавим RoomInfo
-                    _selectedRoom =
-                        newValue as RoomInfo; // Обновляем _selectedRoom
-                  }
-                  _loadScheduleData(_startDate, _endDate, _rasType, newValue);
+          onChanged: (dynamic newValue) {
+            setState(() {
+              _errorMessage = null;
+              _dailySchedules = [];
+              if (newValue != null) {
+                if (_rasType == ScheduleType.grup) {
+                  _selectedGroup = newValue as GroupInfo;
+                } else if (_rasType == ScheduleType.prep) {
+                  _selectedTeacher = newValue as TeacherInfo;
+                } else if (_rasType == ScheduleType.aud) {
+                  _selectedRoom = newValue as RoomInfo;
                 }
-              });
-            },
-            items: items, // Динамический список items
-          ),
+                _loadScheduleData(_startDate, _endDate, _rasType, newValue);
+              }
+            });
+          },
+          items: items,
         ),
       ),
     );
@@ -757,81 +732,166 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        body: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.stretch, // Заголовки дней будут на всю ширину
-          children: [
-            // Кликабельный заголовок с диапазоном дат
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 12.0,
-              ),
-              child: InkWell(
-                // Делаем область кликабельной
-                onTap:
-                    _isLoading
-                        ? null
-                        : () => _selectDateRange(
-                          context,
-                        ), // Вызываем пикер по тапу (блокируем во время загрузки)
-                borderRadius: BorderRadius.circular(
-                  8.0,
-                ), // Скругление для эффекта при нажатии
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8.0,
-                  ), // Внутренний отступ для красоты
-                  child: Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center, // Центрируем текст и иконку
-                    children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 20.0,
-                        color: Theme.of(context).colorScheme.primary,
-                      ), // Иконка календаря
-                      SizedBox(width: 8.0),
-                      Flexible(
-                        // Чтобы текст переносился, если диапазон длинный
-                        child: Text(
-                          _scheduleDateDisplay, // Отображаем диапазон или статус загрузки
-                          style: TextStyle(
-                            fontSize: 18.0, // Можно настроить размер
-                            fontWeight: FontWeight.w500, // Средняя жирность
-                          ),
-                          textAlign: TextAlign.center,
+        body: OrientationBuilder(
+          builder: (context, orientation) {
+            if (orientation == Orientation.portrait) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Кликабельный заголовок с диапазоном дат
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 12.0,
+                    ),
+                    child: InkWell(
+                      onTap: _isLoading
+                          ? null
+                          : () => _selectDateRange(
+                                context,
+                              ),
+                      borderRadius: BorderRadius.circular(
+                        8.0,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8.0,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.calendar_today_outlined,
+                              size: 20.0,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            SizedBox(width: 8.0),
+                            Flexible(
+                              child: Text(
+                                _scheduleDateDisplay,
+                                style: TextStyle(
+                                  fontSize: 18.0,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            SizedBox(width: 8.0),
+                            Icon(
+                              Icons.arrow_drop_down,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(width: 8.0),
-                      // Можно добавить иконку выпадающего списка для большей очевидности
-                      Icon(
-                        Icons.arrow_drop_down,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
-            _buildObjectSelector(), // <--- ВСТАВЬ СЮДА ВЫЗОВ _buildObjectSelector()!
-
-            SizedBox(height: 8.0), // Небольшой отступ после дропдауна
-            _buildScheduleTypeButtons(),
-
-            // Тело экрана: загрузка, ошибка или список
-            Expanded(
-              child: StreamBuilder<List<Homework>>(
-                stream: _homeworkStream,
-                builder: (context, homeworkSnapshot) {
-                  final allHomeworks = homeworkSnapshot.data ?? [];
-                  return _buildBody(allHomeworks); // Передаем список ДЗ
-                },
-              ),
-            ),
-          ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 0.0,
+                    ),
+                    child: _buildObjectSelector(),
+                  ),
+                  SizedBox(height: 8.0),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        bottom: 8.0, left: 16.0, right: 16.0),
+                    child: _buildScheduleTypeButtons(orientation),
+                  ),
+                  Expanded(
+                    child: StreamBuilder<List<Homework>>(
+                      stream: _homeworkStream,
+                      builder: (context, homeworkSnapshot) {
+                        final allHomeworks = homeworkSnapshot.data ?? [];
+                        return _buildBody(allHomeworks);
+                      },
+                    ),
+                  ),
+                ],
+              );
+            } else {
+              // Landscape orientation
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: InkWell(
+                              onTap: _isLoading
+                                  ? null
+                                  : () => _selectDateRange(context),
+                              borderRadius: BorderRadius.circular(8.0),
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 1.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.calendar_today_outlined,
+                                        size: 20.0,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary),
+                                    SizedBox(width: 4.0),
+                                    Flexible(
+                                      child: Text(
+                                        _scheduleDateDisplay,
+                                        style: TextStyle(
+                                            fontSize: 18.0,
+                                            fontWeight: FontWeight.w500),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4.0),
+                                    Icon(Icons.arrow_drop_down,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        size: 20.0),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: _buildObjectSelector(),
+                          ),
+                        ),
+                        Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: _buildScheduleTypeButtons(orientation),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: StreamBuilder<List<Homework>>(
+                      stream: _homeworkStream,
+                      builder: (context, homeworkSnapshot) {
+                        final allHomeworks = homeworkSnapshot.data ?? [];
+                        return _buildBody(allHomeworks);
+                      },
+                    ),
+                  ),
+                ],
+              );
+            }
+          },
         ),
-        // backgroundColor: Colors.grey[100],
       ),
     );
   }
@@ -953,18 +1013,26 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   top: 16.0,
                   bottom: 4.0,
                 ),
-                child: Text(
-                  // Форматируем дату дня (например, "Понедельник, 15 Октября")
-                  DateFormat(
-                    'EEEE, d MMMM',
-                    'ru_RU',
-                  ).format(dailySchedule.date),
+                child: Builder(builder: (context) {
+                  final locale = Localizations.localeOf(context).toString();
+                  String formattedDate = DateFormat(
+                    'EEEE, d MMMM', locale,
+                  ).format(dailySchedule.date);
+                  if (formattedDate.isNotEmpty) {
+                    formattedDate = formattedDate[0].toUpperCase() + formattedDate.substring(1);
+                  }
+                  return Text(
+                  formattedDate,
                   style: TextStyle(
                     fontSize: 16.0,
                     fontWeight: FontWeight.bold,
+                    fontVariations: [
+                      const FontVariation('wdth', 150)
+                    ],
                     color: Theme.of(context).colorScheme.primary,
                   ),
-                ),
+                  );
+                }),
               ),
 
               // --- Список пар для этого дня ---
