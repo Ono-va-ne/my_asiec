@@ -14,6 +14,8 @@
   "@ok": {},
   "close": "Закрыть",
   "@close": {},
+  "empty": "Пусто",
+  "@empty": {},
   "error": "Ошибка",
   "@error": {},
   "search": "Поиск",
@@ -36,6 +38,8 @@
   "@reset": {},
   "nothingFound": "Ничего не найдено",
   "@nothingFound": {},
+  "pause": "Пауза",
+  "@pause": {},
   "minute": "мин.",
   "@minute": {},
   
@@ -81,9 +85,10 @@
   "@taskSaveLocally": {},
   "taskSaveChanges": "Сохранить изменения",
   "@taskSaveChanges": {},
+  "taskDeleteConfirm": "Вы уверены, что хотите удалить задание?",
+  "@taskDeleteConfirm": {},
 
-  "handbookEmpty": "Ничего не найдено",
-  "@handbookEmpty": {},
+
   "handbookCreate": "Добавить формулу",
   "@handbookCreate": {},
   "handbookEdit": "Редактировать формулу",
@@ -111,8 +116,6 @@
   "@pomodoroTimer": {},
   "pomodoroIntervalSettings": "Настройки интервалов",
   "@pomodoroIntervalSettings": {},
-  "pomodoroIntervalHint": "Время в минутах.\nСтандартное время: 25:5:(15-30)",
-  "@pomodoroIntervalHint": {},
   "pomodoroWorkCycle": "Фокус",
   "@pomodoroWorkCycle": {},
   "pomodoroShortBreak": "Короткий отдых",
@@ -141,7 +144,7 @@
 
   "hallOfFame": "Зал славы",
   "@hallOfFame": {},
-  "hallOfFameTip": "Поддержите разработку и попадите в Зал славы!",
+  "hallOfFameTip": "Здесь находятся люди, поддержавшие разработку приложения",
   "@hallOfFameTip": {
     "description": "Подсказка как попасть в зал славы в нижней части экрана"
   },

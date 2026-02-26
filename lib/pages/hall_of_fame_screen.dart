@@ -1,3 +1,4 @@
+import 'package:my_asiec/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -82,16 +83,10 @@ class _HallOfFameScreenState extends State<HallOfFameScreen> {
                           vertical: 1.0,
                         ),
                         leading: ClipRRect(
-                          // backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
-                          //     ? NetworkImage(photoUrl)
-                          //     : null,
                           borderRadius: BorderRadius.circular(6),
                           child: (photoUrl != null && photoUrl.isNotEmpty) 
                             ? Image.network(photoUrl)
                             : const Icon(Icons.person),
-                          // child: (photoUrl == null || photoUrl.isEmpty)
-                          //     ? const Icon(Icons.person)
-                          //     : null,
                         ),
                         title: Text(member['name'] ?? 'Без имени'),
                         subtitle: Text('${member['group'] ?? ''}\n${member['info'] ?? ''}'),
@@ -103,7 +98,7 @@ class _HallOfFameScreenState extends State<HallOfFameScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16.0, 8.0, 16.0, 24.0),
                 child: Text(
-                  'Поддержите разработку и попадите в Зал славы!',
+                  AppLocalizations.of(context)!.hallOfFameTip,
                   textAlign: TextAlign.center,
                   style: Theme.of(context)
                       .textTheme

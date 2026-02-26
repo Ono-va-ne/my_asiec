@@ -30,6 +30,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get close => 'Закрыть';
 
   @override
+  String get empty => 'Пусто';
+
+  @override
   String get error => 'Ошибка';
 
   @override
@@ -61,6 +64,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get nothingFound => 'Ничего не найдено';
+
+  @override
+  String get pause => 'Пауза';
 
   @override
   String get minute => 'мин.';
@@ -126,7 +132,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskSaveChanges => 'Сохранить изменения';
 
   @override
-  String get handbookEmpty => 'Ничего не найдено';
+  String get taskDeleteConfirm => 'Вы уверены, что хотите удалить задание?';
 
   @override
   String get handbookCreate => 'Добавить формулу';
@@ -168,10 +174,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pomodoroIntervalSettings => 'Настройки интервалов';
 
   @override
-  String get pomodoroIntervalHint =>
-      'Время в минутах.\nСтандартное время: 25:5:(15-30)';
-
-  @override
   String get pomodoroWorkCycle => 'Фокус';
 
   @override
@@ -198,7 +200,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get hallOfFame => 'Зал славы';
 
   @override
-  String get hallOfFameTip => 'Поддержите разработку и попадите в Зал славы!';
+  String get hallOfFameTip =>
+      'Здесь находятся люди, поддержавшие разработку приложения';
 
   @override
   String get settings => 'Настройки';

@@ -19,9 +19,9 @@ import '../../services/settings_service.dart';
 import '../../services/groups_service.dart';
 import '../../services/local_homework_service.dart';
 import '../../services/schedule_service.dart';
-// Используем Supabase для домашних заданий (импорт уже выше)
-import '../../models/homework.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/homework.dart';
+import '../../data/text_emojis.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -149,7 +149,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     });
     // _initializeScheduleObjects(); // Инициализируем список И выбранную группу
     _loadAvailableGroups();
-    final firebaseStream = _client
+    final serverStream = _client
       .from('homework')
       .stream(primaryKey: ['id'])
       .map((rows) => (rows as List)
@@ -159,27 +159,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _homeworkStream =
         Rx.combineLatest2<List<Homework>, List<Homework>, List<Homework>>(
           localStream,
-          firebaseStream,
+          serverStream,
           (local, remote) => [...local, ...remote],
         );
-    // // Загружаем данные, если группа выбрана
-    // if (_selectedGroup != null) {
-    //     _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
-    // } else {
-    //     // Ошибка - не удалось определить группу по умолчанию
-    //     setState(() {
-    //         _isLoading = false;
-    //         _errorMessage = "Группа по умолчанию не найдена или не выбрана в настройках.";
-    //     });
-    // }
   }
 
-  // Загружает группы из Supabase (GroupsService) и затем инициализирует объекты
+  // Загрузка группы из Supabase (GroupsService) и инициализация объектов
   Future<void> _loadAvailableGroups() async {
     try {
       final groups =
           await _groupsService.getGroups(); // GroupsService кеширует через Hive
-      // Если вернулся пустой список — оставляем локальные данные как fallback
       if (groups.isEmpty) {
         print(
           'GroupsService вернул пустой список, используем локальные данные',
@@ -195,7 +184,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       _availableGroups = availableGroupsData;
     }
 
-    // После загрузки групп инициализируем выбор и (при наличии) загружаем расписание
+    // Инициализация выбора и загрузка расписания
     _initializeScheduleObjects();
     if (_selectedGroup != null) {
       _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
@@ -231,47 +220,42 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         print(
           "Сохраненная группа $savedGroupId не найдена в списке доступных.",
         );
-        _selectedGroup = null; // Не нашли, сбрасываем
+        _selectedGroup = null;
       }
     }
 
-    // Если группа не была сохранена ИЛИ сохраненная не найдена,
-    // выбираем первую доступную группу как запасной вариант
+    // Если группа не была сохранена ИЛИ сохраненная не найдена, выбираем первую доступную группу
     if (_selectedGroup == null && _availableGroups.isNotEmpty) {
       _selectedGroup = _availableGroups.first;
       print(
         "Группа по умолчанию не найдена в настройках, выбрана первая: ${_selectedGroup?.name}",
       );
-      // Опционально: можно сразу сохранить эту первую группу как дефолтную
-      // settingsService.setDefaultGroupId(_selectedGroup?.id);
     } else if (_availableGroups.isEmpty) {
       print("Список доступных групп пуст!");
     }
 
     final String? savedTeacherId =
         settingsService
-            .getDefaultTeacherId(); // <--- Получаем сохраненный ID преподавателя
-    _selectedTeacher = null; // Сбрасываем на всякий случай
+            .getDefaultTeacherId();
+    _selectedTeacher = null;
 
     if (savedTeacherId != null) {
       try {
         _selectedTeacher = _availableTeachers.firstWhere(
-          // <--- Ищем преподавателя
           (t) => t.id == savedTeacherId,
-          // orElse: () => null,
         );
       } catch (e) {
         print(
           "Сохраненный преподаватель $savedTeacherId не найден в списке доступных.",
         );
-        _selectedTeacher = null; // Не нашли, сбрасываем
+        _selectedTeacher = null;
       }
     }
 
     if (_selectedTeacher == null && _availableTeachers.isNotEmpty) {
       _selectedTeacher =
           _availableTeachers
-              .first; // <--- Выбираем первого преподавателя, если нет сохраненного
+              .first; // Выбираем первого преподавателя, если нет сохраненного
       print(
         "Преподаватель по умолчанию не найден в настройках, выбран первый: ${_selectedTeacher?.name}",
       );
@@ -283,27 +267,26 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     final String? savedRoomId =
         settingsService
-            .getDefaultRoomId(); // <--- Получаем сохраненный ID аудитории
-    _selectedRoom = null; // Сбрасываем на всякий случай
+            .getDefaultRoomId();
+    _selectedRoom = null;
 
     if (savedRoomId != null) {
       try {
         _selectedRoom = _availableRooms.firstWhere(
-          // <--- Ищем аудиторию
           (r) => r.id == savedRoomId,
         );
       } catch (e) {
         print(
           "Сохраненная аудитория $savedRoomId не найдена в списке доступных.",
         );
-        _selectedRoom = null; // Не нашли, сбрасываем
+        _selectedRoom = null;
       }
     }
 
     if (_selectedRoom == null && _availableRooms.isNotEmpty) {
       _selectedRoom =
           _availableRooms
-              .first; // <--- Выбираем первую аудиторию, если нет сохраненной
+              .first; // Выбираем первую аудиторию, если нет сохраненной
       print(
         "Аудитория по умолчанию не найдена в настройках, выбрана первая: ${_selectedRoom?.name}",
       );
@@ -322,7 +305,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
       firstDate: DateTime(
         _startDate.year - 2,
-      ), // ГПервая доступная дата (-2 года от текущего)
+      ), // Первая доступная дата (-2 года от текущего)
       lastDate: DateTime(
         _endDate.year + 2,
       ), // Последняя доступная дата (+2 года от текущего)
@@ -381,7 +364,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
-  // Pull-to-refresh: invalidate current cache and reload from network
+  // Pull-to-refresh: аннулирование текущего кэша и перезагрузка из сети
   Future<void> _refreshSchedule() async {
     dynamic selected;
     switch (_rasType) {
@@ -420,7 +403,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     await _loadScheduleData(_startDate, _endDate, _rasType, selected);
   }
 
-  // --- Хелпер для показа SnackBar ---
+  // --- Хелпер SnackBar ---
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), duration: Duration(seconds: 2)),
@@ -434,26 +417,23 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     ScheduleType scheduleType,
     dynamic selectedObject,
   ) async {
-    // _loadScheduleData called
-    // Проверяем mounted перед первом setState
     if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      // Отображаем текущий диапазон и группу + "Загрузка..."
       _scheduleDateDisplay =
           '${_formatDateRangeForDisplay(_startDate, _endDate)} (Загрузка...)';
       _dailySchedules = [];
     });
     String objectId =
-        ''; // Переменная для ID объекта (группы, преподавателя, аудитории)
+        ''; // Переменная для ID объекта
     String rasParamName = '';
     final String startDateString = _formatDateForApi(startDate);
     final String endDateString = _formatDateForApi(endDate);
 
     switch (scheduleType) {
       case ScheduleType.grup:
-        rasParamName = 'gruppa'; // Имя параметра для групп
+        rasParamName = 'gruppa';
         if (selectedObject is GroupInfo) {
           objectId = selectedObject.id; // Получаем ID группы
         }
@@ -474,10 +454,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     final body = {
       'dostup': _dostup,
-      rasParamName: objectId, // Используем ID выбранной группы
+      rasParamName: objectId, // Используем выбранный ID
       'calendar': startDateString,
       'calendar2': endDateString,
-      'ras': _getRasTypeValue(scheduleType), // Конвертим ScheduleType в String (use parameter)
+      'ras': _getRasTypeValue(scheduleType), // Конвертим ScheduleType в String
     };
 
     // --- Попытка взять из кеша перед выполнением сетевого запроса ---
@@ -499,24 +479,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         _isLoading = false;
         _errorMessage = null;
       });
-      // loaded from cache
       return; // Данные из кеша, не делаем запрос
     }
 
     try {
-
-      // about to POST
+      // POST запрос
       http.Response response;
       try {
-        response = await http
-            .post(
+        response = await http.post(
           Uri.parse(_scheduleApiUrl),
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: body,
         )
-            .timeout(const Duration(seconds: 15));
-
-        // HTTP response received
+        .timeout(const Duration(seconds: 15));
       } on TimeoutException catch (e) {
         print('ScheduleScreen: HTTP request timed out: $e');
         rethrow;
@@ -531,7 +506,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         try {
           ScheduleService.instance.setCached(cacheKey, parsedData);
         } catch (e) {
-          // ignore cache errors
+          // игноринуем ошибки
         }
 
         if (!mounted) return;
@@ -544,7 +519,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           _isLoading = false;
           _errorMessage = null;
         });
-        // loaded from network
+        // Загружено из сети
       } else {
         if (!mounted) return;
         setState(() {
@@ -555,7 +530,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     } catch (e) {
       // Ловим исключение
       String errorMessageText =
-          'Не удалось загрузить расписание: ${e.toString()}'; // Стандартное сообщение
+          'Не удалось загрузить расписание: ${e.toString()}';
 
       // Попытка дать более понятный текст при сетевых ошибках
       if (e is SocketException) {
@@ -581,14 +556,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   String _formatDateRangeForDisplay(DateTime start, DateTime end) {
     final locale = Localizations.localeOf(context).toString();
     try {
-      // Если даты совпадают, показываем одну дату
+      // Если даты совпадают, показываем один день
       if (start.year == end.year &&
           start.month == end.month &&
           start.day == end.day) {
         return DateFormat(
           'd MMMM yyyy',
           locale,
-        ).format(start); // Добавим год для ясности
+        ).format(start);
       }
       // Если даты в одном месяце и году
       else if (start.year == end.year && start.month == end.month) {
@@ -641,43 +616,32 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Widget _buildObjectSelector() {
     String hintText;
     List<DropdownMenuItem<dynamic>>? items = [];
-    // ignore: unused_local_variable
-    String rasParamName = ''; // Имя параметра для передачи в запросе
     switch (_rasType) {
       case ScheduleType.grup:
-        rasParamName = 'gruppa'; // Имя параметра для групп
         hintText = AppLocalizations.of(context)!.group;
         items =
             _availableGroups.map((group) {
-              // Используем _groupList
               return DropdownMenuItem<GroupInfo>(
-                // Тип элемента - GroupInfo
                 value: group,
                 child: Text(group.name),
               );
             }).toList();
         break;
       case ScheduleType.prep:
-        rasParamName = 'prepod';
-        hintText = AppLocalizations.of(context)!.teacher; // Hint для преподавателей
+        hintText = AppLocalizations.of(context)!.teacher;
         items =
             _availableTeachers.map((teacher) {
-              // Используем _groupList
               return DropdownMenuItem<TeacherInfo>(
-                // Тип элемента - GroupInfo
                 value: teacher,
                 child: Text(teacher.name),
               );
             }).toList();
         break;
       case ScheduleType.aud:
-        rasParamName = 'auditoria';
-        hintText = AppLocalizations.of(context)!.room; // Hint для аудиторий
+        hintText = AppLocalizations.of(context)!.room;
         items =
             _availableRooms.map((room) {
-              // Используем _groupList
               return DropdownMenuItem<RoomInfo>(
-                // Тип элемента - GroupInfo
                 value: room,
                 child: Text(room.name),
               );
@@ -687,9 +651,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     return DropdownButtonHideUnderline(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(12.0),
           border: Border.all(color: Colors.grey.shade500),
         ),
         child: DropdownButton<dynamic>(
@@ -811,13 +775,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ],
               );
             } else {
-              // Landscape orientation
+              // Ландшафтная (горизонтальная) ориентация
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0),
+                        horizontal: 8.0, vertical: 4.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -870,10 +834,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             child: _buildObjectSelector(),
                           ),
                         ),
-                        Padding(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 4.0),
-                          child: _buildScheduleTypeButtons(orientation),
+                        SizedBox(
+                          height: 48,
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: _buildScheduleTypeButtons(orientation),
+                          ),
                         ),
                       ],
                     ),
@@ -902,7 +869,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
 
     if (_errorMessage != null) {
-      // Оборачиваем ошибочный экран в RefreshIndicator, чтобы можно было обновить
       return RefreshIndicator(
         onRefresh: _refreshSchedule,
         child: ListView(
@@ -967,7 +933,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
     }
 
-    // Если расписание пустое — показываем текст внутри ListView, чтобы сработал pull-to-refresh
     if (_dailySchedules.isEmpty) {
       return RefreshIndicator(
         onRefresh: _refreshSchedule,
@@ -978,10 +943,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 120.0),
-                child: Text(
-                  'Пусто ¯\\_(ツ)_/¯',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(getRandomEmoji(), style: TextStyle(fontSize: 72, color: Colors.grey[600])),
+                    const SizedBox(height: 8),
+                    Text(
+                      AppLocalizations.of(context)!.nothingFound,
+                      style: TextStyle(fontSize: 16, color: Colors.grey[400]),
+                    ),
+                  ],
                 ),
               ),
             ),

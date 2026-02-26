@@ -30,6 +30,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get close => 'Close';
 
   @override
+  String get empty => 'Empty';
+
+  @override
   String get error => 'Error';
 
   @override
@@ -61,6 +64,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nothingFound => 'Nothing found';
+
+  @override
+  String get pause => 'Pause';
 
   @override
   String get minute => 'min.';
@@ -126,7 +132,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskSaveChanges => 'Save changes';
 
   @override
-  String get handbookEmpty => 'Nothing found';
+  String get taskDeleteConfirm => 'Are you sure you want to delete this task?';
 
   @override
   String get handbookCreate => 'Add formula';
@@ -168,10 +174,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pomodoroIntervalSettings => 'Interval settings';
 
   @override
-  String get pomodoroIntervalHint =>
-      'Time in minutes.\nDefault time: 25:5:(15-30)';
-
-  @override
   String get pomodoroWorkCycle => 'Focus';
 
   @override
@@ -198,7 +200,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hallOfFame => 'Hall of fame';
 
   @override
-  String get hallOfFameTip => 'Support develop and come to Hall of fame!';
+  String get hallOfFameTip =>
+      'Here are people who supported the development of the application';
 
   @override
   String get settings => 'Settings';

@@ -50,9 +50,6 @@ void main() async {
         Hive.registerAdapter(HomeworkAdapter());
       }
       await Hive.openBox<Homework>('localHomeworkBox');
-      // аплоад списка групп в firebase
-      // final uploader = GroupDataUploader();
-      // uploader.uploadGroups();
       FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true);
       await TeXRenderingServer.start();
       runApp(MyApp());
@@ -134,7 +131,7 @@ class MyApp extends StatelessWidget {
                       valueListenable: settingsService.materialYouNotifier,
                       builder: (context, isMaterialYouEnabled, _) {
                         return MaterialApp(
-                          debugShowCheckedModeBanner: false,
+                          debugShowCheckedModeBanner: true,
                           title: "My ASIEC",
                           theme: _createThemeData(
                             Brightness.light,
@@ -150,11 +147,11 @@ class MyApp extends StatelessWidget {
                           locale: locale,
                           localizationsDelegates: [
                             GlobalMaterialLocalizations
-                                .delegate, // Локализация для Material виджетов
+                                .delegate,
                             GlobalWidgetsLocalizations
-                                .delegate, // Локализация для базовых виджетов (направление текста и т.д.)
+                                .delegate,
                             GlobalCupertinoLocalizations
-                                .delegate, // Локализация для Cupertino (iOS) виджетов (иногда нужна и для Material)
+                                .delegate,
                             AppLocalizations
                                 .delegate,
                           ],
@@ -165,7 +162,7 @@ class MyApp extends StatelessWidget {
                           onGenerateTitle: (context) => AppLocalizations.of(context)!
                               .myASIEC,
                           home: MainScreen(),
-                          navigatorKey: NavigatorService.navigatorKey, // Добавляем ключ навигатора
+                          navigatorKey: NavigatorService.navigatorKey,
                         );
                       },
                     );

@@ -201,7 +201,13 @@ class PomodoroService {
     await HomeWidget.saveWidgetData<String>('session_title', sessionTitle);
     await HomeWidget.saveWidgetData<String>('time', formatTime(remainingTime.value));
     await HomeWidget.saveWidgetData<String>(
-        'status', isTimerRunning.value ? 'Идёт...' : 'На паузе');
+        'status', isTimerRunning.value && currentSession.value == PomodoroSession.work 
+          ? '${_l10n?.pomodoroWorkCycle}...' 
+          : isTimerRunning.value && currentSession.value == PomodoroSession.shortBreak 
+            ? '${_l10n?.pomodoroShortBreak}...'
+            : isTimerRunning.value && currentSession.value == PomodoroSession.longBreak 
+              ? '${_l10n?.pomodoroLongBreak}...'
+              : '${_l10n?.pause}...');
     await HomeWidget.updateWidget(
       // Имя класса нашего провайдера
       name: 'PomodoroWidgetProvider',

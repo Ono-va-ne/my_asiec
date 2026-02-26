@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:rxdart/rxdart.dart';
 import '../../services/local_homework_service.dart';
 import '../../services/settings_service.dart'; // Импортируем сервис настроек
+import '../../l10n/app_localizations.dart';
+import '../../data/text_emojis.dart';
 import '../homework_view_screen.dart';
 
 class HomeworkScreen extends StatefulWidget {
@@ -21,7 +23,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   String? _userGroupId; // ID группы пользователя из настроек
   Stream<List<Homework>>? _combinedStream;
 
-  bool _isdue_dateTodayOrFuture(DateTime dueDate) {
+  bool _isDueDateTodayOrFuture(DateTime dueDate) {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     final dueDatestart = DateTime(dueDate.year, dueDate.month, dueDate.day);
@@ -36,7 +38,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
 
   void _setupAndLoadData() {
     _loadUserGroupId();
-    final firebaseStream = _client
+    final serverStream = _client
         .from('homework')
         .stream(primaryKey: ['id'])
         .order('due_date')
@@ -47,9 +49,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     final localStream = _localHomeworkService.getHomeworkStream();
 
     _combinedStream = Rx.combineLatest2<List<Homework>, List<Homework>,
-        List<Homework>>(firebaseStream, localStream,
-        (firebaseHomeworks, localHomeworks) {
-      final allHomeworks = [...localHomeworks, ...firebaseHomeworks];
+        List<Homework>>(serverStream, localStream,
+        (serverHomeworks, localHomeworks) {
+      final allHomeworks = [...localHomeworks, ...serverHomeworks];
       allHomeworks.sort((a, b) => a.due_date.compareTo(b.due_date));
       return allHomeworks;
     });
@@ -69,7 +71,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     // Мы можем просто подождать немного для имитации загрузки
     // и чтобы дать время потокам синхронизироваться, если есть задержки.
     _loadUserGroupId();
-    final firebaseStream = _client
+    final serverStream = _client
         .from('homework')
         .stream(primaryKey: ['id'])
         .order('due_date')
@@ -80,9 +82,9 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     final localStream = _localHomeworkService.getHomeworkStream();
 
     _combinedStream = Rx.combineLatest2<List<Homework>, List<Homework>,
-        List<Homework>>(firebaseStream, localStream,
-        (firebaseHomeworks, localHomeworks) {
-      final allHomeworks = [...localHomeworks, ...firebaseHomeworks];
+        List<Homework>>(serverStream, localStream,
+        (serverHomeworks, localHomeworks) {
+      final allHomeworks = [...localHomeworks, ...serverHomeworks];
       allHomeworks.sort((a, b) => a.due_date.compareTo(b.due_date));
       return allHomeworks;
     });
@@ -92,6 +94,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return SafeArea(
       child: Scaffold(
         body: StreamBuilder<List<Homework>>(
@@ -122,7 +125,15 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: const Center(child: Text('Домашних заданий пока нет.')),
+                      child: Center(
+                          child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(getRandomEmoji(), style: TextStyle(fontSize: 24, color: Colors.grey[600])),
+                          const SizedBox(height: 8),
+                          const Text('Домашних заданий пока нет.'),
+                        ],
+                      )),
                     ),
                   );
                 }),
@@ -136,7 +147,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                       (entry) =>
                           (_userGroupId == null ||
                               (entry.group_id == _userGroupId)) &&
-                          _isdue_dateTodayOrFuture(entry.due_date),
+                          _isDueDateTodayOrFuture(entry.due_date),
                     )
                     .toList();
       
@@ -150,15 +161,23 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: ConstrainedBox(
                       constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: const Center(
-                        child: Text('Домашних заданий для вашей группы пока нет.'),
+                      child: Center(child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(getRandomEmoji(),
+                              style: TextStyle(
+                                  fontSize: 72, color: Colors.grey[600])),
+                          const SizedBox(height: 8),
+                          Text(l10n.nothingFound, style: TextStyle(fontSize: 18, color: Colors.grey[400])),
+                        ]
                       ),
                     ),
-                  );
+                  ));
                 }),
                 // ),
               );
             }
+            
       
             return RefreshIndicator(
               onRefresh: _refreshHomework,
@@ -180,19 +199,19 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
                     return await showDialog(
                       context: context,
                       builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: const Text('Подтверждение'),
+                        return AlertDialog( 
+                          title: Text(l10n.confirm),
                           content: const Text(
                             'Вы уверены, что хотите удалить это задание?',
                           ),
                           actions: <Widget>[
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text('Нет'),
+                              child: Text(l10n.no),
                             ),
                             TextButton(
                               onPressed: () => Navigator.of(context).pop(true),
-                              child: const Text('Да'),
+                              child: Text(l10n.yes),
                             ),
                           ],
                         );

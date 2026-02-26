@@ -4,6 +4,7 @@ import 'package:flutter_math_fork/flutter_math.dart';
 import 'handbook_view_screen.dart';
 import 'create_formula_screen.dart';
 import '../l10n/app_localizations.dart';
+import '../data/text_emojis.dart';
 
 class HandbookBySpecialtyScreen extends StatefulWidget {
   final String specialtyId;
@@ -124,155 +125,152 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(title: Text(widget.specialtyName)),
-      body:
-          _loading
-              ? const Center(child: CircularProgressIndicator())
-              : (_allItems.isEmpty)
-              ? Center(child: Text(l10n.nothingFound))
-              : Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.search),
-                        hintText: l10n.search,
-                        border: const OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  // Tag filter chips
-                  if (_allItems.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Builder(
-                        builder: (context) {
-                          final tagsSet = <String>{};
-                          for (var f in _allItems) {
-                            final t = List<dynamic>.from(f['tags'] ?? []);
-                            tagsSet.addAll(t.map((e) => e.toString()));
-                          }
-                          final tagsList = tagsSet.toList()..sort();
-                          return SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children:
-                                  tagsList.map((tag) {
-                                    final selected = _selectedTags.contains(
-                                      tag,
-                                    );
-                                    return Padding(
-                                      padding: const EdgeInsets.only(
-                                        right: 8.0,
-                                      ),
-                                      child: FilterChip(
-                                        label: Text(tag),
-                                        selected: selected,
-                                        onSelected: (v) {
-                                          setState(() {
-                                            if (v) {
-                                              _selectedTags.add(tag);
-                                            } else {
-                                              _selectedTags.remove(tag);
-                                            }
-                                          });
-                                          _applyFilters();
-                                        },
-                                      ),
-                                    );
-                                  }).toList(),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-    
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(8),
-                      itemCount: _filteredItems.length,
-                      itemBuilder: (context, i) {
-                        final f = _filteredItems[i];
-                        final itemTags =
-                            List<dynamic>.from(
-                              f['tags'] ?? [],
-                            ).map((e) => e.toString()).toList();
-                        return InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (_) => HandbookViewScreen(
-                                      title: f['title'] ?? '',
-                                      formula: f['formula'] ?? '',
-                                      description: f['description'] ?? '',
-                                      imageUrl: f['image_url'] ?? '',
-                                      latexHandbook: f['formula'] ?? '',
-                                      tags: itemTags.join(', '),
-                                    ),
-                              ),
-                            );
-                          },
-                          child: Card(
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    f['title'] ?? '',
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Math.tex(
-                                    f['formula'] ?? '',
-                                    textStyle: const TextStyle(fontSize: 18),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    f['summary'] ?? '',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  if (itemTags.isNotEmpty)
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
-                                      children:
-                                          itemTags
-                                              .map(
-                                                (t) => Chip(
-                                                  label: Text(
-                                                    t,
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                  visualDensity:
-                                                      VisualDensity.compact,
-                                                ),
-                                              )
-                                              .toList(),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+      body:_loading
+        ? const Center(child: CircularProgressIndicator())
+        : (_allItems.isEmpty)
+        ? Center(child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(getRandomEmoji(), style: TextStyle(fontSize: 72, color: Colors.grey[600])),
+            const SizedBox(height: 8),
+            Text(l10n.nothingFound, style: TextStyle(fontSize: 18, color: Colors.grey[400])),
+          ],
+        ))
+        : Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: l10n.search,
+                  border: const OutlineInputBorder(),
+                ),
               ),
+            ),
+            // Tag filter chips
+            if (_allItems.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Builder(
+                  builder: (context) {
+                    final tagsSet = <String>{};
+                    for (var f in _allItems) {
+                      final t = List<dynamic>.from(f['tags'] ?? []);
+                      tagsSet.addAll(t.map((e) => e.toString()));
+                    }
+                    final tagsList = tagsSet.toList()..sort();
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children:
+                            tagsList.map((tag) {
+                              final selected = _selectedTags.contains(
+                                tag,
+                              );
+                              return Padding(
+                                padding: const EdgeInsets.only(
+                                  right: 8.0,
+                                ),
+                                child: FilterChip(
+                                  label: Text(tag),
+                                  selected: selected,
+                                  onSelected: (v) {
+                                    setState(() {
+                                      if (v) {
+                                        _selectedTags.add(tag);
+                                      } else {
+                                        _selectedTags.remove(tag);
+                                      }
+                                    });
+                                    _applyFilters();
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(8),
+                itemCount: _filteredItems.length,
+                itemBuilder: (context, i) {
+                  final f = _filteredItems[i];
+                  final itemTags =
+                      List<dynamic>.from(
+                        f['tags'] ?? [],
+                      ).map((e) => e.toString()).toList();
+                  return InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (_) => HandbookViewScreen(
+                                title: f['title'] ?? '',
+                                formula: f['formula'] ?? '',
+                                description: f['description'] ?? '',
+                                imageUrl: f['image_url'] ?? '',
+                                latexHandbook: f['formula'] ?? '',
+                                tags: itemTags.join(', '),
+                              ),
+                        ),
+                      );
+                    },
+                    child: Card(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              f['title'] ?? '',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Math.tex(
+                              f['formula'] ?? '',
+                              textStyle: const TextStyle(fontSize: 18),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              f['summary'] ?? '',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (itemTags.isNotEmpty)
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: itemTags.map(
+                                  (t) => Chip(
+                                    label: Text(t, style: const TextStyle(fontSize: 12)),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                ).toList(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       floatingActionButton: FloatingActionButton(
         child: const Icon(Icons.add),
         onPressed: () async {

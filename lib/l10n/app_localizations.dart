@@ -140,6 +140,12 @@ abstract class AppLocalizations {
   /// **'Закрыть'**
   String get close;
 
+  /// No description provided for @empty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пусто'**
+  String get empty;
+
   /// No description provided for @error.
   ///
   /// In ru, this message translates to:
@@ -205,6 +211,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Ничего не найдено'**
   String get nothingFound;
+
+  /// No description provided for @pause.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пауза'**
+  String get pause;
 
   /// No description provided for @minute.
   ///
@@ -332,11 +344,11 @@ abstract class AppLocalizations {
   /// **'Сохранить изменения'**
   String get taskSaveChanges;
 
-  /// No description provided for @handbookEmpty.
+  /// No description provided for @taskDeleteConfirm.
   ///
   /// In ru, this message translates to:
-  /// **'Ничего не найдено'**
-  String get handbookEmpty;
+  /// **'Вы уверены, что хотите удалить задание?'**
+  String get taskDeleteConfirm;
 
   /// No description provided for @handbookCreate.
   ///
@@ -416,12 +428,6 @@ abstract class AppLocalizations {
   /// **'Настройки интервалов'**
   String get pomodoroIntervalSettings;
 
-  /// No description provided for @pomodoroIntervalHint.
-  ///
-  /// In ru, this message translates to:
-  /// **'Время в минутах.\nСтандартное время: 25:5:(15-30)'**
-  String get pomodoroIntervalHint;
-
   /// No description provided for @pomodoroWorkCycle.
   ///
   /// In ru, this message translates to:
@@ -467,7 +473,7 @@ abstract class AppLocalizations {
   /// Подсказка как попасть в зал славы в нижней части экрана
   ///
   /// In ru, this message translates to:
-  /// **'Поддержите разработку и попадите в Зал славы!'**
+  /// **'Здесь находятся люди, поддержавшие разработку приложения'**
   String get hallOfFameTip;
 
   /// No description provided for @settings.
