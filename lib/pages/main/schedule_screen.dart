@@ -8,24 +8,21 @@ import 'package:rxdart/rxdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/schedule_card.dart';
 import '../../models/break_card.dart';
-
 import '../../models/daily_schedule.dart';
-
 import '../../data/groups.dart';
 import '../../data/rooms.dart';
 import '../../data/teachers.dart';
-
 import '../../models/group_info.dart';
 import '../../models/teacher_info.dart';
 import '../../models/room_info.dart';
-
 import '../../services/settings_service.dart';
 import '../../services/groups_service.dart';
-
+import '../../services/teachers_service.dart';
 import '../../services/local_homework_service.dart';
 import '../../services/schedule_service.dart';
-// Используем Supabase для домашних заданий (импорт уже выше)
+import '../../l10n/app_localizations.dart';
 import '../../models/homework.dart';
+import '../../data/text_emojis.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -50,6 +47,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   final _client = Supabase.instance.client;
   final _localHomeworkService = LocalHomeworkService();
   final _groupsService = GroupsService();
+  final _teachersService = TeachersService();
 
   Stream<List<Homework>>? _homeworkStream;
 
@@ -152,8 +150,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       if (mounted) setState(() => _showBreaks = settingsService.showBreaksInScheduleNotifier.value);
     });
     // _initializeScheduleObjects(); // Инициализируем список И выбранную группу
-    _loadAvailableGroups();
-    final firebaseStream = _client
+    _loadInitialData();
+    final serverStream = _client
       .from('homework')
       .stream(primaryKey: ['id'])
       .map((rows) => (rows as List)
@@ -163,43 +161,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _homeworkStream =
         Rx.combineLatest2<List<Homework>, List<Homework>, List<Homework>>(
           localStream,
-          firebaseStream,
+          serverStream,
           (local, remote) => [...local, ...remote],
         );
-    // // Загружаем данные, если группа выбрана
-    // if (_selectedGroup != null) {
-    //     _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
-    // } else {
-    //     // Ошибка - не удалось определить группу по умолчанию
-    //     setState(() {
-    //         _isLoading = false;
-    //         _errorMessage = "Группа по умолчанию не найдена или не выбрана в настройках.";
-    //     });
-    // }
   }
 
-  // Загружает группы из Supabase (GroupsService) и затем инициализирует объекты
-  Future<void> _loadAvailableGroups() async {
-    try {
-      final groups =
-          await _groupsService.getGroups(); // GroupsService кеширует через Hive
-      // Если вернулся пустой список — оставляем локальные данные как fallback
-      if (groups.isEmpty) {
-        print(
-          'GroupsService вернул пустой список, используем локальные данные',
-        );
-        _availableGroups = availableGroupsData;
-      } else {
-        _availableGroups = groups;
-      }
-    } catch (e) {
-      print(
-        'Не удалось загрузить группы из Supabase: $e — используем локальные данные',
-      );
-      _availableGroups = availableGroupsData;
-    }
+  Future<void> _loadInitialData() async {
+    // Параллельно загружаем группы и преподавателей
+    await Future.wait([
+      _loadAvailableGroups(),
+      _loadAvailableTeachers(),
+    ]);
 
-    // После загрузки групп инициализируем выбор и (при наличии) загружаем расписание
+    // Инициализация выбора и загрузка расписания после загрузки данных
     _initializeScheduleObjects();
     if (_selectedGroup != null) {
       _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
@@ -212,11 +186,39 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
+  Future<void> _loadAvailableGroups() async {
+    try {
+      final groups =
+          await _groupsService.getGroups(); // GroupsService кеширует через Hive
+      if (groups.isEmpty) {
+        print('GroupsService вернул пустой список, используем локальные данные');
+        _availableGroups = availableGroupsData;
+      } else {
+        _availableGroups = groups;
+      }
+    } catch (e) {
+      print('Не удалось загрузить группы из Supabase: $e — используем локальные данные');
+      _availableGroups = availableGroupsData;
+    }
+  }
+
+  Future<void> _loadAvailableTeachers() async {
+    try {
+      final teachers = await _teachersService.getTeachers();
+      if (teachers.isNotEmpty) {
+        _availableTeachers = teachers;
+      }
+    } catch (e) {
+      print('Не удалось загрузить преподавателей из Supabase: $e — используем локальные данные');
+      _availableTeachers = availableTeachersData;
+    }
+  }
+
   void _initializeScheduleObjects() {
     // Заполняем список доступных групп
     // _availableGroups = availableGroupsData;
-    _availableTeachers =
-        availableTeachersData; // Заполняем список доступных преподавателей
+    // _availableTeachers =
+    //     availableTeachersData; // Заполняем список доступных преподавателей
     _availableRooms =
         availableRoomsData; // Заполняем список доступных аудиторий
 
@@ -235,47 +237,42 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         print(
           "Сохраненная группа $savedGroupId не найдена в списке доступных.",
         );
-        _selectedGroup = null; // Не нашли, сбрасываем
+        _selectedGroup = null;
       }
     }
 
-    // Если группа не была сохранена ИЛИ сохраненная не найдена,
-    // выбираем первую доступную группу как запасной вариант
+    // Если группа не была сохранена ИЛИ сохраненная не найдена, выбираем первую доступную группу
     if (_selectedGroup == null && _availableGroups.isNotEmpty) {
       _selectedGroup = _availableGroups.first;
       print(
         "Группа по умолчанию не найдена в настройках, выбрана первая: ${_selectedGroup?.name}",
       );
-      // Опционально: можно сразу сохранить эту первую группу как дефолтную
-      // settingsService.setDefaultGroupId(_selectedGroup?.id);
     } else if (_availableGroups.isEmpty) {
       print("Список доступных групп пуст!");
     }
 
     final String? savedTeacherId =
         settingsService
-            .getDefaultTeacherId(); // <--- Получаем сохраненный ID преподавателя
-    _selectedTeacher = null; // Сбрасываем на всякий случай
+            .getDefaultTeacherId();
+    _selectedTeacher = null;
 
     if (savedTeacherId != null) {
       try {
         _selectedTeacher = _availableTeachers.firstWhere(
-          // <--- Ищем преподавателя
           (t) => t.id == savedTeacherId,
-          // orElse: () => null,
         );
       } catch (e) {
         print(
           "Сохраненный преподаватель $savedTeacherId не найден в списке доступных.",
         );
-        _selectedTeacher = null; // Не нашли, сбрасываем
+        _selectedTeacher = null;
       }
     }
 
     if (_selectedTeacher == null && _availableTeachers.isNotEmpty) {
       _selectedTeacher =
           _availableTeachers
-              .first; // <--- Выбираем первого преподавателя, если нет сохраненного
+              .first; // Выбираем первого преподавателя, если нет сохраненного
       print(
         "Преподаватель по умолчанию не найден в настройках, выбран первый: ${_selectedTeacher?.name}",
       );
@@ -287,27 +284,26 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     final String? savedRoomId =
         settingsService
-            .getDefaultRoomId(); // <--- Получаем сохраненный ID аудитории
-    _selectedRoom = null; // Сбрасываем на всякий случай
+            .getDefaultRoomId();
+    _selectedRoom = null;
 
     if (savedRoomId != null) {
       try {
         _selectedRoom = _availableRooms.firstWhere(
-          // <--- Ищем аудиторию
           (r) => r.id == savedRoomId,
         );
       } catch (e) {
         print(
           "Сохраненная аудитория $savedRoomId не найдена в списке доступных.",
         );
-        _selectedRoom = null; // Не нашли, сбрасываем
+        _selectedRoom = null;
       }
     }
 
     if (_selectedRoom == null && _availableRooms.isNotEmpty) {
       _selectedRoom =
           _availableRooms
-              .first; // <--- Выбираем первую аудиторию, если нет сохраненной
+              .first; // Выбираем первую аудиторию, если нет сохраненной
       print(
         "Аудитория по умолчанию не найдена в настройках, выбрана первая: ${_selectedRoom?.name}",
       );
@@ -326,15 +322,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
       firstDate: DateTime(
         _startDate.year - 2,
-      ), // ГПервая доступная дата (-2 года от текущего)
+      ), // Первая доступная дата (-2 года от текущего)
       lastDate: DateTime(
         _endDate.year + 2,
       ), // Последняя доступная дата (+2 года от текущего)
-      locale: const Locale('ru', 'RU'), // Локализация для пикера
-      helpText: 'Выберите диапазон дат',
-      cancelText: 'Отмена',
-      confirmText: 'Выбрать',
-      saveText: 'Выбрать',
       builder: (context, child) {
         final currentTheme = Theme.of(context);
 
@@ -390,7 +381,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
-  // Pull-to-refresh: invalidate current cache and reload from network
+  // Pull-to-refresh: аннулирование текущего кэша и перезагрузка из сети
   Future<void> _refreshSchedule() async {
     dynamic selected;
     switch (_rasType) {
@@ -429,7 +420,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     await _loadScheduleData(_startDate, _endDate, _rasType, selected);
   }
 
-  // --- Хелпер для показа SnackBar ---
+  // --- Хелпер SnackBar ---
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), duration: Duration(seconds: 2)),
@@ -443,26 +434,23 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     ScheduleType scheduleType,
     dynamic selectedObject,
   ) async {
-    // _loadScheduleData called
-    // Проверяем mounted перед первом setState
     if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      // Отображаем текущий диапазон и группу + "Загрузка..."
       _scheduleDateDisplay =
           '${_formatDateRangeForDisplay(_startDate, _endDate)} (Загрузка...)';
       _dailySchedules = [];
     });
     String objectId =
-        ''; // Переменная для ID объекта (группы, преподавателя, аудитории)
+        ''; // Переменная для ID объекта
     String rasParamName = '';
     final String startDateString = _formatDateForApi(startDate);
     final String endDateString = _formatDateForApi(endDate);
 
     switch (scheduleType) {
       case ScheduleType.grup:
-        rasParamName = 'gruppa'; // Имя параметра для групп
+        rasParamName = 'gruppa';
         if (selectedObject is GroupInfo) {
           objectId = selectedObject.id; // Получаем ID группы
         }
@@ -483,10 +471,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     final body = {
       'dostup': _dostup,
-      rasParamName: objectId, // Используем ID выбранной группы
+      rasParamName: objectId, // Используем выбранный ID
       'calendar': startDateString,
       'calendar2': endDateString,
-      'ras': _getRasTypeValue(scheduleType), // Конвертим ScheduleType в String (use parameter)
+      'ras': _getRasTypeValue(scheduleType), // Конвертим ScheduleType в String
     };
 
     // --- Попытка взять из кеша перед выполнением сетевого запроса ---
@@ -508,24 +496,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         _isLoading = false;
         _errorMessage = null;
       });
-      // loaded from cache
       return; // Данные из кеша, не делаем запрос
     }
 
     try {
-
-      // about to POST
+      // POST запрос
       http.Response response;
       try {
-        response = await http
-            .post(
+        response = await http.post(
           Uri.parse(_scheduleApiUrl),
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: body,
         )
-            .timeout(const Duration(seconds: 15));
-
-        // HTTP response received
+        .timeout(const Duration(seconds: 15));
       } on TimeoutException catch (e) {
         print('ScheduleScreen: HTTP request timed out: $e');
         rethrow;
@@ -540,7 +523,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         try {
           ScheduleService.instance.setCached(cacheKey, parsedData);
         } catch (e) {
-          // ignore cache errors
+          // игноринуем ошибки
         }
 
         if (!mounted) return;
@@ -553,7 +536,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           _isLoading = false;
           _errorMessage = null;
         });
-        // loaded from network
+        // Загружено из сети
       } else {
         if (!mounted) return;
         setState(() {
@@ -564,7 +547,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     } catch (e) {
       // Ловим исключение
       String errorMessageText =
-          'Не удалось загрузить расписание: ${e.toString()}'; // Стандартное сообщение
+          'Не удалось загрузить расписание: ${e.toString()}';
 
       // Попытка дать более понятный текст при сетевых ошибках
       if (e is SocketException) {
@@ -588,28 +571,28 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   // Функция для форматирования диапазона для отображения
   String _formatDateRangeForDisplay(DateTime start, DateTime end) {
-    final ruLocale = 'ru_RU';
+    final locale = Localizations.localeOf(context).toString();
     try {
-      // Если даты совпадают, показываем одну дату
+      // Если даты совпадают, показываем один день
       if (start.year == end.year &&
           start.month == end.month &&
           start.day == end.day) {
         return DateFormat(
           'd MMMM yyyy',
-          ruLocale,
-        ).format(start); // Добавим год для ясности
+          locale,
+        ).format(start);
       }
       // Если даты в одном месяце и году
       else if (start.year == end.year && start.month == end.month) {
-        return '${DateFormat('d', ruLocale).format(start)} - ${DateFormat('d MMMM yyyy', ruLocale).format(end)}';
+        return '${DateFormat('d', locale).format(start)} - ${DateFormat('d MMMM yyyy', locale).format(end)}';
       }
       // Если даты в одном году, но разных месяцах
       else if (start.year == end.year) {
-        return '${DateFormat('d MMMM', ruLocale).format(start)} - ${DateFormat('d MMMM yyyy', ruLocale).format(end)}';
+        return '${DateFormat('d MMMM', locale).format(start)} - ${DateFormat('d MMMM yyyy', locale).format(end)}';
       }
       // Иначе показываем полный диапазон
       else {
-        return '${DateFormat('d MMMM yyyy', ruLocale).format(start)} - ${DateFormat('d MMMM yyyy', ruLocale).format(end)}';
+        return '${DateFormat('d MMMM yyyy', locale).format(start)} - ${DateFormat('d MMMM yyyy', locale).format(end)}';
       }
     } catch (e) {
       print("Ошибка форматирования диапазона дат: $e");
@@ -617,24 +600,24 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
-  Widget _buildScheduleTypeButtons() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, left: 16.0, right: 16.0),
-      child: SegmentedButton<ScheduleType>(
-        segments: const [
-          ButtonSegment(
-            value: ScheduleType.grup,
-            label: Text('Группа'),
-            icon: Icon(Icons.group),
+  Widget _buildScheduleTypeButtons(Orientation orientation) {
+    final isLandscape = orientation == Orientation.landscape;
+
+    return SegmentedButton<ScheduleType>(
+      segments: [
+        ButtonSegment(
+          value: ScheduleType.grup,
+          label: isLandscape ? null : Text(AppLocalizations.of(context)!.group),
+          icon: const Icon(Icons.group),
           ),
           ButtonSegment(
             value: ScheduleType.prep,
-            label: Text('Препод.'),
+            label: isLandscape ? null : Text(AppLocalizations.of(context)!.teacher),
             icon: Icon(Icons.person),
           ),
           ButtonSegment(
             value: ScheduleType.aud,
-            label: Text('Ауд.'),
+            label: isLandscape ? null : Text(AppLocalizations.of(context)!.room),
             icon: Icon(Icons.meeting_room),
           ),
         ],
@@ -644,50 +627,38 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             _setScheduleType(newSelection.first);
           }
         },
-      ),
     );
   }
 
   Widget _buildObjectSelector() {
     String hintText;
     List<DropdownMenuItem<dynamic>>? items = [];
-    // ignore: unused_local_variable
-    String rasParamName = ''; // Имя параметра для передачи в запросе
     switch (_rasType) {
       case ScheduleType.grup:
-        rasParamName = 'gruppa'; // Имя параметра для групп
-        hintText = 'Выберите группу';
+        hintText = AppLocalizations.of(context)!.group;
         items =
             _availableGroups.map((group) {
-              // Используем _groupList
               return DropdownMenuItem<GroupInfo>(
-                // Тип элемента - GroupInfo
                 value: group,
                 child: Text(group.name),
               );
             }).toList();
         break;
       case ScheduleType.prep:
-        rasParamName = 'prepod';
-        hintText = 'Выберите преподавателя'; // Hint для преподавателей
+        hintText = AppLocalizations.of(context)!.teacher;
         items =
             _availableTeachers.map((teacher) {
-              // Используем _groupList
               return DropdownMenuItem<TeacherInfo>(
-                // Тип элемента - GroupInfo
                 value: teacher,
                 child: Text(teacher.name),
               );
             }).toList();
         break;
       case ScheduleType.aud:
-        rasParamName = 'auditoria';
-        hintText = 'Выберите аудиторию'; // Hint для аудиторий
+        hintText = AppLocalizations.of(context)!.room;
         items =
             _availableRooms.map((room) {
-              // Используем _groupList
               return DropdownMenuItem<RoomInfo>(
-                // Тип элемента - GroupInfo
                 value: room,
                 child: Text(room.name),
               );
@@ -695,59 +666,44 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         break;
     }
 
-    return Padding(
-      // Оборачиваем Padding
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16.0,
-        vertical: 0.0,
-      ), // Уменьшаем вертикальный отступ
-      child: DropdownButtonHideUnderline(
-        // Убираем стандартное подчеркивание
-        child: Container(
-          // Оборачиваем в контейнер для фона и скругления
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8.0),
-            border: Border.all(color: Colors.grey.shade500), // Легкая граница
+    return DropdownButtonHideUnderline(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12.0),
+          border: Border.all(color: Colors.grey.shade500),
+        ),
+        child: DropdownButton<dynamic>(
+          value: _rasType == ScheduleType.grup
+              ? _selectedGroup
+              : _rasType == ScheduleType.prep
+                  ? _selectedTeacher
+                  : _rasType == ScheduleType.aud
+                      ? _selectedRoom
+                      : null,
+          hint: Text(hintText),
+          isExpanded: true,
+          icon: Icon(
+            Icons.group_outlined,
+            color: Theme.of(context).colorScheme.primary,
           ),
-          child: DropdownButton<dynamic>(
-            value:
-                _rasType == ScheduleType.grup
-                    ? _selectedGroup // Для групп - _selectedGroup
-                    : _rasType == ScheduleType.prep
-                    ? _selectedTeacher // Для преподавателей - _selectedTeacher
-                    : _rasType == ScheduleType.aud
-                    ? _selectedRoom // Для аудиторий - _selectedRoom
-                    : null,
-            hint: Text(hintText), // Динамический hintText
-            isExpanded: true, // Растягиваем на всю ширину
-            icon: Icon(
-              Icons.group_outlined,
-              color: Theme.of(context).colorScheme.primary,
-            ), // Иконка справа
-            onChanged: (dynamic newValue) {
-              // onChanged теперь принимает dynamic
-              setState(() {
-                _errorMessage = null;
-                _dailySchedules = [];
-                if (newValue != null) {
-                  if (_rasType == ScheduleType.grup) {
-                    _selectedGroup =
-                        newValue as GroupInfo; // Обновляем _selectedGroup
-                  } else if (_rasType == ScheduleType.prep) {
-                    _selectedTeacher =
-                        newValue as TeacherInfo; // Обновляем _selectedTeacher
-                  } else if (_rasType == ScheduleType.aud) {
-                    // Раскомментируй, когда добавим RoomInfo
-                    _selectedRoom =
-                        newValue as RoomInfo; // Обновляем _selectedRoom
-                  }
-                  _loadScheduleData(_startDate, _endDate, _rasType, newValue);
+          onChanged: (dynamic newValue) {
+            setState(() {
+              _errorMessage = null;
+              _dailySchedules = [];
+              if (newValue != null) {
+                if (_rasType == ScheduleType.grup) {
+                  _selectedGroup = newValue as GroupInfo;
+                } else if (_rasType == ScheduleType.prep) {
+                  _selectedTeacher = newValue as TeacherInfo;
+                } else if (_rasType == ScheduleType.aud) {
+                  _selectedRoom = newValue as RoomInfo;
                 }
-              });
-            },
-            items: items, // Динамический список items
-          ),
+                _loadScheduleData(_startDate, _endDate, _rasType, newValue);
+              }
+            });
+          },
+          items: items,
         ),
       ),
     );
@@ -757,81 +713,169 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        body: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.stretch, // Заголовки дней будут на всю ширину
-          children: [
-            // Кликабельный заголовок с диапазоном дат
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 12.0,
-              ),
-              child: InkWell(
-                // Делаем область кликабельной
-                onTap:
-                    _isLoading
-                        ? null
-                        : () => _selectDateRange(
-                          context,
-                        ), // Вызываем пикер по тапу (блокируем во время загрузки)
-                borderRadius: BorderRadius.circular(
-                  8.0,
-                ), // Скругление для эффекта при нажатии
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8.0,
-                  ), // Внутренний отступ для красоты
-                  child: Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center, // Центрируем текст и иконку
-                    children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 20.0,
-                        color: Theme.of(context).colorScheme.primary,
-                      ), // Иконка календаря
-                      SizedBox(width: 8.0),
-                      Flexible(
-                        // Чтобы текст переносился, если диапазон длинный
-                        child: Text(
-                          _scheduleDateDisplay, // Отображаем диапазон или статус загрузки
-                          style: TextStyle(
-                            fontSize: 18.0, // Можно настроить размер
-                            fontWeight: FontWeight.w500, // Средняя жирность
-                          ),
-                          textAlign: TextAlign.center,
+        body: OrientationBuilder(
+          builder: (context, orientation) {
+            if (orientation == Orientation.portrait) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Кликабельный заголовок с диапазоном дат
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 12.0,
+                    ),
+                    child: InkWell(
+                      onTap: _isLoading
+                          ? null
+                          : () => _selectDateRange(
+                                context,
+                              ),
+                      borderRadius: BorderRadius.circular(
+                        8.0,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8.0,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.calendar_today_outlined,
+                              size: 20.0,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            SizedBox(width: 8.0),
+                            Flexible(
+                              child: Text(
+                                _scheduleDateDisplay,
+                                style: TextStyle(
+                                  fontSize: 18.0,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            SizedBox(width: 8.0),
+                            Icon(
+                              Icons.arrow_drop_down,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(width: 8.0),
-                      // Можно добавить иконку выпадающего списка для большей очевидности
-                      Icon(
-                        Icons.arrow_drop_down,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-            ),
-            _buildObjectSelector(), // <--- ВСТАВЬ СЮДА ВЫЗОВ _buildObjectSelector()!
-
-            SizedBox(height: 8.0), // Небольшой отступ после дропдауна
-            _buildScheduleTypeButtons(),
-
-            // Тело экрана: загрузка, ошибка или список
-            Expanded(
-              child: StreamBuilder<List<Homework>>(
-                stream: _homeworkStream,
-                builder: (context, homeworkSnapshot) {
-                  final allHomeworks = homeworkSnapshot.data ?? [];
-                  return _buildBody(allHomeworks); // Передаем список ДЗ
-                },
-              ),
-            ),
-          ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 0.0,
+                    ),
+                    child: _buildObjectSelector(),
+                  ),
+                  SizedBox(height: 8.0),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        bottom: 8.0, left: 16.0, right: 16.0),
+                    child: _buildScheduleTypeButtons(orientation),
+                  ),
+                  Expanded(
+                    child: StreamBuilder<List<Homework>>(
+                      stream: _homeworkStream,
+                      builder: (context, homeworkSnapshot) {
+                        final allHomeworks = homeworkSnapshot.data ?? [];
+                        return _buildBody(allHomeworks);
+                      },
+                    ),
+                  ),
+                ],
+              );
+            } else {
+              // Ландшафтная (горизонтальная) ориентация
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0, vertical: 4.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Expanded(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: InkWell(
+                              onTap: _isLoading
+                                  ? null
+                                  : () => _selectDateRange(context),
+                              borderRadius: BorderRadius.circular(8.0),
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 1.0),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.calendar_today_outlined,
+                                        size: 20.0,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary),
+                                    SizedBox(width: 4.0),
+                                    Flexible(
+                                      child: Text(
+                                        _scheduleDateDisplay,
+                                        style: TextStyle(
+                                            fontSize: 18.0,
+                                            fontWeight: FontWeight.w500),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4.0),
+                                    Icon(Icons.arrow_drop_down,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary,
+                                        size: 20.0),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: _buildObjectSelector(),
+                          ),
+                        ),
+                        SizedBox(
+                          height: 48,
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: _buildScheduleTypeButtons(orientation),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: StreamBuilder<List<Homework>>(
+                      stream: _homeworkStream,
+                      builder: (context, homeworkSnapshot) {
+                        final allHomeworks = homeworkSnapshot.data ?? [];
+                        return _buildBody(allHomeworks);
+                      },
+                    ),
+                  ),
+                ],
+              );
+            }
+          },
         ),
-        // backgroundColor: Colors.grey[100],
       ),
     );
   }
@@ -842,7 +886,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
 
     if (_errorMessage != null) {
-      // Оборачиваем ошибочный экран в RefreshIndicator, чтобы можно было обновить
       return RefreshIndicator(
         onRefresh: _refreshSchedule,
         child: ListView(
@@ -907,7 +950,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       );
     }
 
-    // Если расписание пустое — показываем текст внутри ListView, чтобы сработал pull-to-refresh
     if (_dailySchedules.isEmpty) {
       return RefreshIndicator(
         onRefresh: _refreshSchedule,
@@ -918,10 +960,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 120.0),
-                child: Text(
-                  'Пусто ¯\\_(ツ)_/¯',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(getRandomEmoji(), style: TextStyle(fontSize: 72, color: Colors.grey[600])),
+                    const SizedBox(height: 8),
+                    Text(
+                      AppLocalizations.of(context)!.nothingFound,
+                      style: TextStyle(fontSize: 16, color: Colors.grey[400]),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -953,18 +1002,26 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   top: 16.0,
                   bottom: 4.0,
                 ),
-                child: Text(
-                  // Форматируем дату дня (например, "Понедельник, 15 Октября")
-                  DateFormat(
-                    'EEEE, d MMMM',
-                    'ru_RU',
-                  ).format(dailySchedule.date),
+                child: Builder(builder: (context) {
+                  final locale = Localizations.localeOf(context).toString();
+                  String formattedDate = DateFormat(
+                    'EEEE, d MMMM', locale,
+                  ).format(dailySchedule.date);
+                  if (formattedDate.isNotEmpty) {
+                    formattedDate = formattedDate[0].toUpperCase() + formattedDate.substring(1);
+                  }
+                  return Text(
+                  formattedDate,
                   style: TextStyle(
                     fontSize: 16.0,
                     fontWeight: FontWeight.bold,
+                    fontVariations: [
+                      const FontVariation('wdth', 150)
+                    ],
                     color: Theme.of(context).colorScheme.primary,
                   ),
-                ),
+                  );
+                }),
               ),
 
               // --- Список пар для этого дня ---

@@ -116,7 +116,7 @@ class HomeworkViewScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16.0),
             Text(
-              'Задание:',
+              'Задание: ${homeworkEntry.id}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4.0),

@@ -1,26 +1,15 @@
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart'; // Импортируем пакет для получения информации о приложении
+import 'package:my_asiec/models/teacher_info.dart';
 import '../services/settings_service.dart'; // Импортируем сервис
 import '../data/groups.dart'; // Импортируем список групп (fallback)
 import '../services/groups_service.dart';
+import '../services/teachers_service.dart';
 import '../models/group_info.dart';
 import '../data/teachers.dart';
 import '../data/rooms.dart'; // Импортируем список аудиторий
+import '../l10n/app_localizations.dart';
 // import '../models/group_info.dart'; // Импортируем модель группы
 
-Future<void> _launchTG(BuildContext context) async {
-  // Формируем стандартную ссылку на пост VK
-
-  final url = 'https://t.me/MyASIEC';
-  final uri = Uri.parse(url);
-
-  // Пытаемся открыть ссылку. LaunchMode.externalApplication
-  // попытается открыть приложение TG, если оно установлено,
-  // иначе откроет браузер.
-  await launchUrl(uri, mode: LaunchMode.externalApplication);
-}
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -33,16 +22,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _selectedGroupId; // Храним ID выбранной группы по умолчанию
   String? _selectedTeacherId;
   String? _selectedRoomId;
-  String _appVersion = 'Загрузка...';
   final _groupsService = GroupsService();
   List<GroupInfo> _supabaseGroups = [];
+  List<TeacherInfo> _supabaseTeachers = [];
+  final _teachersService = TeachersService();
 
   // Инициализируем с пустыми значениями
   @override
   void initState() {
     super.initState();
-    _loadAppVersion();
     _loadGroups();
+    _loadTeachers();
     // Загружаем текущую выбранную группу при инициализации
     _selectedGroupId = settingsService.getDefaultGroupId();
     _selectedTeacherId = settingsService.getDefaultTeacherId();
@@ -61,69 +51,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _loadAppVersion() async {
+  Future<void> _loadTeachers() async {
     try {
-      PackageInfo packageInfo = await PackageInfo.fromPlatform();
-      // Получили информацию о пакете
-      if (mounted) {
-        // Проверяем, что виджет все еще "жив" перед обновлением состояния
-        setState(() {
-          _appVersion =
-              packageInfo.version; // Обновляем переменную состояния с версией
-        });
-      }
+      final teachers = await _teachersService.getTeachers();
+      if (mounted) setState(() => _supabaseTeachers = teachers);
     } catch (e) {
-      print("Ошибка при загрузке информации о пакете: $e");
-      if (mounted) {
-        setState(() {
-          _appVersion =
-              'Ошибка загрузки версии'; // Показываем сообщение об ошибке, если что-то пошло не так
-        });
-      }
+      print('Ошибка загрузки преподавателей из Supabase: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const String logo = 'assets/logo.svg';
-    final Widget svg = SvgPicture.asset(
-      logo,
-      semanticsLabel: 'myASIEC Logo',
-      height: 50,
-      colorFilter: ColorFilter.mode(
-        Theme.of(context).colorScheme.primary,
-        BlendMode.srcIn,
-      ),
-    );
-
-    const String tg = 'assets/tg.svg';
-    final Widget svgTg = SvgPicture.asset(
-      tg,
-      semanticsLabel: 'tg',
-      colorFilter: ColorFilter.mode(
-        Theme.of(context).colorScheme.onSurfaceVariant,
-        BlendMode.srcIn,
-      ),
-    );
-
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Настройки')),
+      appBar: AppBar(title: Text(l10n.settings)),
       body: ListView(
         padding: EdgeInsets.symmetric(vertical: 8.0),
         children: [
           // --- Секция: Группа по умолчанию ---
-          _buildSectionHeader('Расписание'),
+          _buildSectionHeader(l10n.scheduleScreen),
           ListTile(
             leading: Icon(Icons.group_outlined),
-            title: Text('Группа'),
-            // subtitle: Text('Будет выбрана при запуске приложения'),
+            title: Text(l10n.group),
             trailing: SizedBox(
               width: 200,
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   // Используем ID группы как значение
                   value: _selectedGroupId,
-                  hint: Text('Не выбрана'),
+                  hint: Text(l10n.settingNotSelected),
                   // Фильтруем список, чтобы не было ошибки, если сохраненный ID невалиден
                   items: (_supabaseGroups.isNotEmpty ? _supabaseGroups : availableGroupsData)
                       .map((group) => DropdownMenuItem<String>(
@@ -147,8 +103,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ListTile(
             leading: Icon(Icons.person_outlined),
-            title: Text('Препод.'),
-            // subtitle: Text('Будет выбран при запуске приложения'),
+            title: Text(l10n.teacher),
             trailing: SizedBox(
               width: 200,
               child: DropdownButtonHideUnderline(
@@ -156,21 +111,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   isExpanded: true,
                   // Используем ID группы как значение
                   value: _selectedTeacherId,
-                  hint: Text('Не выбран(а)'),
+                  hint: Text(l10n.settingNotSelected),
                   // Фильтруем список, чтобы не было ошибки, если сохраненный ID невалиден
-                  items:
-                      availableTeachersData
-                          .map(
-                            (teacher) => DropdownMenuItem<String>(
-                              value: teacher.id,
-                              child: Text(
-                                teacher.name,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
+                  items: (_supabaseTeachers.isNotEmpty ? _supabaseTeachers : availableTeachersData)
+                      .map((teacher) => DropdownMenuItem<String>(
+                            value: teacher.id,
+                            child: Text(
+                              teacher.name,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
-                          )
-                          .toList(),
+                          ))
+                      .toList(),
                   onChanged: (String? newTeacherId) {
                     if (newTeacherId != null) {
                       setState(() {
@@ -187,7 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ListTile(
             leading: Icon(Icons.room_outlined),
-            title: Text('Ауд.'),
+            title: Text(l10n.room),
             trailing: SizedBox(
               width: 200,
               child: DropdownButtonHideUnderline(
@@ -195,7 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   isExpanded: true,
                   // Используем ID группы как значение
                   value: _selectedRoomId,
-                  hint: Text('Не выбрана'),
+                  hint: Text(l10n.settingNotSelected),
                   // Фильтруем список, чтобы не было ошибки, если сохраненный ID невалиден
                   items:
                       availableRoomsData
@@ -229,7 +181,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             builder: (context, isBreaksEnabled, _) {
               return SwitchListTile(
                 secondary: Icon(Icons.free_breakfast_outlined),
-                title: Text('Отображать перемены'),
+                title: Text(l10n.settingShowBreaks),
                 value: isBreaksEnabled,
                 onChanged: (bool enabled) {
                   settingsService.setShowBreaksInSchedule(enabled);
@@ -241,29 +193,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Divider(),
 
           // --- Секция: Тема ---
-          _buildSectionHeader('Оформление'),
+          _buildSectionHeader(l10n.settingAppearance),
           // Выбор режима темы
           ValueListenableBuilder<ThemeMode>(
             valueListenable: settingsService.themeModeNotifier,
             builder: (context, currentMode, _) {
               return ListTile(
                 leading: Icon(Icons.brightness_6_outlined),
-                title: Text('Режим темы'),
+                title: Text(l10n.settingTheme),
                 trailing: DropdownButton<ThemeMode>(
                   value: currentMode,
                   underline: SizedBox.shrink(), // Убираем подчеркивание
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: ThemeMode.system,
-                      child: Text('Системная'),
+                      child: Text(l10n.settingSystem),
                     ),
                     DropdownMenuItem(
                       value: ThemeMode.light,
-                      child: Text('Светлая'),
+                      child: Text(l10n.settingThemeLight),
                     ),
                     DropdownMenuItem(
                       value: ThemeMode.dark,
-                      child: Text('Тёмная'),
+                      child: Text(l10n.settingThemeDark),
                     ),
                   ],
                   onChanged: (ThemeMode? newMode) {
@@ -284,12 +236,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
             builder: (context, isMaterialYouEnabled, _) {
               return SwitchListTile(
                 secondary: Icon(Icons.color_lens_outlined),
-                title: Text('Динамические оформление'),
-                subtitle: Text('Использовать цвета обоев (Android 12+)'),
+                title: Text(l10n.settingThemeMaterialYou),
+                subtitle: Text(l10n.settingThemeMaterialYouDescription),
                 value: isMaterialYouEnabled,
                 onChanged: (bool enabled) {
                   settingsService.setMaterialYou(enabled);
                 },
+              );
+            },
+          ),
+          Divider(),
+          _buildSectionHeader(l10n.settingLanguage),
+          ValueListenableBuilder<Locale?>(
+            valueListenable: settingsService.localeNotifier,
+            builder: (context, currentLocale, _) {
+              return ListTile(
+                leading: Icon(Icons.language_outlined),
+                title: Text(l10n.settingLanguage),
+                trailing: DropdownButton<String?>(
+                  value: currentLocale?.languageCode,
+                  hint: Text(l10n.settingSystem),
+                  underline: SizedBox.shrink(),
+                  items: [
+                    DropdownMenuItem(
+                      value: null, // null для системного языка
+                      child: Text(l10n.settingSystem),
+                    ),
+                    DropdownMenuItem(
+                      value: 'ru',
+                      child: Text("Русский"),
+                    ),
+                    DropdownMenuItem(
+                      value: 'en',
+                      child: Text("English"),
+                    ),
+                  ],
+                  onChanged: (String? newLocaleCode) {
+                    final newLocale =
+                        newLocaleCode != null ? Locale(newLocaleCode) : null;
+                    settingsService.setLocale(newLocale);
+                  },
+                ),
               );
             },
           ),
