@@ -6,14 +6,8 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
-    id("vkid.manifest.placeholders")
 }
 
-repositories {
-    maven {
-        url = uri("https://artifactory-external.vkpartner.ru/artifactory/vkid-sdk-android/")
-    }
-}
 
 android {
     namespace = "com.onovane.my_asiec"

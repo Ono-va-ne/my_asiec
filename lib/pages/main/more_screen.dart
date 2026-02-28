@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../settings_screen.dart';
 import '../pomodoro_screen.dart';
 import '../hall_of_fame_screen.dart';
+import 'package:my_asiec/l10n/app_localizations.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart'; // Импортируем пакет для получения информации о приложении
@@ -58,11 +59,12 @@ class _MoreScreenState extends State<MoreScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     const String logo = 'assets/logo.svg';
     final Widget svg = SvgPicture.asset(
       logo,
       semanticsLabel: 'myASIEC Logo',
-      height: 50,
+      height: 86,
       colorFilter: ColorFilter.mode(
         Theme.of(context).colorScheme.primary,
         BlendMode.srcIn,
@@ -81,13 +83,13 @@ class _MoreScreenState extends State<MoreScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Больше'),
+        title: Text(l10n.moreScreen),
       ),
       body: ListView(
         children: [
           ListTile(
             leading: const Icon(Icons.timer_outlined),
-            title: const Text('Pomodoro таймер'),
+            title: Text(l10n.pomodoroTimer),
             onTap: () {
               Navigator.push(
                 context,
@@ -97,7 +99,7 @@ class _MoreScreenState extends State<MoreScreen> {
           ),
           ListTile(
             leading: const Icon(Icons.auto_awesome_outlined),
-            title: const Text('Зал славы'),
+            title: Text(l10n.hallOfFame),
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const HallOfFameScreen()));
             },
@@ -105,7 +107,7 @@ class _MoreScreenState extends State<MoreScreen> {
           Divider(),
           ListTile(
             leading: const Icon(Icons.settings_outlined),
-            title: const Text('Настройки'),
+            title: Text(l10n.settings),
             onTap: () {
               Navigator.push(
                 context,
@@ -115,30 +117,27 @@ class _MoreScreenState extends State<MoreScreen> {
           ),
           ListTile(
             leading: svgTg,
-            title: Text('Официальный Telegram канал'),
+            title: Text(l10n.telegramChannelLink),
             onTap: () => _launchTG(context),
           ),
           ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('О приложении'),
+            title: Text(l10n.aboutApp),
             onTap: () {
               showDialog(
                 context: context,
                 builder:
                     (context) => AboutDialog(
-                      applicationName: 'МойАПЭК', // Название приложения
+                      applicationName: l10n.myASIEC,
                       applicationVersion:
-                          _appVersion, // TODO: Получать версию динамически
-                      applicationIcon: svg, // Или иконка твоего приложения
+                          _appVersion,
+                      applicationIcon: svg,
                       applicationLegalese: '©2026 Onovane',
                       children: [
                         Padding(
                           padding: const EdgeInsets.only(top: 16.0),
-                          child: Text(
-                            'Автор: Попков Дмитрий (9ОИБ231)\nИдея: Никифоров Максим (11ОИБ232)\nРазработано с ❤️ с помощью Flutter',
-                          ),
+                          child: Text(l10n.aboutDescription),
                         ),
-                        // TODO: Добавь сюда ссылки на себя (VK, GitHub, Telegram)
                       ],
                     ),
               );

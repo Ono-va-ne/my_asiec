@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
+import '../l10n/app_localizations.dart';
 
-class CreateFormulaScreen extends StatefulWidget {
+class CreateHandbookScreen extends StatefulWidget {
   final String specialtyId;
-  const CreateFormulaScreen({super.key, required this.specialtyId});
+  const CreateHandbookScreen({super.key, required this.specialtyId});
 
   @override
-  State<CreateFormulaScreen> createState() => _CreateFormulaScreenState();
+  State<CreateHandbookScreen> createState() => _CreateHandbookScreenState();
 }
 
-class _CreateFormulaScreenState extends State<CreateFormulaScreen> {
+class _CreateHandbookScreenState extends State<CreateHandbookScreen> {
   final _client = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
@@ -24,7 +25,7 @@ class _CreateFormulaScreenState extends State<CreateFormulaScreen> {
   @override
   void dispose() {
     _titleController.dispose();
-    _formulaController.removeListener(_onFormulaChanged);
+    _formulaController.removeListener(_onHandbookChanged);
     _formulaController.dispose();
     _summaryController.dispose();
     _descriptionController.dispose();
@@ -36,10 +37,10 @@ class _CreateFormulaScreenState extends State<CreateFormulaScreen> {
   @override
   void initState() {
     super.initState();
-    _formulaController.addListener(_onFormulaChanged);
+    _formulaController.addListener(_onHandbookChanged);
   }
 
-  void _onFormulaChanged() {
+  void _onHandbookChanged() {
     if (!mounted) return;
     setState(() {});
   }
@@ -70,7 +71,7 @@ class _CreateFormulaScreenState extends State<CreateFormulaScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Ошибка сохранения: $e')));
+            .showSnackBar(SnackBar(content: Text('${AppLocalizations.of(context)!.error}: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -94,8 +95,9 @@ class _CreateFormulaScreenState extends State<CreateFormulaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Создать формулу')),
+      appBar: AppBar(title: Text(l10n.handbookCreate)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -104,8 +106,8 @@ class _CreateFormulaScreenState extends State<CreateFormulaScreen> {
             children: [
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Название'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Введите название' : null,
+                decoration: InputDecoration(labelText: l10n.handbookEnterName),
+                validator: (v) => (v == null || v.trim().isEmpty) ? l10n.handbookEnterName : null,
               ),
               const SizedBox(height: 12),
               Row(
@@ -113,7 +115,7 @@ class _CreateFormulaScreenState extends State<CreateFormulaScreen> {
                   ElevatedButton.icon(
                     onPressed: _openLatexEditor,
                     icon: const Icon(Icons.functions),
-                    label: const Text('Открыть редактор формул'),
+                    label: Text(l10n.handbookOpenLatexEditor),
                   ),
                   const SizedBox(width: 12),
                   Expanded(child: Container()),
@@ -125,7 +127,7 @@ class _CreateFormulaScreenState extends State<CreateFormulaScreen> {
               // Live preview
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Формула:', style: Theme.of(context).textTheme.bodyMedium),
+                child: Text('${l10n.handbookFormula}:', style: Theme.of(context).textTheme.bodyMedium),
               ),
               const SizedBox(height: 8),
               Container(
@@ -139,35 +141,35 @@ class _CreateFormulaScreenState extends State<CreateFormulaScreen> {
                   try {
                     return Math.tex(_formulaController.text, textStyle: const TextStyle(fontSize: 18));
                   } catch (e) {
-                    return Text('Ошибка рендеринга: $e');
+                    return Text('${l10n.error}: $e');
                   }
                 }),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _summaryController,
-                decoration: const InputDecoration(labelText: 'Краткое описание'),
+                decoration: InputDecoration(labelText: l10n.handbookSummary),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Полное описание'),
+                decoration: InputDecoration(labelText: l10n.handbookDescription),
                 maxLines: 4,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _imageController,
-                decoration: const InputDecoration(labelText: 'URL изображения (опционально)'),
+                decoration: InputDecoration(labelText: '${l10n.handbookPhotoURL} (${l10n.optional})'),
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _tagsController,
-                decoration: const InputDecoration(labelText: 'Теги (через запятую)'),
+                decoration: InputDecoration(labelText: l10n.handbookTags),
               ),
               const SizedBox(height: 20),
               _saving
                   ? const CircularProgressIndicator()
-                  : ElevatedButton(onPressed: _save, child: const Text('Сохранить')),
+                  : ElevatedButton(onPressed: _save, child: Text(l10n.save)),
             ],
           ),
         ),
@@ -237,13 +239,14 @@ class _FullscreenLatexEditorState extends State<FullscreenLatexEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Редактор формул LaTeX'),
+        title: Text(l10n.handbookLatexEditor),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(_editorController.text),
-            child: const Text('Применить', style: TextStyle(color: Colors.white)),
+            child: Text(l10n.save, style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -264,9 +267,9 @@ class _FullscreenLatexEditorState extends State<FullscreenLatexEditor> {
                               controller: _editorController,
                               maxLines: null,
                               expands: true,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 border: OutlineInputBorder(),
-                                hintText: r'Введите LaTeX здесь...',
+                                hintText: l10n.handbookLatexHint,
                               ),
                             ),
                           ),
@@ -284,7 +287,7 @@ class _FullscreenLatexEditorState extends State<FullscreenLatexEditor> {
                                     return Math.tex(_editorController.text,
                                         textStyle: const TextStyle(fontSize: 20));
                                   } catch (e) {
-                                    return Text('Ошибка рендеринга: $e');
+                                    return Text('${l10n.error}: $e');
                                   }
                                 }),
                               ),
@@ -299,9 +302,9 @@ class _FullscreenLatexEditorState extends State<FullscreenLatexEditor> {
                               controller: _editorController,
                               maxLines: null,
                               expands: true,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 border: OutlineInputBorder(),
-                                hintText: r'Введите LaTeX здесь...',
+                                hintText: l10n.handbookLatexHint,
                               ),
                             ),
                           ),
@@ -319,7 +322,7 @@ class _FullscreenLatexEditorState extends State<FullscreenLatexEditor> {
                                     return Math.tex(_editorController.text,
                                         textStyle: const TextStyle(fontSize: 20));
                                   } catch (e) {
-                                    return Text('Ошибка рендеринга: $e');
+                                    return Text('${l10n.error}: $e');
                                   }
                                 }),
                               ),

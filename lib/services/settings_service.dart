@@ -11,6 +11,7 @@ const String _defaultTeacherIdKey = 'default_teacher_id';
 const String _defaultRoomIdKey = 'default_room_id';
 const String _showBreaksInScheduleKey = 'show_breaks_in_schedule';
 const String _pomodoroWorkDurationKey = 'pomodoro_work_duration';
+const String _localeKey = 'app_locale';
 const String _pomodoroShortBreakDurationKey = 'pomodoro_short_break_duration';
 const String _pomodoroLongBreakDurationKey = 'pomodoro_long_break_duration';
 
@@ -26,6 +27,7 @@ class SettingsService {
   ); // null означает цвет по умолчанию
   final ValueNotifier<bool> materialYouNotifier = ValueNotifier(false);
   final ValueNotifier<bool> showBreaksInScheduleNotifier = ValueNotifier(true); // По умолчанию показываем
+  final ValueNotifier<Locale?> localeNotifier = ValueNotifier(null);
   // Notifiers для Pomodoro (в минутах)
   final ValueNotifier<int> pomodoroWorkDurationNotifier = ValueNotifier(25);
   final ValueNotifier<int> pomodoroShortBreakDurationNotifier = ValueNotifier(5);
@@ -55,6 +57,13 @@ class SettingsService {
     showBreaksInScheduleNotifier.value =
         _prefs?.getBool(_showBreaksInScheduleKey) ?? true; // По умолчанию true
 
+    // Загрузка языка
+    final localeCode = _prefs?.getString(_localeKey);
+    if (localeCode != null) {
+      localeNotifier.value = Locale(localeCode);
+    } else {
+      localeNotifier.value = null; // null означает системный язык
+    }
     // Загрузка настроек Pomodoro (в минутах)
     pomodoroWorkDurationNotifier.value =
         _prefs?.getInt(_pomodoroWorkDurationKey) ?? 25;
@@ -99,6 +108,16 @@ class SettingsService {
     if (_prefs == null) await loadSettings();
     await _prefs?.setBool(_showBreaksInScheduleKey, show);
     showBreaksInScheduleNotifier.value = show;
+  }
+
+  Future<void> setLocale(Locale? locale) async {
+    if (_prefs == null) await loadSettings();
+    if (locale != null) {
+      await _prefs?.setString(_localeKey, locale.languageCode);
+    } else {
+      await _prefs?.remove(_localeKey); // Удаляем ключ для системного языка
+    }
+    localeNotifier.value = locale;
   }
 
   Future<void> setPomodoroWorkDuration(int minutes) async {
