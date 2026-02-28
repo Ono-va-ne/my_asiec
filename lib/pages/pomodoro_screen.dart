@@ -60,6 +60,8 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                   : 0.0;
 
               // --- ОБЩИЕ ВИДЖЕТЫ ---
+
+              // --- Текущий цикл ---
               final titleWidget = ValueListenableBuilder<PomodoroSession>(
                 valueListenable: pomodoroService.currentSession,
                 builder: (context, session, _) => TweenAnimationBuilder<Color?>(
@@ -84,6 +86,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                 ),
               );
 
+              // --- Таймер ---
               final timerWidget = SizedBox(
                 width: 300,
                 height: 300,
@@ -138,24 +141,36 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                 ),
               );
 
-
+              // --- Информация о прогрессе ---
               final infoPanel = Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ValueListenableBuilder<int>(
                     valueListenable: pomodoroService.workSessionCount,
                     builder: (context, count, _) => Text(
+                        l10n.pomodoroWorkCyclesCompleted(count),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.outline,
+                            fontVariations: [const FontVariation('XTRA', 550)])),
+                  ),
+                  const SizedBox(height: 8),
+                  ValueListenableBuilder<int>(
+                    valueListenable: pomodoroService.fullSessionCount,
+                    builder: (context, count, _) => Text(
                         l10n.pomodoroCyclesCompleted(count),
                         style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                             color: theme.colorScheme.outline,
-                            fontVariations: [const FontVariation('XTRA', 600)])),
+                            fontVariations: [const FontVariation('XTRA', 550)])),
                   ),
                   const SizedBox(height: 8), // Отступ
                   Text(l10n.pomodoroNextCycle(pomodoroService.nextSessionTitle),
                       style: theme.textTheme.titleMedium?.copyWith(
                           color: theme.colorScheme.outline,
-                          fontVariations: [const FontVariation('XTRA', 550)])),
+                          fontVariations: [const FontVariation('XTRA', 550)]
+                          )
+                        ),
                 ],
               );
 
@@ -234,83 +249,85 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                   );
                 } else {
                   // --- ГОРИЗОНТАЛЬНАЯ ОРИЕНТАЦИЯ ---
-                  return Row(
-                    children: [
-                      // Левая часть: Таймер и информация
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [timerWidget],
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [titleWidget, const SizedBox(height: 20), infoPanel],
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                      // Правая часть: Кнопки управления
-                      Padding(
-                        padding: const EdgeInsets.only(right: 24.0),
-                        child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _SpringyButtonWrapper(
-                    child: TweenAnimationBuilder<Color?>(
-                      tween: ColorTween(
-                          end: pomodoroService.currentSession.value ==
-                                  PomodoroSession.work
-                              ? theme.colorScheme.primary
-                              : pomodoroService.currentSession.value ==
-                                      PomodoroSession.shortBreak
-                                  ? theme.colorScheme.secondary
-                                  : theme.colorScheme.tertiary),
-                      duration: const Duration(milliseconds: 250),
-                      builder: (context, color, child) {
-                        return ElevatedButton(
-                          onPressed: isRunning
-                              ? pomodoroService.pauseTimer
-                              : pomodoroService.startTimer,
-                          style: ElevatedButton.styleFrom(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                            minimumSize: const Size(100, 150),
-                            backgroundColor: color,
+                  return SafeArea(
+                    child: Row(
+                      children: [
+                        // Левая часть: Таймер и информация
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [timerWidget],
                           ),
-                          child: Icon(
-                            isRunning ? Icons.pause : Icons.play_arrow,
-                            size: 56,
-                            color: pomodoroService.currentSession.value ==
+                        ),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [titleWidget, const SizedBox(height: 20), infoPanel],
+                          ),
+                        ),
+                        const SizedBox(width: 24),
+                        // Правая часть: Кнопки управления
+                        Padding(
+                          padding: const EdgeInsets.only(right: 24.0),
+                          child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _SpringyButtonWrapper(
+                      child: TweenAnimationBuilder<Color?>(
+                        tween: ColorTween(
+                            end: pomodoroService.currentSession.value ==
                                     PomodoroSession.work
-                                ? theme.colorScheme.onPrimary
+                                ? theme.colorScheme.primary
                                 : pomodoroService.currentSession.value ==
                                         PomodoroSession.shortBreak
-                                    ? theme.colorScheme.onSecondary
-                                    : theme.colorScheme.onTertiary,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Кнопка сброса
-                  _SpringyButtonWrapper(
-                    child: buildTonalButton(
-                        theme, Icons.refresh, pomodoroService.resetTimer, const Size(100, 75)),
-                  ),
-                  const SizedBox(height: 4),
-                  // Кнопка "следующий"
-                  _SpringyButtonWrapper(
-                    child: buildTonalButton(theme, Icons.skip_next,
-                        pomodoroService.moveToNextSession, const Size(100, 50)),
-                  ),
-                ],
-              ),
+                                    ? theme.colorScheme.secondary
+                                    : theme.colorScheme.tertiary),
+                        duration: const Duration(milliseconds: 250),
+                        builder: (context, color, child) {
+                          return ElevatedButton(
+                            onPressed: isRunning
+                                ? pomodoroService.pauseTimer
+                                : pomodoroService.startTimer,
+                            style: ElevatedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              minimumSize: const Size(100, 150),
+                              backgroundColor: color,
+                            ),
+                            child: Icon(
+                              isRunning ? Icons.pause : Icons.play_arrow,
+                              size: 56,
+                              color: pomodoroService.currentSession.value ==
+                                      PomodoroSession.work
+                                  ? theme.colorScheme.onPrimary
+                                  : pomodoroService.currentSession.value ==
+                                          PomodoroSession.shortBreak
+                                      ? theme.colorScheme.onSecondary
+                                      : theme.colorScheme.onTertiary,
+                            ),
+                          );
+                        },
                       ),
-                    ],
+                    ),
+                    const SizedBox(height: 4),
+                    // Кнопка сброса
+                    _SpringyButtonWrapper(
+                      child: buildTonalButton(
+                          theme, Icons.refresh, pomodoroService.resetTimer, const Size(100, 75)),
+                    ),
+                    const SizedBox(height: 4),
+                    // Кнопка "следующий"
+                    _SpringyButtonWrapper(
+                      child: buildTonalButton(theme, Icons.skip_next,
+                          pomodoroService.moveToNextSession, const Size(100, 50)),
+                    ),
+                  ],
+                ),
+                        ),
+                      ],
+                    ),
                   );
                 }
               });

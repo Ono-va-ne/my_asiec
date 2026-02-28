@@ -1,6 +1,7 @@
 import 'package:my_asiec/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HallOfFameScreen extends StatefulWidget {
   const HallOfFameScreen({super.key});
@@ -22,7 +23,7 @@ class _HallOfFameScreenState extends State<HallOfFameScreen> {
     final response = await Supabase.instance.client
         .from('hall_of_fame')
         .select()
-        .order('name', ascending: true);
+        .order('id', ascending: true);
     return List<Map<String, dynamic>>.from(response as List);
   }
 
@@ -69,27 +70,64 @@ class _HallOfFameScreenState extends State<HallOfFameScreen> {
             children: [
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                  padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
                   itemCount: members.length,
                   itemBuilder: (context, index) {
                     final member = members[index];
                     final photoUrl = member['photo_url'] as String?;
                     return Card(
                       margin: const EdgeInsets.symmetric(
-                          horizontal: 16.0, vertical: 6.0),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 10.0,
-                          vertical: 1.0,
+                          horizontal: 8.0, vertical: 4.0),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12.0),
+                        onTap: () async {
+                          final urlString = member['url'] as String?;
+                          if (urlString != null && urlString.isNotEmpty) {
+                            await launchUrl(Uri.parse(urlString), mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: (photoUrl != null && photoUrl.isNotEmpty)
+                                    ? Image.network(photoUrl, width: 64, height: 64, fit: BoxFit.cover)
+                                    : const SizedBox(width: 64, height: 64, child: Icon(Icons.person, size: 32)),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      member['name'] ?? 'Без имени',
+                                      style: TextStyle(
+                                        color: member['url'] != null ? Theme.of(context).colorScheme.primary : null,
+                                        fontVariations: [const FontVariation('wdth', 150)],
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    if (member['group'] != null && (member['group'] as String).isNotEmpty)
+                                      Text(
+                                        member['group'],
+                                        style: TextStyle(color: Theme.of(context).colorScheme.tertiary, fontWeight: FontWeight.w700),
+                                      ),
+                                    if (member['info'] != null && (member['info'] as String).isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 2.0),
+                                        child: Text(member['info']),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: (photoUrl != null && photoUrl.isNotEmpty) 
-                            ? Image.network(photoUrl)
-                            : const Icon(Icons.person),
-                        ),
-                        title: Text(member['name'] ?? 'Без имени'),
-                        subtitle: Text('${member['group'] ?? ''}\n${member['info'] ?? ''}'),
                       ),
                     );
                   },

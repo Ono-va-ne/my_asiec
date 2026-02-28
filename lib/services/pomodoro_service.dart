@@ -26,6 +26,7 @@ class PomodoroService {
   final ValueNotifier<bool> isTimerRunning = ValueNotifier(false);
   final ValueNotifier<PomodoroSession> currentSession = ValueNotifier(PomodoroSession.work);
   final ValueNotifier<int> workSessionCount = ValueNotifier(0);
+  final ValueNotifier<int> fullSessionCount = ValueNotifier(0);
 
   // --- Private State ---
   Timer? _timer;
@@ -128,6 +129,7 @@ class PomodoroService {
     remainingTime.value = settingsService.pomodoroWorkDurationNotifier.value * 60;
     _notificationService.cancelAllNotifications();
     workSessionCount.value = 0;
+    fullSessionCount.value = 0;
     currentSession.value = PomodoroSession.work;
     _updateHomeWidget();
 
@@ -139,10 +141,14 @@ class PomodoroService {
       workSessionCount.value++;
       if (workSessionCount.value % _sessionsBeforeLongBreak == 0) {
         currentSession.value = PomodoroSession.longBreak;
+        // fullSessionCount.value++;
       } else {
         currentSession.value = PomodoroSession.shortBreak;
       }
     } else {
+      if (currentSession.value == PomodoroSession.longBreak) {
+        fullSessionCount.value++;
+      }
       currentSession.value = PomodoroSession.work;
     }
 

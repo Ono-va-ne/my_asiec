@@ -17,6 +17,7 @@ import '../../models/teacher_info.dart';
 import '../../models/room_info.dart';
 import '../../services/settings_service.dart';
 import '../../services/groups_service.dart';
+import '../../services/teachers_service.dart';
 import '../../services/local_homework_service.dart';
 import '../../services/schedule_service.dart';
 import '../../l10n/app_localizations.dart';
@@ -46,6 +47,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   final _client = Supabase.instance.client;
   final _localHomeworkService = LocalHomeworkService();
   final _groupsService = GroupsService();
+  final _teachersService = TeachersService();
 
   Stream<List<Homework>>? _homeworkStream;
 
@@ -148,7 +150,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       if (mounted) setState(() => _showBreaks = settingsService.showBreaksInScheduleNotifier.value);
     });
     // _initializeScheduleObjects(); // Инициализируем список И выбранную группу
-    _loadAvailableGroups();
+    _loadInitialData();
     final serverStream = _client
       .from('homework')
       .stream(primaryKey: ['id'])
@@ -164,27 +166,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         );
   }
 
-  // Загрузка группы из Supabase (GroupsService) и инициализация объектов
-  Future<void> _loadAvailableGroups() async {
-    try {
-      final groups =
-          await _groupsService.getGroups(); // GroupsService кеширует через Hive
-      if (groups.isEmpty) {
-        print(
-          'GroupsService вернул пустой список, используем локальные данные',
-        );
-        _availableGroups = availableGroupsData;
-      } else {
-        _availableGroups = groups;
-      }
-    } catch (e) {
-      print(
-        'Не удалось загрузить группы из Supabase: $e — используем локальные данные',
-      );
-      _availableGroups = availableGroupsData;
-    }
+  Future<void> _loadInitialData() async {
+    // Параллельно загружаем группы и преподавателей
+    await Future.wait([
+      _loadAvailableGroups(),
+      _loadAvailableTeachers(),
+    ]);
 
-    // Инициализация выбора и загрузка расписания
+    // Инициализация выбора и загрузка расписания после загрузки данных
     _initializeScheduleObjects();
     if (_selectedGroup != null) {
       _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
@@ -197,11 +186,39 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
+  Future<void> _loadAvailableGroups() async {
+    try {
+      final groups =
+          await _groupsService.getGroups(); // GroupsService кеширует через Hive
+      if (groups.isEmpty) {
+        print('GroupsService вернул пустой список, используем локальные данные');
+        _availableGroups = availableGroupsData;
+      } else {
+        _availableGroups = groups;
+      }
+    } catch (e) {
+      print('Не удалось загрузить группы из Supabase: $e — используем локальные данные');
+      _availableGroups = availableGroupsData;
+    }
+  }
+
+  Future<void> _loadAvailableTeachers() async {
+    try {
+      final teachers = await _teachersService.getTeachers();
+      if (teachers.isNotEmpty) {
+        _availableTeachers = teachers;
+      }
+    } catch (e) {
+      print('Не удалось загрузить преподавателей из Supabase: $e — используем локальные данные');
+      _availableTeachers = availableTeachersData;
+    }
+  }
+
   void _initializeScheduleObjects() {
     // Заполняем список доступных групп
     // _availableGroups = availableGroupsData;
-    _availableTeachers =
-        availableTeachersData; // Заполняем список доступных преподавателей
+    // _availableTeachers =
+    //     availableTeachersData; // Заполняем список доступных преподавателей
     _availableRooms =
         availableRoomsData; // Заполняем список доступных аудиторий
 

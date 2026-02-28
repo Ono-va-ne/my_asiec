@@ -344,11 +344,11 @@ abstract class AppLocalizations {
   /// **'Сохранить изменения'**
   String get taskSaveChanges;
 
-  /// No description provided for @taskDeleteConfirm.
+  /// No description provided for @taskDeleteConfirmation.
   ///
   /// In ru, this message translates to:
   /// **'Вы уверены, что хотите удалить задание?'**
-  String get taskDeleteConfirm;
+  String get taskDeleteConfirmation;
 
   /// No description provided for @handbookCreate.
   ///
@@ -446,7 +446,13 @@ abstract class AppLocalizations {
   /// **'Длинный отдых'**
   String get pomodoroLongBreak;
 
-  /// Показывает количество завершенных циклов Pomodoro
+  /// Показывает количество завершенных фокусировок Pomodoro
+  ///
+  /// In ru, this message translates to:
+  /// **'Фокусировок завершено: {count}'**
+  String pomodoroWorkCyclesCompleted(int count);
+
+  /// Показывает количество завершенных циклов Pomodoro (4 фокусировки)
   ///
   /// In ru, this message translates to:
   /// **'Циклов завершено: {count}'**

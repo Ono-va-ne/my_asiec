@@ -85,8 +85,8 @@
   "@taskSaveLocally": {},
   "taskSaveChanges": "Сохранить изменения",
   "@taskSaveChanges": {},
-  "taskDeleteConfirm": "Вы уверены, что хотите удалить задание?",
-  "@taskDeleteConfirm": {},
+  "taskDeleteConfirmation": "Вы уверены, что хотите удалить задание?",
+  "@taskDeleteConfirmation": {},
 
 
   "handbookCreate": "Добавить формулу",
@@ -122,15 +122,25 @@
   "@pomodoroShortBreak": {},
   "pomodoroLongBreak": "Длинный отдых",
   "@pomodoroLongBreak": {},
-  "pomodoroCyclesCompleted": "Циклов завершено: {count}",
-  "@pomodoroCyclesCompleted": {
-    "description": "Показывает количество завершенных циклов Pomodoro",
+  "pomodoroWorkCyclesCompleted": "Фокусировок завершено: {count}",
+  "@pomodoroWorkCyclesCompleted": {
+    "description": "Показывает количество завершенных фокусировок Pomodoro",
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
+    "pomodoroCyclesCompleted": "Циклов завершено: {count}",
+  "@pomodoroCyclesCompleted": {
+    "description": "Показывает количество завершенных циклов Pomodoro (4 фокусировки)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
   "pomodoroNextCycle": "Следующий цикл: {nextSessionTitle}",
   "@pomodoroNextCycle": {
     "placeholders": {

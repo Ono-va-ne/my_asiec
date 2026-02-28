@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:my_asiec/models/teacher_info.dart';
 import '../services/settings_service.dart'; // Импортируем сервис
 import '../data/groups.dart'; // Импортируем список групп (fallback)
 import '../services/groups_service.dart';
+import '../services/teachers_service.dart';
 import '../models/group_info.dart';
 import '../data/teachers.dart';
 import '../data/rooms.dart'; // Импортируем список аудиторий
@@ -22,12 +24,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _selectedRoomId;
   final _groupsService = GroupsService();
   List<GroupInfo> _supabaseGroups = [];
+  List<TeacherInfo> _supabaseTeachers = [];
+  final _teachersService = TeachersService();
 
   // Инициализируем с пустыми значениями
   @override
   void initState() {
     super.initState();
     _loadGroups();
+    _loadTeachers();
     // Загружаем текущую выбранную группу при инициализации
     _selectedGroupId = settingsService.getDefaultGroupId();
     _selectedTeacherId = settingsService.getDefaultTeacherId();
@@ -46,6 +51,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _loadTeachers() async {
+    try {
+      final teachers = await _teachersService.getTeachers();
+      if (mounted) setState(() => _supabaseTeachers = teachers);
+    } catch (e) {
+      print('Ошибка загрузки преподавателей из Supabase: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +73,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: Icon(Icons.group_outlined),
             title: Text(l10n.group),
-            // subtitle: Text('Будет выбрана при запуске приложения'),
             trailing: SizedBox(
               width: 200,
               child: DropdownButtonHideUnderline(
@@ -92,7 +104,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: Icon(Icons.person_outlined),
             title: Text(l10n.teacher),
-            // subtitle: Text('Будет выбран при запуске приложения'),
             trailing: SizedBox(
               width: 200,
               child: DropdownButtonHideUnderline(
@@ -102,19 +113,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: _selectedTeacherId,
                   hint: Text(l10n.settingNotSelected),
                   // Фильтруем список, чтобы не было ошибки, если сохраненный ID невалиден
-                  items:
-                      availableTeachersData
-                          .map(
-                            (teacher) => DropdownMenuItem<String>(
-                              value: teacher.id,
-                              child: Text(
-                                teacher.name,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
+                  items: (_supabaseTeachers.isNotEmpty ? _supabaseTeachers : availableTeachersData)
+                      .map((teacher) => DropdownMenuItem<String>(
+                            value: teacher.id,
+                            child: Text(
+                              teacher.name,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
-                          )
-                          .toList(),
+                          ))
+                      .toList(),
                   onChanged: (String? newTeacherId) {
                     if (newTeacherId != null) {
                       setState(() {

@@ -21,4 +21,15 @@ class TeacherInfo {
     // Для отладки
     return 'TeacherInfo{id: $id, name: $name}';
   }
+
+  /// Создаёт объект из JSON/Map, учитывает разные возможные имена полей
+  factory TeacherInfo.fromJson(Map<String, dynamic> json) {
+    final idValue = json['id'] ?? json['teacher_id'] ?? '';
+    final nameValue =
+        json['name'] ??
+        json['fio'] ??
+        json['teacher_name'] ??
+        '';
+    return TeacherInfo(id: idValue.toString(), name: nameValue.toString());
+}
 }

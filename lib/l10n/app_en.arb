@@ -85,8 +85,8 @@
   "@taskSaveLocally": {},
   "taskSaveChanges": "Save changes",
   "@taskSaveChanges": {},
-  "taskDeleteConfirm": "Are you sure you want to delete this task?",
-  "@taskDeleteConfirm": {},
+  "taskDeleteConfirmation": "Are you sure you want to delete this task?",
+  "@taskDeleteConfirmation": {},
   
   "handbookCreate": "Add formula",
   "@handbookCreate": {},
@@ -121,16 +121,24 @@
   "@pomodoroShortBreak": {},
   "pomodoroLongBreak": "Long break",
   "@pomodoroLongBreak": {},
-  "pomodoroCyclesCompleted": "Cycles completed: {count}",
-  "@pomodoroCyclesCompleted": {
-    "description": "Shows the number of completed Pomodoro cycles",
+  "pomodoroWorkCyclesCompleted": "Focus cycles completed: {count}",
+  "@pomodoroWorkCyclesCompleted": {
+    "description": "Shows the number of completed focus Pomodoro cycles",
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "pomodoroNextCycle": "Next cycle: {nextSessionTitle}",
+    "pomodoroCyclesCompleted": "Cycles completed: {count}",
+  "@pomodoroCyclesCompleted": {
+    "description": "Shows the number of completed Pomodoro cycles (4 focus cycles)",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },  "pomodoroNextCycle": "Next cycle: {nextSessionTitle}",
   "@pomodoroNextCycle": {
     "placeholders": {
       "nextSessionTitle": {"type": "String"}

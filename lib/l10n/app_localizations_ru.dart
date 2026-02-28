@@ -132,7 +132,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskSaveChanges => 'Сохранить изменения';
 
   @override
-  String get taskDeleteConfirm => 'Вы уверены, что хотите удалить задание?';
+  String get taskDeleteConfirmation =>
+      'Вы уверены, что хотите удалить задание?';
 
   @override
   String get handbookCreate => 'Добавить формулу';
@@ -181,6 +182,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get pomodoroLongBreak => 'Длинный отдых';
+
+  @override
+  String pomodoroWorkCyclesCompleted(int count) {
+    return 'Фокусировок завершено: $count';
+  }
 
   @override
   String pomodoroCyclesCompleted(int count) {
