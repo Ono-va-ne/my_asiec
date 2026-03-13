@@ -42,6 +42,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   String _scheduleDateDisplay =
       'Загрузка...'; // Строка для отображения диапазона
   bool _isLoading = true;
+  String _filterText = '';
   String? _errorMessage;
 
   final _client = Supabase.instance.client;
@@ -49,6 +50,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   final _groupsService = GroupsService();
   final _teachersService = TeachersService();
 
+  final _filterController = TextEditingController();
   Stream<List<Homework>>? _homeworkStream;
 
   List<GroupInfo> _availableGroups = []; // Список доступных групп
@@ -164,6 +166,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           serverStream,
           (local, remote) => [...local, ...remote],
         );
+    _filterController.addListener(() {
+      if (mounted) {
+        setState(() => _filterText = _filterController.text);
+      }
+    });
   }
 
   Future<void> _loadInitialData() async {
@@ -603,30 +610,36 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   Widget _buildScheduleTypeButtons(Orientation orientation) {
     final isLandscape = orientation == Orientation.landscape;
 
-    return SegmentedButton<ScheduleType>(
-      segments: [
-        ButtonSegment(
-          value: ScheduleType.grup,
-          label: isLandscape ? null : Text(AppLocalizations.of(context)!.group),
-          icon: const Icon(Icons.group),
+    return Row(
+      children: [
+        Expanded(
+          child: SegmentedButton<ScheduleType>(
+            segments: [
+              ButtonSegment(
+                value: ScheduleType.grup,
+                label: isLandscape ? null : Text(AppLocalizations.of(context)!.group),
+                icon: const Icon(Icons.group),
+              ),
+              ButtonSegment(
+                value: ScheduleType.prep,
+                label: isLandscape ? null : Text(AppLocalizations.of(context)!.teacher),
+                icon: const Icon(Icons.person),
+              ),
+              ButtonSegment(
+                value: ScheduleType.aud,
+                label: isLandscape ? null : Text(AppLocalizations.of(context)!.room),
+                icon: const Icon(Icons.meeting_room),
+              ),
+            ],
+            selected: <ScheduleType>{_rasType},
+            onSelectionChanged: (Set<ScheduleType> newSelection) {
+              if (newSelection.isNotEmpty) {
+                _setScheduleType(newSelection.first);
+              }
+            },
           ),
-          ButtonSegment(
-            value: ScheduleType.prep,
-            label: isLandscape ? null : Text(AppLocalizations.of(context)!.teacher),
-            icon: Icon(Icons.person),
-          ),
-          ButtonSegment(
-            value: ScheduleType.aud,
-            label: isLandscape ? null : Text(AppLocalizations.of(context)!.room),
-            icon: Icon(Icons.meeting_room),
-          ),
-        ],
-        selected: <ScheduleType>{_rasType},
-        onSelectionChanged: (Set<ScheduleType> newSelection) {
-          if (newSelection.isNotEmpty) {
-            _setScheduleType(newSelection.first);
-          }
-        },
+        ),
+      ],
     );
   }
 
@@ -723,7 +736,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16.0,
-                      vertical: 12.0,
+                      vertical: 8.0,
                     ),
                     child: InkWell(
                       onTap: _isLoading
@@ -767,18 +780,48 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 0.0,
+                  Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent), // Делает разделитель прозрачным
+                    child: ExpansionTile(
+                      title: Text(AppLocalizations.of(context)!.filters),
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 4.0
+                          ),
+                          child: _buildObjectSelector(),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                          child: _buildScheduleTypeButtons(orientation),
+                        ),
+                        SizedBox(height: 4.0),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 16.0),
+                          child: TextField(
+                            controller: _filterController,
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context)!.search,
+                              // prefixIcon: Icon(Icons.filter_list),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                              ),
+                              suffixIcon: _filterText.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.clear),
+                                  onPressed: () => _filterController.clear(),
+                                )
+                              : Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Icon(Icons.filter_list, color: Theme.of(context).colorScheme.primary),
+                              ),
+                              suffixIconConstraints: BoxConstraints(),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: _buildObjectSelector(),
-                  ),
-                  SizedBox(height: 8.0),
-                  Padding(
-                    padding: const EdgeInsets.only(
-                        bottom: 8.0, left: 16.0, right: 16.0),
-                    child: _buildScheduleTypeButtons(orientation),
                   ),
                   Expanded(
                     child: StreamBuilder<List<Homework>>(
@@ -1063,6 +1106,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       entry: entry,
                       allEntriesForDay: dailySchedule.entries,
                       homeworks: allHomeworks,
+                      filterText: _filterText,
                     ));
 
                     // Если включено отображение перемен и это не последняя пара
@@ -1110,6 +1154,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         },
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _filterController.dispose();
+    super.dispose();
   }
 }
 

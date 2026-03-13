@@ -158,6 +158,12 @@ abstract class AppLocalizations {
   /// **'Поиск'**
   String get search;
 
+  /// No description provided for @filters.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фильтры'**
+  String get filters;
+
   /// No description provided for @save.
   ///
   /// In ru, this message translates to:

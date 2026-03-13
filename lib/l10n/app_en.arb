@@ -20,6 +20,8 @@
   "@error": {},
   "search": "Search",
   "@search": {},
+  "filters": "Filters",
+  "@filters": {},
   "save": "Save",
   "@save": {},
   "delete": "Delete",

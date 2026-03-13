@@ -20,6 +20,8 @@
   "@error": {},
   "search": "Поиск",
   "@search": {},
+  "filters": "Фильтры",
+  "@filters": {},
   "save": "Сохранить",
   "@save": {},
   "delete": "Удалить",

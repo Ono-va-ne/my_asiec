@@ -23,11 +23,13 @@ class ScheduleCard extends StatefulWidget {
   final ScheduleEntry entry; // Данные для этой карточки
   final List<ScheduleEntry> allEntriesForDay;
   final List<Homework> homeworks;
+  final String filterText;
   const ScheduleCard({
     super.key,
     required this.entry,
     required this.allEntriesForDay,
     required this.homeworks,
+    this.filterText = '',
   });
 
   @override
@@ -280,6 +282,15 @@ class _ScheduleCardState extends State<ScheduleCard> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+
+    final bool hasFilterMatch = widget.filterText.isNotEmpty &&
+        (widget.entry.discipline
+            .toLowerCase()
+            .contains(widget.filterText.toLowerCase()) ||
+        widget.entry.teacher
+            .toLowerCase()
+            .contains(widget.filterText.toLowerCase()));
+
     final scheduleSubgroup = extractSubgroup(widget.entry.discipline);
     final Homework? foundHomework = widget.homeworks.firstWhereOrNull((hw) {
       final entryDisciplineMain =
@@ -373,6 +384,18 @@ class _ScheduleCardState extends State<ScheduleCard> {
               borderRadius: BorderRadius.circular(12.0),
               child: Stack(
                 children: [
+                  if(hasFilterMatch) ...[
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Container(
+                        height: 4.0,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.0),
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                   if (entryStatus == ScheduleEntryStatus.current)
                     Positioned.fill(
                       child: Align(
