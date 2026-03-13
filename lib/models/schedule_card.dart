@@ -384,18 +384,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
               borderRadius: BorderRadius.circular(12.0),
               child: Stack(
                 children: [
-                  if(hasFilterMatch) ...[
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Container(
-                        height: 4.0,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12.0),
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ],
                   if (entryStatus == ScheduleEntryStatus.current)
                     Positioned.fill(
                       child: Align(
@@ -409,6 +397,18 @@ class _ScheduleCardState extends State<ScheduleCard> {
                         ),
                       ),
                     ),
+                  if(hasFilterMatch) ...[
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Container(
+                        height: 4.0,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12.0),
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Row(

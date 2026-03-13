@@ -836,6 +836,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               );
             } else {
               // Ландшафтная (горизонтальная) ориентация
+
+              // TODO: добавить фильтр в горизонтальную ориентацию и исправить исключение при повороте экрана
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
