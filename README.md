@@ -20,10 +20,10 @@
 
 ## 📸 Скриншоты
 <p align="center" width=100%>
-<img src="assets/screenshots/schedule.png" width=25%>
-<img src="assets/screenshots/tasks.png" width=25%>
-<img src="assets/screenshots/glossary.png" width=25%>
-<img src="assets/screenshots/pomodoro.png" width=25%>
+<img src="assets/screenshots/schedule.png" width=24%>
+<img src="assets/screenshots/tasks.png" width=24%>
+<img src="assets/screenshots/glossary.png" width=24%>
+<img src="assets/screenshots/pomodoro.png" width=24%>
 </p>
 
 ## 🛠️ Технологии
