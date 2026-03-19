@@ -22,6 +22,7 @@ import '../services/pomodoro_service.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../services/settings_service.dart';
 import '../utils/logger_setup.dart';
+import '../supabase_options.dart';
 // import 'package:http/http.dart' as http;
 
 
@@ -40,9 +41,8 @@ void main() async {
       await settingsService.loadSettings();
       WidgetsFlutterBinding.ensureInitialized();
       await Supabase.initialize(
-        url: 'https://zffxqnxjxhnmcdvifyyc.supabase.co',
-        anonKey:
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpmZnhxbnhqeGhubWNkdmlmeXljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzNTY3NDMsImV4cCI6MjA3MTkzMjc0M30.Tan-ExOBrf3U8dxQyIlIZmuY_DHkvCFCk2QdTmFN_Sk',
+        url: supabase_url,
+        anonKey: supabase_anon_key,
       );
       await Firebase.initializeApp();
       await Hive.initFlutter();
@@ -131,7 +131,7 @@ class MyApp extends StatelessWidget {
                       valueListenable: settingsService.materialYouNotifier,
                       builder: (context, isMaterialYouEnabled, _) {
                         return MaterialApp(
-                          debugShowCheckedModeBanner: true,
+                          debugShowCheckedModeBanner: false,
                           title: "My ASIEC",
                           theme: _createThemeData(
                             Brightness.light,
