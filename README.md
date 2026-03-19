@@ -20,10 +20,10 @@
 
 ## 📸 Скриншоты
 <p align="center" width=100%>
-<img src="assets/screenshots/schedule.png" width=25%>
-<img src="assets/screenshots/tasks.png" width=25%>
-<img src="assets/screenshots/glossary.png" width=25%>
-<img src="assets/screenshots/pomodoro.png" width=25%>
+<img src="assets/screenshots/schedule.png" width=49%>
+<img src="assets/screenshots/tasks.png" width=49%>
+<img src="assets/screenshots/glossary.png" width=49%>
+<img src="assets/screenshots/pomodoro.png" width=49%>
 </p>
 
 ## 🛠️ Технологии
@@ -41,6 +41,7 @@
 5.  Для работы с Supabase вам потребуется создать файл `lib/supabase_options.dart` с `url` и `anon_key`.
 6. Подготовьте устройство для отладки (физическое или виртуальное)
 7.  Запустите приложение: `flutter run`
+
 
 ## 📄 Лицензия
 
