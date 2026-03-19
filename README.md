@@ -1,6 +1,6 @@
 ![](assets/Banner.png)
-[![Flutter](https://img.shields.io/badge/Flutter-0468d7?logo=flutter)](https://flutter.dev) [![Telegram](https://img.shields.io/badge/Telegram-009bff?logo=telegram&logoColor=%20white)](https://t.me/MyASIEC) [![Static Badge](https://img.shields.io/badge/Work_with-Supabase-3fcf8e?logo=supabase)](https://supabase.com)
-
+[![Flutter](https://img.shields.io/badge/Flutter-0468d7?logo=flutter)](https://flutter.dev) [![Telegram](https://img.shields.io/badge/Telegram-009bff?logo=telegram&logoColor=%20white)](https://t.me/MyASIEC) [![Static Badge](https://img.shields.io/badge/Work_with-Supabase-3fcf8e?logo=supabase)](https://supabase.com) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+ 
 
 # МойАПЭК (MyASIEC)
 
@@ -41,3 +41,7 @@
 5.  Для работы с Supabase вам потребуется создать файл `lib/supabase_options.dart` с `url` и `anon_key`.
 6. Подготовьте устройство для отладки (физическое или виртуальное)
 7.  Запустите приложение: `flutter run`
+
+## 📄 Лицензия
+
+Этот проект распространяется под лицензией MIT. Смотрите файл `LICENSE` для получения дополнительной информации.
