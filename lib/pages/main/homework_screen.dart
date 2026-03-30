@@ -108,10 +108,25 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
       
             if (snapshot.hasError) {
               print("Ошибка при загрузке ДЗ: ${snapshot.error}");
-              return Center(
-                child: Text(
-                  'Ошибка загрузки домашнего задания: ${snapshot.error}',
-                ),
+              return RefreshIndicator(
+                onRefresh: _refreshHomework,
+                child: LayoutBuilder(builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minHeight: constraints.maxHeight),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            'Ошибка загрузки домашнего задания: ${snapshot.error}',
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
               );
             }
       

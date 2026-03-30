@@ -837,7 +837,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             } else {
               // Ландшафтная (горизонтальная) ориентация
 
-              // TODO: добавить фильтр в горизонтальную ориентацию и исправить исключение при повороте экрана
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -896,12 +895,38 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             child: _buildObjectSelector(),
                           ),
                         ),
-                        SizedBox(
-                          height: 48,
+                        Flexible(
+                          child: SizedBox(
+                            height: 48,
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 4.0),
+                              child: _buildScheduleTypeButtons(orientation),
+                            ),
+                          ),
+                        ),
+                        Expanded(
                           child: Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 4.0),
-                            child: _buildScheduleTypeButtons(orientation),
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: TextField(
+                              controller: _filterController,
+                              decoration: InputDecoration(
+                                labelText: AppLocalizations.of(context)!.search,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                ),
+                                suffixIcon: _filterText.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(Icons.clear),
+                                    onPressed: () => _filterController.clear(),
+                                  )
+                                : Padding(
+                                  padding: const EdgeInsets.all(12.0),
+                                  child: Icon(Icons.filter_list, color: Theme.of(context).colorScheme.primary),
+                                ),
+                                suffixIconConstraints: BoxConstraints(),
+                              ),
+                            ),
                           ),
                         ),
                       ],

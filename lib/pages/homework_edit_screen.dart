@@ -238,6 +238,9 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
           final homeworkMapForSupabase = homeworkToProcess.toJson();
 
           if (homeworkToProcess.id == null) {
+            // При создании новой записи удаляем id из карты,
+            // чтобы база данных сгенерировала его автоматически.
+            homeworkMapForSupabase.remove('id');
             await _client.from('homework').insert(homeworkMapForSupabase);
           } else {
             await _client.from('homework').update(homeworkMapForSupabase).eq('id', homeworkToProcess.id!);
