@@ -244,6 +244,27 @@ class AppLocalizationsEn extends AppLocalizations {
       'Use Material You colors (Android 12+)';
 
   @override
+  String get settingIcons => 'App Icon';
+
+  @override
+  String get iconDefault => 'Default';
+
+  @override
+  String get iconFlow => 'Flow';
+
+  @override
+  String get iconPurple => 'Purple';
+
+  @override
+  String get iconLegacy => 'Legacy';
+
+  @override
+  String get iconLegacyAlt => 'Legacy Alt';
+
+  @override
+  String get iconBarracuda => 'Barracuda';
+
+  @override
   String get settingLanguage => 'Language';
 
   @override
@@ -255,4 +276,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aboutDescription =>
       'Author: Popkov Dmitriy (9ОИБ231)\nIdea: Nikiforov Maxim (11ОИБ232)\nMade with ❤️ in Flutter';
+
+  @override
+  String get appIconChangedSuccessfully => 'Icon changed successfully';
+
+  @override
+  String get appIconChangeFailed => 'Icon change failed';
 }

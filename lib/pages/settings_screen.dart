@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_asiec/models/teacher_info.dart';
+import 'package:dynamic_app_icon_flutter_plus/dynamic_app_icon_flutter_plus.dart';
 import '../services/settings_service.dart'; // Импортируем сервис
 import '../data/groups.dart'; // Импортируем список групп (fallback)
 import '../services/groups_service.dart';
@@ -22,6 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _selectedGroupId; // Храним ID выбранной группы по умолчанию
   String? _selectedTeacherId;
   String? _selectedRoomId;
+  String? _currentIconName;
   final _groupsService = GroupsService();
   List<GroupInfo> _supabaseGroups = [];
   List<TeacherInfo> _supabaseTeachers = [];
@@ -32,6 +34,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadGroups();
+    _loadCurrentIcon();
+    _loadAllIcons();
     _loadTeachers();
     // Загружаем текущую выбранную группу при инициализации
     _selectedGroupId = settingsService.getDefaultGroupId();
@@ -40,6 +44,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Мы не используем ValueListenableBuilder здесь, т.к. нам не нужно
     // динамически перестраивать весь экран при смене группы,
     // достаточно обновить Dropdown при выборе.
+  }
+
+  Future<void> _loadCurrentIcon() async {
+    String? iconName = await DynamicAppIconFlutterPlus.getAlternateIconName();
+
+    // Если выбрана иконка 'flow', но сейчас не октябрь, сбрасываем на стандартную
+    if (iconName == 'barracuda' && !(DateTime.now().month == 10)) {
+      await DynamicAppIconFlutterPlus.setAlternateIconName(null);
+      iconName = null; // Обновляем локальное состояние
+    }
+    if (mounted) {
+      // Устанавливаем иконку в состояние виджета
+      setState(() => _currentIconName = iconName);
+    }
+  }
+  Future<void> _loadAllIcons() async {
+    List<String> availableIcons = await DynamicAppIconFlutterPlus.getAvailableIcons();
+    print('Available icons: $availableIcons');
+    // Output: Available icons: [dark, light]
   }
 
   Future<void> _loadGroups() async {
@@ -280,6 +303,106 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
+          Divider(),
+          _buildSectionHeader(l10n.settingIcons),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Wrap(
+                  spacing: 16.0, // Горизонтальный отступ между иконками
+                  runSpacing: 16.0, // Вертикальный отступ между рядами
+                  alignment: WrapAlignment.start,
+                  children: [
+                    _buildIconOption(
+                      context: context,
+                      iconAsset: 'assets/icons/default.png',
+                      label: l10n.iconDefault,
+                      iconName: null,
+                    ),
+                    _buildIconOption(
+                      context: context,
+                      iconAsset: 'assets/icons/flow.png',
+                      label: l10n.iconFlow,
+                      iconName: 'flow',
+                    ),
+                    _buildIconOption(
+                      context: context,
+                      iconAsset: 'assets/icons/purple.png',
+                      label: l10n.iconPurple,
+                      iconName: 'purple',
+                    ),
+                    _buildIconOption(
+                      context: context,
+                      iconAsset: 'assets/icons/legacy.png',
+                      label: l10n.iconLegacy,
+                      iconName: 'legacy',
+                    ),
+                    _buildIconOption(
+                      context: context,
+                      iconAsset: 'assets/icons/legacy_alt.png',
+                      label: l10n.iconLegacyAlt,
+                      iconName: 'legacy_alt',
+                    ),
+                    if (DateTime.now().month == 10)
+                      _buildIconOption(
+                        context: context,
+                        iconAsset: 'assets/icons/barracuda.png',
+                        label: l10n.iconBarracuda,
+                        iconName: 'barracuda',
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIconOption({
+    required BuildContext context,
+    required String iconAsset,
+    required String label,
+    required String? iconName,
+  }) {
+    final bool isSelected = _currentIconName == iconName;
+    final Color borderColor = isSelected
+        ? Theme.of(context).colorScheme.primary
+        : Colors.transparent;
+
+    return GestureDetector(
+      onTap: () async {
+        try {
+          await DynamicAppIconFlutterPlus.setAlternateIconName(iconName);
+          setState(() => _currentIconName = iconName);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.appIconChangedSuccessfully)),
+          );
+        } catch (e) {
+          print("Ошибка смены иконки: $e");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context)!.appIconChangeFailed)),
+          );
+        }
+      },
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor, width: 2.5),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(iconAsset, width: 48, height: 48),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );

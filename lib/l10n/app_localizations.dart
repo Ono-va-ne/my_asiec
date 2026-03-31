@@ -548,6 +548,48 @@ abstract class AppLocalizations {
   /// **'Использовать цвета обоев (Android 12+)'**
   String get settingThemeMaterialYouDescription;
 
+  /// No description provided for @settingIcons.
+  ///
+  /// In ru, this message translates to:
+  /// **'Иконка приложения'**
+  String get settingIcons;
+
+  /// No description provided for @iconDefault.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обычная'**
+  String get iconDefault;
+
+  /// No description provided for @iconFlow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поток'**
+  String get iconFlow;
+
+  /// No description provided for @iconPurple.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фиолетовый'**
+  String get iconPurple;
+
+  /// No description provided for @iconLegacy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Наследие'**
+  String get iconLegacy;
+
+  /// No description provided for @iconLegacyAlt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Наследие Alt'**
+  String get iconLegacyAlt;
+
+  /// No description provided for @iconBarracuda.
+  ///
+  /// In ru, this message translates to:
+  /// **'Барракуда'**
+  String get iconBarracuda;
+
   /// No description provided for @settingLanguage.
   ///
   /// In ru, this message translates to:
@@ -571,6 +613,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Автор: Попков Дмитрий (9ОИБ231)\nИдея: Никифоров Максим (11ОИБ232)\nСделано с ❤️ в Flutter'**
   String get aboutDescription;
+
+  /// No description provided for @appIconChangedSuccessfully.
+  ///
+  /// In ru, this message translates to:
+  /// **'Иконка изменена успешно'**
+  String get appIconChangedSuccessfully;
+
+  /// No description provided for @appIconChangeFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось изменить иконку'**
+  String get appIconChangeFailed;
 }
 
 class _AppLocalizationsDelegate

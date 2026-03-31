@@ -177,6 +177,20 @@
   "@settingThemeMaterialYou": {},
   "settingThemeMaterialYouDescription": "Use Material You colors (Android 12+)",
   "@settingThemeMaterialYouDescription": {},
+  "settingIcons": "App Icon",
+  "@settingIcons": {},
+  "iconDefault": "Default",
+  "@iconDefault": {},
+  "iconFlow": "Flow",
+  "@iconFlow": {},
+  "iconPurple": "Purple",
+  "@iconPurple": {},
+  "iconLegacy": "Legacy",
+  "@iconLegacy": {},
+  "iconLegacyAlt": "Legacy Alt",
+  "@iconLegacyAlt": {},
+  "iconBarracuda": "Barracuda",
+  "@iconBarracuda": {},
   "settingLanguage": "Language",
   "@settingLanguage": {},
   "telegramChannelLink": "Official Telegram channel",
@@ -184,5 +198,10 @@
   "aboutApp": "About app",
   "@aboutApp": {},
   "aboutDescription": "Author: Popkov Dmitriy (9ОИБ231)\nIdea: Nikiforov Maxim (11ОИБ232)\nMade with ❤️ in Flutter",
-  "@aboutDescription": {}
+  "@aboutDescription": {},
+
+  "appIconChangedSuccessfully": "Icon changed successfully",
+  "@appIconChangedSuccessfully": {},
+  "appIconChangeFailed": "Icon change failed",
+  "@appIconChangeFailed": {}
 }

@@ -181,6 +181,20 @@
   "@settingThemeMaterialYou": {},
   "settingThemeMaterialYouDescription": "Использовать цвета обоев (Android 12+)",
   "@settingThemeMaterialYouDescription": {},
+  "settingIcons": "Иконка приложения",
+  "@settingIcons": {},
+  "iconDefault": "Обычная",
+  "@iconDefault": {},
+  "iconFlow": "Поток",
+  "@iconFlow": {},
+  "iconPurple": "Фиолетовый",
+  "@iconPurple": {},
+  "iconLegacy": "Наследие",
+  "@iconLegacy": {},
+  "iconLegacyAlt": "Наследие Alt",
+  "@iconLegacyAlt": {},
+  "iconBarracuda": "Барракуда",
+  "@iconBarracuda": {},
   "settingLanguage": "Язык",
   "@settingLanguage": {},
   "telegramChannelLink": "Официальный Telegram канал",
@@ -188,5 +202,10 @@
   "aboutApp": "О приложении",
   "@aboutApp": {},
   "aboutDescription": "Автор: Попков Дмитрий (9ОИБ231)\nИдея: Никифоров Максим (11ОИБ232)\nСделано с ❤️ в Flutter",
-  "@aboutDescription": {}
+  "@aboutDescription": {},
+
+  "appIconChangedSuccessfully": "Иконка изменена успешно",
+  "@appIconChangedSuccessfully": {},
+  "appIconChangeFailed": "Не удалось изменить иконку",
+  "@appIconChangeFailed": {}
 }

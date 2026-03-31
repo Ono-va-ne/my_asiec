@@ -244,6 +244,27 @@ class AppLocalizationsRu extends AppLocalizations {
       'Использовать цвета обоев (Android 12+)';
 
   @override
+  String get settingIcons => 'Иконка приложения';
+
+  @override
+  String get iconDefault => 'Обычная';
+
+  @override
+  String get iconFlow => 'Поток';
+
+  @override
+  String get iconPurple => 'Фиолетовый';
+
+  @override
+  String get iconLegacy => 'Наследие';
+
+  @override
+  String get iconLegacyAlt => 'Наследие Alt';
+
+  @override
+  String get iconBarracuda => 'Барракуда';
+
+  @override
   String get settingLanguage => 'Язык';
 
   @override
@@ -255,4 +276,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get aboutDescription =>
       'Автор: Попков Дмитрий (9ОИБ231)\nИдея: Никифоров Максим (11ОИБ232)\nСделано с ❤️ в Flutter';
+
+  @override
+  String get appIconChangedSuccessfully => 'Иконка изменена успешно';
+
+  @override
+  String get appIconChangeFailed => 'Не удалось изменить иконку';
 }
