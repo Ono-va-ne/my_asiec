@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:async';
 import '../../models/homework.dart';
 import '../homework_edit_screen.dart';
 import 'package:intl/intl.dart';
@@ -22,7 +24,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
   final _client = Supabase.instance.client;
   final _localHomeworkService = LocalHomeworkService();
   String? _userGroupId; // ID группы пользователя из настроек
-  Stream<List<Homework>>? _combinedStream;
+  Stream<List<Homework>>? _homeworkStream;
+  StreamSubscription? _serverSubscription;
 
   bool _isDueDateTodayOrFuture(DateTime dueDate) {
     final now = DateTime.now();
@@ -44,23 +47,33 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
 
   void _setupAndLoadData() {
     _loadUserGroupId();
-    final serverStream = _client
-        .from('homework')
-        .stream(primaryKey: ['id'])
-        .order('due_date')
-        .map((rows) => (rows as List)
-            .map((row) => Homework.fromJson(
-                row as Map<String, dynamic>, (row['id'] ?? '').toString()))
-            .toList());
-    final localStream = _localHomeworkService.getHomeworkStream();
 
-    _combinedStream = Rx.combineLatest2<List<Homework>, List<Homework>,
-        List<Homework>>(serverStream, localStream,
-        (serverHomeworks, localHomeworks) {
-      final allHomeworks = [...localHomeworks, ...serverHomeworks];
-      allHomeworks.sort((a, b) => a.due_date.compareTo(b.due_date));
-      return allHomeworks;
+    // Отменяем старую подписку на сервер, если она была
+    _serverSubscription?.cancel();
+
+    // Основной поток данных для UI теперь идет из локального сервиса (кэш + локальные)
+    _homeworkStream = _localHomeworkService.getHomeworkStream().map((homeworks) {
+      homeworks.sort((a, b) => a.due_date.compareTo(b.due_date));
+      return homeworks;
     });
+
+    // В фоне подписываемся на сервер для обновления кэша
+    final serverStream = _client.from('homework').stream(primaryKey: ['id']).order('due_date');
+
+    _serverSubscription = serverStream
+        .timeout(const Duration(seconds: 5)) // Добавляем таймаут
+        .listen((data) {
+      final serverHomeworks = (data as List)
+          .map((row) => Homework.fromJson(row as Map<String, dynamic>, (row['id'] ?? '').toString()))
+          .toList();
+      // Кэшируем успешные данные
+      _localHomeworkService.cacheServerHomework(serverHomeworks);
+    }, onError: (error) {
+      // При ошибке или таймауте просто логируем ее.
+      // UI продолжит показывать данные из кэша.
+      print("Ошибка или таймаут при получении данных с сервера: $error");
+    });
+
     if (mounted) setState(() {});
   }
 
@@ -75,6 +88,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
   void dispose() {
     settingsService.defaultGroupIdNotifier.removeListener(_setupAndLoadData);
     homeworkCompletionService.completedIdsNotifier.removeListener(_onCompletionChanged);
+    _serverSubscription?.cancel(); // Не забываем отписаться
     super.dispose();
   }
   // Метод для загрузки ID группы пользователя из настроек
@@ -86,27 +100,8 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
   }
 
   Future<void> _refreshHomework() async {
-    // В данном случае потоки обновляются автоматически.
-    // Мы можем просто подождать немного для имитации загрузки
-    // и чтобы дать время потокам синхронизироваться, если есть задержки.
-    _loadUserGroupId();
-    final serverStream = _client
-        .from('homework')
-        .stream(primaryKey: ['id'])
-        .order('due_date')
-        .map((rows) => (rows as List)
-            .map((row) => Homework.fromJson(
-                row as Map<String, dynamic>, (row['id'] ?? '').toString()))
-            .toList());
-    final localStream = _localHomeworkService.getHomeworkStream();
-
-    _combinedStream = Rx.combineLatest2<List<Homework>, List<Homework>,
-        List<Homework>>(serverStream, localStream,
-        (serverHomeworks, localHomeworks) {
-      final allHomeworks = [...localHomeworks, ...serverHomeworks];
-      allHomeworks.sort((a, b) => a.due_date.compareTo(b.due_date));
-      return allHomeworks;
-    });
+    // Принудительное обновление просто перезапускает логику загрузки
+    _setupAndLoadData();
     if (mounted) setState(() {});
     await Future.delayed(const Duration(seconds: 1));
   }
@@ -122,21 +117,60 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
             toolbarHeight: 0, // Скрываем стандартный AppBar
             bottom: TabBar(
               tabs: [
-                Tab(text: 'Актуальные'),
-                Tab(text: 'Просроченные'),
-                Tab(text: 'Выполненные'),
+                const Tab(text: 'Актуальные'),
+                Tab(
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: homeworkCompletionService.overdueCountNotifier,
+                    builder: (context, count, _) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Expanded(
+                            child: Text('Просроченные', overflow: TextOverflow.ellipsis),
+                          ),
+                          if (count > 0) ...[
+                            const SizedBox(width: 8),
+                            Badge(
+                              label: Text(count.toString()),
+                            ),
+                          ],
+                        ],
+                      );
+                    }
+                  ),
+                ),
+                const Tab(text: 'Выполненные'),
               ],
             ),
           ),
           body: StreamBuilder<List<Homework>>(
-            stream: _combinedStream,
+            stream: _homeworkStream,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting ||
                   snapshot.connectionState == ConnectionState.none) {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                return Center(child: Text('Ошибка: ${snapshot.error}'));
+                return RefreshIndicator(
+                  onRefresh: _refreshHomework,
+                  child: LayoutBuilder(builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(minHeight: constraints.maxHeight),
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Text(
+                              'Ошибка загрузки: ${snapshot.error}',
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                );
               }
 
               final allHomeworks = snapshot.data ?? [];
@@ -161,6 +195,12 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
               }).toList();
 
               final completed = userHomeworks.where((hw) => completedIds.contains(hw.id)).toList();
+
+              // Обновляем счетчик просроченных заданий в сервисе
+              // Используем addPostFrameCallback, чтобы избежать ошибки "setState() called during build"
+              SchedulerBinding.instance.addPostFrameCallback((_) {
+                homeworkCompletionService.updateOverdueCount(overdue.length);
+              });
 
               return TabBarView(
                 children: [
@@ -215,6 +255,15 @@ class _HomeworkList extends StatelessWidget {
     required this.l10n,
   });
 
+  bool _isDueDateToday(DateTime dueDate) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    print(todayStart);
+    final dueDatestart = DateTime(dueDate.year, dueDate.month, dueDate.day);
+    print(dueDatestart);
+    return dueDatestart.isAtSameMomentAs(todayStart);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (homeworks.isEmpty) {
@@ -251,6 +300,12 @@ class _HomeworkList extends StatelessWidget {
 
           return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              side: _isDueDateToday(entry.due_date)
+                  ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2.0)
+                  : BorderSide.none,
+            ),
             child: ListTile(
               leading: Checkbox(
                 value: isCompleted,

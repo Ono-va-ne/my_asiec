@@ -7,6 +7,7 @@ class HomeworkCompletionService {
 
   // ValueNotifier для уведомления UI об изменениях
   final ValueNotifier<Set<String>> completedIdsNotifier = ValueNotifier<Set<String>>({});
+  final ValueNotifier<int> overdueCountNotifier = ValueNotifier(0);
 
   Future<void> init() async {
     _completedBox = await Hive.openBox<bool>(_boxName);
@@ -36,8 +37,15 @@ class HomeworkCompletionService {
     return _completedBox.keys.cast<String>().toSet();
   }
 
+  void updateOverdueCount(int count) {
+    if (overdueCountNotifier.value != count) {
+      overdueCountNotifier.value = count;
+    }
+  }
+
   void dispose() {
     completedIdsNotifier.dispose();
+    overdueCountNotifier.dispose();
     // _completedBox.close(); // Не закрываем, так как Hive управляет этим
   }
 }

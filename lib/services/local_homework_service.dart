@@ -64,6 +64,26 @@ class LocalHomeworkService {
     print('Локальное ДЗ с ID $localId добавлено в Hive!');
   }
 
+  // --- Метод для кэширования ДЗ с сервера ---
+  Future<void> cacheServerHomework(List<Homework> serverHomeworks) async {
+    // 1. Найти все существующие кэшированные (не локальные) записи
+    final List<String> keysToDelete = [];
+    for (var homework in _homeworkBox.values) {
+      if (!homework.isLocal) {
+        keysToDelete.add(homework.id!);
+      }
+    }
+
+    // 2. Удалить старые кэшированные записи
+    if (keysToDelete.isNotEmpty) {
+      await _homeworkBox.deleteAll(keysToDelete);
+    }
+
+    // 3. Добавить новые записи с сервера в кэш
+    final Map<String, Homework> newCache = { for (var hw in serverHomeworks) hw.id!: hw };
+    await _homeworkBox.putAll(newCache);
+    print('Кэшировано ${serverHomeworks.length} заданий с сервера.');
+  }
   // --- Метод для обновления существующего локального домашнего задания ---
   Future<void> updateHomework(Homework homework) async {
     // Проверяем, что у домашнего задания есть ID (ключ в Box)

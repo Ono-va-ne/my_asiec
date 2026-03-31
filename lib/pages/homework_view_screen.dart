@@ -4,13 +4,59 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../models/homework.dart';
 import 'homework_edit_screen.dart';
+import '../services/local_homework_service.dart';
 
 class HomeworkViewScreen extends StatelessWidget {
   final Homework homeworkEntry;
+  final _localHomeworkService = LocalHomeworkService();
+  final _supabaseClient = Supabase.instance.client;
 
-  const HomeworkViewScreen({super.key, required this.homeworkEntry});
+  Future<void> _deleteHomework(BuildContext context) async {
+    try {
+      if (homeworkEntry.isLocal) {
+        await _localHomeworkService.deleteHomework(homeworkEntry.id!);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Локальное домашнее задание удалено.')),
+        );
+      } else {
+        await _supabaseClient.from('homework').delete().eq('id', homeworkEntry.id!);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Домашнее задание с сервера удалено.')),
+        );
+      }
+      // Navigate back to the previous screen (HomeworkScreen)
+      Navigator.of(context).pop();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка при удалении домашнего задания: $e')),
+      );
+    }
+  }
+
+  Future<void> _confirmAndDelete(BuildContext context) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Удалить задание?'),
+          content: const Text('Вы уверены, что хотите удалить это домашнее задание?'),
+          actions: <Widget>[
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: const Text('Отмена')),
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: const Text('Удалить')),
+          ],
+        );
+      },
+    );
+    if (confirm == true) {
+      await _deleteHomework(context);
+    }
+  }
+
+  HomeworkViewScreen({super.key, required this.homeworkEntry});
 
   Widget _buildPhotoWidget(BuildContext context, String photoPathOrUrl) {
     if (homeworkEntry.isLocal) {
@@ -99,6 +145,11 @@ class HomeworkViewScreen extends StatelessWidget {
               );
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.delete),
+            tooltip: 'Удалить',
+            onPressed: () => _confirmAndDelete(context),
+          ),
         ],
       ),
       body: Padding(
@@ -116,7 +167,7 @@ class HomeworkViewScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16.0),
             Text(
-              'Задание: ${homeworkEntry.id}',
+              'Задание:',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4.0),

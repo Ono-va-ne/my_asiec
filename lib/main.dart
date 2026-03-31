@@ -222,18 +222,28 @@ class _MainScreenState extends State<MainScreen> {
           
           ),
           NavigationDestination(
-            icon: Icon(Icons.assignment_outlined),
-            selectedIcon: Icon(Icons.assignment),
+            icon: ValueListenableBuilder<int>(
+              valueListenable: homeworkCompletionService.overdueCountNotifier,
+              builder: (context, count, child) {
+                return Badge(
+                  label: Text(count.toString()),
+                  isLabelVisible: count > 0,
+                  child: child,
+                );
+              },
+              child: const Icon(Icons.assignment_outlined),
+            ),
+            selectedIcon: const Icon(Icons.assignment),
             label: AppLocalizations.of(context)!.taskScreen,
           ),
           NavigationDestination(
-            icon: Icon(Icons.bookmark_border),
-            selectedIcon: Icon(Icons.bookmark),
+            icon: const Icon(Icons.bookmark_border),
+            selectedIcon: const Icon(Icons.bookmark),
             label: AppLocalizations.of(context)!.handbookScreen,
           ),
           NavigationDestination(
-            icon: Icon(Icons.more_horiz),
-            selectedIcon: Icon(Icons.more_horiz),
+            icon: const Icon(Icons.more_horiz),
+            selectedIcon: const Icon(Icons.more_horiz),
             label: AppLocalizations.of(context)!.moreScreen,
           ),
         ],
