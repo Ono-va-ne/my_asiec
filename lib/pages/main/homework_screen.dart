@@ -7,6 +7,7 @@ import 'package:rxdart/rxdart.dart';
 import '../../services/local_homework_service.dart';
 import '../../services/settings_service.dart'; // Импортируем сервис настроек
 import '../../l10n/app_localizations.dart';
+import '../../services/homework_completion_service.dart';
 import '../../data/text_emojis.dart';
 import '../homework_view_screen.dart';
 
@@ -17,7 +18,7 @@ class HomeworkScreen extends StatefulWidget {
   _HomeworkScreenState createState() => _HomeworkScreenState();
 }
 
-class _HomeworkScreenState extends State<HomeworkScreen> {
+class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProviderStateMixin {
   final _client = Supabase.instance.client;
   final _localHomeworkService = LocalHomeworkService();
   String? _userGroupId; // ID группы пользователя из настроек
@@ -33,6 +34,11 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   @override
   void initState() {
     super.initState();
+    // Слушаем изменения в ID группы и статусах выполнения
+    settingsService.defaultGroupIdNotifier.addListener(_setupAndLoadData);
+    homeworkCompletionService.completedIdsNotifier.addListener(_onCompletionChanged);
+
+    // Первоначальная загрузка
     _setupAndLoadData();
   }
 
@@ -58,6 +64,19 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
     if (mounted) setState(() {});
   }
 
+  void _onCompletionChanged() {
+    // Просто перестраиваем виджет, когда меняется список выполненных
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    settingsService.defaultGroupIdNotifier.removeListener(_setupAndLoadData);
+    homeworkCompletionService.completedIdsNotifier.removeListener(_onCompletionChanged);
+    super.dispose();
+  }
   // Метод для загрузки ID группы пользователя из настроек
   Future<void> _loadUserGroupId() async {
     final groupId = settingsService.getDefaultGroupId();
@@ -95,318 +114,172 @@ class _HomeworkScreenState extends State<HomeworkScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return SafeArea(
-      child: Scaffold(
-        body: StreamBuilder<List<Homework>>(
-          stream: _combinedStream,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting ||
-                snapshot.connectionState == ConnectionState.none) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final homeworkEntries = snapshot.data ?? [];
-      
-            if (snapshot.hasError) {
-              print("Ошибка при загрузке ДЗ: ${snapshot.error}");
-              return RefreshIndicator(
-                onRefresh: _refreshHomework,
-                child: LayoutBuilder(builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints:
-                          BoxConstraints(minHeight: constraints.maxHeight),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            'Ошибка загрузки домашнего задания: ${snapshot.error}',
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              );
-            }
-      
-            if (homeworkEntries.isEmpty) {
-              return RefreshIndicator(
-                onRefresh: _refreshHomework,
-                // child:
-                //     const Center(child: Text('Домашних заданий пока нет.')),
-                child: LayoutBuilder(builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: Center(
-                          child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(getRandomEmoji(), style: TextStyle(fontSize: 24, color: Colors.grey[600])),
-                          const SizedBox(height: 8),
-                          const Text('Домашних заданий пока нет.'),
-                        ],
-                      )),
-                    ),
-                  );
-                }),
-              );
-            }
-      
-            // Фильтруем ДЗ по группе пользователя
-            final filteredHomeworkEntries =
-                homeworkEntries
-                    .where(
-                      (entry) =>
-                          (_userGroupId == null ||
-                              (entry.group_id == _userGroupId)) &&
-                          _isDueDateTodayOrFuture(entry.due_date),
-                    )
-                    .toList();
-      
-            if (filteredHomeworkEntries.isEmpty) {
-              return RefreshIndicator(
-                onRefresh: _refreshHomework,
-                // child: const Center(
-                //   child: Text('Домашних заданий для вашей группы пока нет.'),
-                child: LayoutBuilder(builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: Center(child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(getRandomEmoji(),
-                              style: TextStyle(
-                                  fontSize: 72, color: Colors.grey[600])),
-                          const SizedBox(height: 8),
-                          Text(l10n.nothingFound, style: TextStyle(fontSize: 18, color: Colors.grey[400])),
-                        ]
-                      ),
-                    ),
-                  ));
-                }),
-                // ),
-              );
-            }
-            
-      
-            return RefreshIndicator(
-              onRefresh: _refreshHomework,
-              child: ListView.builder(
-              itemCount: filteredHomeworkEntries.length,
-              itemBuilder: (context, index) {
-                final entry = filteredHomeworkEntries[index];
-      
-                return Dismissible(
-                  key: Key(entry.id!),
-                  background: Container(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.only(left: 16.0),
-                    child: const Icon(Icons.delete, color: Colors.white),
+    return DefaultTabController(
+      length: 3,
+      child: SafeArea(
+        child: Scaffold(
+          appBar: AppBar(
+            toolbarHeight: 0, // Скрываем стандартный AppBar
+            bottom: TabBar(
+              tabs: [
+                Tab(text: 'Актуальные'),
+                Tab(text: 'Просроченные'),
+                Tab(text: 'Выполненные'),
+              ],
+            ),
+          ),
+          body: StreamBuilder<List<Homework>>(
+            stream: _combinedStream,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting ||
+                  snapshot.connectionState == ConnectionState.none) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Ошибка: ${snapshot.error}'));
+              }
+
+              final allHomeworks = snapshot.data ?? [];
+              final completedIds = homeworkCompletionService.getCompletedIds();
+
+              // Фильтруем ДЗ только для группы пользователя
+              final userHomeworks = allHomeworks
+                  .where((hw) => _userGroupId == null || hw.group_id == _userGroupId)
+                  .toList();
+
+              final now = DateTime.now();
+              final today = DateTime(now.year, now.month, now.day);
+
+              final active = userHomeworks.where((hw) {
+                final dueDate = DateTime(hw.due_date.year, hw.due_date.month, hw.due_date.day);
+                return !completedIds.contains(hw.id) && (dueDate.isAtSameMomentAs(today) || dueDate.isAfter(today));
+              }).toList();
+
+              final overdue = userHomeworks.where((hw) {
+                 final dueDate = DateTime(hw.due_date.year, hw.due_date.month, hw.due_date.day);
+                return !completedIds.contains(hw.id) && dueDate.isBefore(today);
+              }).toList();
+
+              final completed = userHomeworks.where((hw) => completedIds.contains(hw.id)).toList();
+
+              return TabBarView(
+                children: [
+                  _HomeworkList(
+                    homeworks: active,
+                    onRefresh: _refreshHomework,
+                    emptyListMessage: 'Нет актуальных заданий.',
+                    l10n: l10n,
                   ),
-                  direction: DismissDirection.startToEnd,
-                  confirmDismiss: (direction) async {
-                    return await showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog( 
-                          title: Text(l10n.confirm),
-                          content: const Text(
-                            'Вы уверены, что хотите удалить это задание?',
-                          ),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: Text(l10n.no),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              child: Text(l10n.yes),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                  onDismissed: (direction) async {
-                    print(
-                      'Начало onDismissed для ДЗ с ID: ${entry.id}, isLocal: ${entry.isLocal}',
-                    ); // Отладка: начало Dismissed
-      
-                    if (entry.isLocal) {
-                      // Удалить из Hive
-                      print(
-                        '  Вызываем удаление из Hive для ID: ${entry.id}',
-                      ); // Отладка: вызываем Hive сервис
-                      await _localHomeworkService.deleteHomework(entry.id!);
-                      print(
-                        '  Вызов удаления из Hive завершен.',
-                      ); // Отладка: вызов завершен
-                    } else {
-                      // Удалить из Supabase
-                      print(
-                        '  Вызываем удаление из Supabase для ID: ${entry.id}',
-                      );
-                      try {
-                        await _client
-                            .from('homework')
-                            .delete()
-                            .eq('id', entry.id!);
-                        print('  Вызов удаления из Supabase завершен.');
-                      } catch (e) {
-                        print(
-                          "Ошибка при удалении УДАЛЕННОГО ДЗ из Supabase: $e",
-                        );
-                      }
-                    }
-                    print('Конец onDismissed.'); // Отладка: конец Dismissed
-                  },
-                  child: Card(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 4.0,
-                    ),
-                    elevation: 1.0,
-                    child: ListTile(
-                      title: Text(
-                        entry.discipline,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontVariations: [
-                            const FontVariation('XTRA', 600)
-                          ]
-                          ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            entry.task.length >
-                                    100 // Проверяем длину строки
-                                ? '${entry.task.substring(0, 100)}...'
-                                : entry.task,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 4.0),
-                          Text(entry.group),
-                          const SizedBox(height: 4.0),
-                          Text(
-                            'Срок сдачи: ${DateFormat('dd.MM.yyyy').format(entry.due_date)}',
-                          ),
-                        ],
-                      ),
-                      trailing: Column(
-                        // Используем Column для вертикального расположения элементов
-                        mainAxisSize:
-                            MainAxisSize
-                                .min, // Column занимает минимальную высоту
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // Отображаем подгруппу, если она есть
-                          if (entry.subgroup != null)
-                            Text(
-                              'Подгр. ${entry.subgroup}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.outline,
-                              ), // Уменьшаем шрифт для подгруппы
-                            ),
-      
-                          // Если есть подгруппа И есть хотя бы одна иконка, добавляем небольшой вертикальный отступ
-                          if (entry.subgroup != null &&
-                              (entry.isLocal ||
-                                  (entry.photo_urls != null &&
-                                      entry.photo_urls!.isNotEmpty)))
-                            const SizedBox(height: 4),
-      
-                          // Отображаем иконки (если они нужны) в горизонтальном ряду
-                          if (entry.isLocal ||
-                              (entry.photo_urls != null &&
-                                  entry
-                                      .photo_urls!
-                                      .isNotEmpty)) // Показываем Row с иконками только если хотя бы одна иконка нужна
-                            Row(
-                              mainAxisSize:
-                                  MainAxisSize
-                                      .min, // Row занимает минимальную ширину
-                              children: [
-                                // Иконка для локального ДЗ
-                                if (entry
-                                    .isLocal) // Показываем, если запись локальная
-                                  Icon(
-                                    Icons
-                                        .phone_android, // Или Icons.sd_storage, Icons.smartphone - какая больше нравится
-                                    size: 18, // Размер иконки
-                                    color:
-                                        Theme.of(
-                                          context,
-                                        ).colorScheme.primary, // Цвет иконки
-                                  ),
-      
-                                // Если есть иконка локального ДЗ И иконка фото, добавляем горизонтальный отступ
-                                if (entry.isLocal &&
-                                    (entry.photo_urls != null &&
-                                        entry.photo_urls!.isNotEmpty))
-                                  const SizedBox(
-                                    width: 4,
-                                  ), // Небольшой горизонтальный отступ
-                                // Иконка для ДЗ с фотографиями
-                                if (entry.photo_urls != null &&
-                                    entry
-                                        .photo_urls!
-                                        .isNotEmpty) // Показываем, если есть фото
-                                  Icon(
-                                    Icons.image, // Или Icons.photo
-                                    size: 18, // Размер иконки
-                                    color:
-                                        Theme.of(
-                                          context,
-                                        ).colorScheme.primary, // Цвет иконки
-                                  ),
-                              ],
-                            ),
-                        ],
-                      ),
-                      onTap: () {
-                        print(
-                          'Нажали на ДЗ: ${entry.discipline}, group_id: ${entry.group_id}',
-                        );
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder:
-                                (context) => HomeworkViewScreen(
-                                  // <--- ОТКРЫВАЕМ ЭКРАН ПРОСМОТРА!
-                                  homeworkEntry: entry,
-                                ),
-                          ),
-                        );
-                        print('Нажали на ДЗ: ${entry.discipline}');
-                      },
-                    ),
+                  _HomeworkList(
+                    homeworks: overdue,
+                    onRefresh: _refreshHomework,
+                    emptyListMessage: 'Нет просроченных заданий.',
+                    l10n: l10n,
+                  ),
+                  _HomeworkList(
+                    homeworks: completed,
+                    onRefresh: _refreshHomework,
+                    emptyListMessage: 'Нет выполненных заданий.',
+                    l10n: l10n,
+                  ),
+                ],
+              );
+            },
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeworkEditScreen()),
+              );
+            },
+            tooltip: 'Добавить домашнее задание',
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeworkList extends StatelessWidget {
+  final List<Homework> homeworks;
+  final Future<void> Function() onRefresh;
+  final String emptyListMessage;
+  final AppLocalizations l10n;
+
+  const _HomeworkList({
+    required this.homeworks,
+    required this.onRefresh,
+    required this.emptyListMessage,
+    required this.l10n,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (homeworks.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        child: LayoutBuilder(builder: (context, constraints) {
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(getRandomEmoji(), style: TextStyle(fontSize: 72, color: Colors.grey[600])),
+                    const SizedBox(height: 8),
+                    Text(emptyListMessage, style: TextStyle(fontSize: 18, color: Colors.grey[400])),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        itemCount: homeworks.length,
+        itemBuilder: (context, index) {
+          final entry = homeworks[index];
+          final isCompleted = homeworkCompletionService.isCompleted(entry.id!);
+
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+            child: ListTile(
+              leading: Checkbox(
+                value: isCompleted,
+                onChanged: (bool? value) {
+                  homeworkCompletionService.toggleCompletionStatus(entry.id!);
+                },
+              ),
+              title: Text(entry.discipline, style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.task.length > 100 ? '${entry.task.substring(0, 100)}...' : entry.task,
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text('Срок сдачи: ${DateFormat('dd.MM.yyyy').format(entry.due_date)}'),
+                ],
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => HomeworkViewScreen(homeworkEntry: entry),
                   ),
                 );
               },
-            ));
-          },
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const HomeworkEditScreen()),
-            );
-          },
-          tooltip: 'Добавить домашнее задание',
-          child: const Icon(Icons.add),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

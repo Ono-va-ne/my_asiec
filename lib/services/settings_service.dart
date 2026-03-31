@@ -29,6 +29,7 @@ class SettingsService {
   final ValueNotifier<bool> showBreaksInScheduleNotifier = ValueNotifier(true); // По умолчанию показываем
   final ValueNotifier<Locale?> localeNotifier = ValueNotifier(null);
   // Notifiers для Pomodoro (в минутах)
+  final ValueNotifier<String?> defaultGroupIdNotifier = ValueNotifier(null);
   final ValueNotifier<int> pomodoroWorkDurationNotifier = ValueNotifier(25);
   final ValueNotifier<int> pomodoroShortBreakDurationNotifier = ValueNotifier(5);
   final ValueNotifier<int> pomodoroLongBreakDurationNotifier = ValueNotifier(15);
@@ -73,8 +74,8 @@ class SettingsService {
         _prefs?.getInt(_pomodoroLongBreakDurationKey) ?? 15;
 
 
-    // Загрузка группы по умолчанию (просто загружаем, слушатель не нужен напрямую)
-    // String? defaultGroupId = _prefs?.getString(_defaultGroupIdKey);
+    // Загрузка группы по умолчанию
+    defaultGroupIdNotifier.value = _prefs?.getString(_defaultGroupIdKey);
     // Можно добавить notifier и для группы, если нужно реагировать где-то еще
   }
 
@@ -172,12 +173,12 @@ class SettingsService {
     } else {
       await _prefs?.remove(_defaultGroupIdKey);
     }
-    // Тут можно добавить notifier, если нужно
+    defaultGroupIdNotifier.value = groupId; // Уведомляем слушателей
   }
 
   String? getDefaultGroupId() {
     // Возвращаем сразу из SharedPreferences (можно кэшировать, если надо)
-    return _prefs?.getString(_defaultGroupIdKey);
+    return defaultGroupIdNotifier.value;
   }
 }
 

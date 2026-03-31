@@ -21,6 +21,7 @@ import '../services/notification_service.dart';
 import '../services/pomodoro_service.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../services/settings_service.dart';
+import '../services/homework_completion_service.dart';
 import '../utils/logger_setup.dart';
 import '../supabase_options.dart';
 // import 'package:http/http.dart' as http;
@@ -49,6 +50,7 @@ void main() async {
       if (!Hive.isAdapterRegistered(0)) {
         Hive.registerAdapter(HomeworkAdapter());
       }
+      await homeworkCompletionService.init();
       await Hive.openBox<Homework>('localHomeworkBox');
       FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true);
       await TeXRenderingServer.start();
