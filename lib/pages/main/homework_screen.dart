@@ -5,7 +5,6 @@ import 'dart:async';
 import '../../models/homework.dart';
 import '../homework_edit_screen.dart';
 import 'package:intl/intl.dart';
-import 'package:rxdart/rxdart.dart';
 import '../../services/local_homework_service.dart';
 import '../../services/settings_service.dart'; // Импортируем сервис настроек
 import '../../l10n/app_localizations.dart';
@@ -26,13 +25,6 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
   String? _userGroupId; // ID группы пользователя из настроек
   Stream<List<Homework>>? _homeworkStream;
   StreamSubscription? _serverSubscription;
-
-  bool _isDueDateTodayOrFuture(DateTime dueDate) {
-    final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day);
-    final dueDatestart = DateTime(dueDate.year, dueDate.month, dueDate.day);
-    return dueDatestart.isAtSameMomentAs(todayStart) || dueDatestart.isAfter(todayStart);
-  }
 
   @override
   void initState() {
@@ -263,6 +255,12 @@ class _HomeworkList extends StatelessWidget {
     print(dueDatestart);
     return dueDatestart.isAtSameMomentAs(todayStart);
   }
+  bool _isDueDateTomorrow(DateTime dueDate) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final dueDatestart = DateTime(dueDate.year, dueDate.month, dueDate.day);
+    return dueDatestart.compareTo(todayStart) == 1;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -278,7 +276,7 @@ class _HomeworkList extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(getRandomEmoji(), style: TextStyle(fontSize: 72, color: Colors.grey[600])),
+                    Text(getRandomEmoji(), style: TextStyle(fontSize: 64, color: Colors.grey[600])),
                     const SizedBox(height: 8),
                     Text(emptyListMessage, style: TextStyle(fontSize: 18, color: Colors.grey[400])),
                   ],
@@ -302,7 +300,7 @@ class _HomeworkList extends StatelessWidget {
             margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12.0),
-              side: _isDueDateToday(entry.due_date)
+              side: _isDueDateToday(entry.due_date) || _isDueDateTomorrow(entry.due_date)
                   ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2.0)
                   : BorderSide.none,
             ),

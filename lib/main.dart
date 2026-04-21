@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_tex/flutter_tex.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:my_asiec/l10n/app_localizations.dart';
@@ -22,7 +21,7 @@ import '../services/pomodoro_service.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../services/settings_service.dart';
 import '../services/homework_completion_service.dart';
-import '../utils/logger_setup.dart';
+import 'utils/logger_setup_mobile.dart';
 import '../supabase_options.dart';
 // import 'package:http/http.dart' as http;
 
@@ -31,11 +30,15 @@ void main() async {
   await runZonedGuarded<Future<void>>(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-
-
-      await NotificationService().init();
-      WidgetsFlutterBinding.ensureInitialized();
-      pomodoroService.init(); // Инициализируем сервис Pomodoro
+      
+      // Инициализируем сервисы, которые не работают в вебе, только для мобильных платформ
+      if (!kIsWeb) {
+        await NotificationService().init();
+      }
+      
+      // if (!kIsWeb) {
+        pomodoroService.init(); // Инициализируем сервис Pomodoro
+      // }
       await initializeDateFormatting('ru_RU', null);
 
       WidgetsFlutterBinding.ensureInitialized();
@@ -45,14 +48,12 @@ void main() async {
         url: supabaseUrl,
         anonKey: supabaseAnonKey,
       );
-      await Firebase.initializeApp();
       await Hive.initFlutter();
       if (!Hive.isAdapterRegistered(0)) {
         Hive.registerAdapter(HomeworkAdapter());
       }
       await homeworkCompletionService.init();
       await Hive.openBox<Homework>('localHomeworkBox');
-      FirebaseFirestore.instance.settings = Settings(persistenceEnabled: true);
       await TeXRenderingServer.start();
       runApp(MyApp());
     },
