@@ -1,17 +1,19 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import '../l10n/app_localizations.dart';
 
-class CreateHandbookScreen extends StatefulWidget {
+class HandbookCreateScreen extends StatefulWidget {
   final String specialtyId;
-  const CreateHandbookScreen({super.key, required this.specialtyId});
+  const HandbookCreateScreen({super.key, required this.specialtyId});
 
   @override
-  State<CreateHandbookScreen> createState() => _CreateHandbookScreenState();
+  State<HandbookCreateScreen> createState() => _HandbookCreateScreenState();
 }
 
-class _CreateHandbookScreenState extends State<CreateHandbookScreen> {
+class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
   final _client = Supabase.instance.client;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
@@ -21,6 +23,10 @@ class _CreateHandbookScreenState extends State<CreateHandbookScreen> {
   final TextEditingController _imageController = TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
   bool _saving = false;
+  
+  int? _selectedValue = 0;
+  
+  int index = 1;
 
   @override
   void dispose() {
@@ -109,6 +115,26 @@ class _CreateHandbookScreenState extends State<CreateHandbookScreen> {
                 decoration: InputDecoration(labelText: l10n.handbookEnterName),
                 validator: (v) => (v == null || v.trim().isEmpty) ? l10n.handbookEnterName : null,
               ),
+              // const SizedBox(height: 12),
+              // Новое: выбор типа записи (WIP, внесено в комменты, т.к. пока не готово)
+              // Text(
+              //   _selectedValue == null ? 'Ничего не выбрано' : 'Выбран чип: $_selectedValue',
+              //   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              // ),
+              // Wrap(
+              //   spacing: 8,
+              //   children: List<Widget>.generate(3, (int index) {
+              //     return ChoiceChip(
+              //       label: Text("Chip $index"),
+              //       selected: _selectedValue == index,
+              //       onSelected: (bool selected) {
+              //         setState(() {
+              //           _selectedValue = selected ? index : null;
+              //         });
+              //       },
+              //     );
+              //   }).toList(),
+              // ),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -260,76 +286,76 @@ class _FullscreenLatexEditorState extends State<FullscreenLatexEditor> {
               const SizedBox(height: 8),
               Expanded(
                 child: isNarrow
-                    ? Column(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _editorController,
-                              maxLines: null,
-                              expands: true,
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                hintText: l10n.handbookLatexHint,
-                              ),
+                  ? Column(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _editorController,
+                            maxLines: null,
+                            expands: true,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: l10n.handbookLatexHint,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).cardColor,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Builder(builder: (_) {
-                                  try {
-                                    return Math.tex(_editorController.text,
-                                        textStyle: const TextStyle(fontSize: 20));
-                                  } catch (e) {
-                                    return Text('${l10n.error}: $e');
-                                  }
-                                }),
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).cardColor,
+                                borderRadius: BorderRadius.circular(6),
                               ),
+                              child: Builder(builder: (_) {
+                                try {
+                                  return Math.tex(_editorController.text,
+                                      textStyle: const TextStyle(fontSize: 20));
+                                } catch (e) {
+                                  return Text('${l10n.error}: $e');
+                                }
+                              }),
                             ),
                           ),
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _editorController,
-                              maxLines: null,
-                              expands: true,
-                              decoration: InputDecoration(
-                                border: OutlineInputBorder(),
-                                hintText: l10n.handbookLatexHint,
-                              ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _editorController,
+                            maxLines: null,
+                            expands: true,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: l10n.handbookLatexHint,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).cardColor,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Builder(builder: (_) {
-                                  try {
-                                    return Math.tex(_editorController.text,
-                                        textStyle: const TextStyle(fontSize: 20));
-                                  } catch (e) {
-                                    return Text('${l10n.error}: $e');
-                                  }
-                                }),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).cardColor,
+                                borderRadius: BorderRadius.circular(6),
                               ),
+                              child: Builder(builder: (_) {
+                                try {
+                                  return Math.tex(_editorController.text,
+                                      textStyle: const TextStyle(fontSize: 20));
+                                } catch (e) {
+                                  return Text('${l10n.error}: $e');
+                                }
+                              }),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
               ),
             ],
           );

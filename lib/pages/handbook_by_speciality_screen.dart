@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'handbook_view_screen.dart';
-import 'create_formula_screen.dart';
+import 'handbook_create_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../data/text_emojis.dart';
 
@@ -237,9 +237,12 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Math.tex(
-                              f['formula'] ?? '',
-                              textStyle: const TextStyle(fontSize: 18),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Math.tex(
+                                f['formula'] ?? '',
+                                textStyle: const TextStyle(fontSize: 18),
+                              ),
                             ),
                             const SizedBox(height: 8),
                             Text(
@@ -278,7 +281,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
             context,
             MaterialPageRoute(
               builder:
-                  (_) => CreateHandbookScreen(specialtyId: widget.specialtyId),
+                  (_) => HandbookCreateScreen(specialtyId: widget.specialtyId),
             ),
           );
           if (created == true) {

@@ -43,9 +43,12 @@ class HandbookViewScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Center(
-                child: Math.tex(
-                  latexHandbook,
-                  textStyle: const TextStyle(fontSize: 24),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Math.tex(
+                    latexHandbook,
+                    textStyle: const TextStyle(fontSize: 24),
+                  ),
                 ),
               ),
             ),
