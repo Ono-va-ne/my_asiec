@@ -64,7 +64,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   // Константы для запроса
   bool _showBreaks = true;
 
-  final String _scheduleApiUrl = 'https://asiec.ru/ras/ras.php';
+  final String _scheduleApiUrl = 'https://services.asiec.ru/ras/ras.php';
   final String _dostup = 'true';
 
   DailySchedule? dailyScheduleForCard(DateTime date) {

@@ -93,6 +93,12 @@
 
   "handbookCreate": "Добавить формулу",
   "@handbookCreate": {},
+  "handbookTypeFormula": "Формула",
+  "@handbookTypeFormula": {},
+  "handbookTypeDefinition": "Определение",
+  "@handbookTypeDefinition": {},
+  "handbookTypeTheory": "Теория",
+  "@handbookTypeTheory": {},
   "handbookEdit": "Редактировать формулу",
   "@handbookEdit": {},
   "handbookEnterName": "Введите название",

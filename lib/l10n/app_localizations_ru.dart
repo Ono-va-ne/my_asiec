@@ -142,6 +142,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get handbookCreate => 'Добавить формулу';
 
   @override
+  String get handbookTypeFormula => 'Формула';
+
+  @override
+  String get handbookTypeDefinition => 'Определение';
+
+  @override
+  String get handbookTypeTheory => 'Теория';
+
+  @override
   String get handbookEdit => 'Редактировать формулу';
 
   @override

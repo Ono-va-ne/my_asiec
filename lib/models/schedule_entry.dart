@@ -4,8 +4,7 @@ class ScheduleEntry {
   final String group; // Группа
   final String startTime; // Время начала
   final String endTime; // Время окончания
-  final String building; // Корпус
-  final String room; // Аудитория
+  final String room; // Аудитория/корпус
   final DateTime date;
 
   ScheduleEntry({
@@ -14,7 +13,6 @@ class ScheduleEntry {
     required this.group,
     required this.startTime,
     required this.endTime,
-    required this.building,
     required this.room,
     required this.date,
   });

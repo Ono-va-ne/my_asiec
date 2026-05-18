@@ -64,8 +64,6 @@ class _ScheduleCardState extends State<ScheduleCard> {
     // debug: _getEntryStatus for entry
 
     if (!isSameDay(entry.date, currentTime)) {
-      // <--- НОВАЯ ПРОВЕРКА ДАТЫ!
-      // Дата не сегодня
       return ScheduleEntryStatus
           .normal; // Если дата занятия НЕ сегодня, то это обычная пара
     }
@@ -109,7 +107,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
       // normal status
     }
 
-    // --- НОВАЯ ЛОГИКА для "ближайшей пары" ---
+    // --- ЛОГИКА для "ближайшей пары" ---
     // 3. Ищем ближайшую следующую пару ТОЛЬКО если текущая пара НЕ найдена
     ScheduleEntry? nextEntry;
     List<ScheduleEntry> futureEntries = [];
@@ -460,7 +458,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                             ),
                             SizedBox(height: 4.0),
                             Text(
-                              '${widget.entry.building}\n${widget.entry.room}',
+                              widget.entry.room,
                               style: TextStyle(
                                 fontSize: 14.0,
                                 color: Theme.of(context).colorScheme.outline,

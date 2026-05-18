@@ -115,28 +115,33 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
                 decoration: InputDecoration(labelText: l10n.handbookEnterName),
                 validator: (v) => (v == null || v.trim().isEmpty) ? l10n.handbookEnterName : null,
               ),
-              // const SizedBox(height: 12),
-              // Новое: выбор типа записи (WIP, внесено в комменты, т.к. пока не готово)
-              // Text(
-              //   _selectedValue == null ? 'Ничего не выбрано' : 'Выбран чип: $_selectedValue',
-              //   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              // ),
-              // Wrap(
-              //   spacing: 8,
-              //   children: List<Widget>.generate(3, (int index) {
-              //     return ChoiceChip(
-              //       label: Text("Chip $index"),
-              //       selected: _selectedValue == index,
-              //       onSelected: (bool selected) {
-              //         setState(() {
-              //           _selectedValue = selected ? index : null;
-              //         });
-              //       },
-              //     );
-              //   }).toList(),
-              // ),
               const SizedBox(height: 12),
-              Row(
+              // Новое: выбор типа записи (WIP, внесено в комменты, т.к. пока не готово)
+              Wrap(
+                spacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: Text(l10n.handbookTypeFormula),
+                    selected: _selectedValue == 0,
+                    showCheckmark: false,
+                    onSelected: (selected) => setState(() => _selectedValue = selected ? 0 : null),
+                  ),
+                  ChoiceChip(
+                    label: Text(l10n.handbookTypeDefinition),
+                    selected: _selectedValue == 1,
+                    showCheckmark: false,
+                    onSelected: (selected) => setState(() => _selectedValue = selected ? 1 : null),
+                  ),
+                  ChoiceChip(
+                    label: Text(l10n.handbookTypeTheory),
+                    selected: _selectedValue == 2,
+                    showCheckmark: false,
+                    onSelected: (selected) => setState(() => _selectedValue = selected ? 2 : null),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (_selectedValue == 0) Column(
                 children: [
                   ElevatedButton.icon(
                     onPressed: _openLatexEditor,
@@ -144,33 +149,31 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
                     label: Text(l10n.handbookOpenLatexEditor),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(child: Container()),
+                  // Live preview
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('${l10n.handbookFormula}:', style: Theme.of(context).textTheme.bodyMedium),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Builder(builder: (_) {
+                      try {
+                        return Math.tex(_formulaController.text, textStyle: const TextStyle(fontSize: 18));
+                      } catch (e) {
+                        return Text('${l10n.error}: $e');
+                      }
+                    }),
+                  ),
                 ],
               ),
               // const SizedBox(height: 8),
               // _snippetButtons(_formulaController),
-              const SizedBox(height: 12),
-              // Live preview
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text('${l10n.handbookFormula}:', style: Theme.of(context).textTheme.bodyMedium),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Builder(builder: (_) {
-                  try {
-                    return Math.tex(_formulaController.text, textStyle: const TextStyle(fontSize: 18));
-                  } catch (e) {
-                    return Text('${l10n.error}: $e');
-                  }
-                }),
-              ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _summaryController,

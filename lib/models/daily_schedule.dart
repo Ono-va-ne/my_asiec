@@ -44,9 +44,9 @@ Map<String, String>? _parseTime(String timeString) {
 // --- Обновленная функция парсинга для нескольких дней ---
 List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
   final document = parse(htmlString);
-  final table = document.querySelector('table.table-3');
+  final table = document.querySelector('table.schedule-table');
   if (table == null) {
-    print("Ошибка парсинга: Таблица 'table-3' не найдена.");
+    print("Ошибка парсинга: Таблица 'schedule-table' не найдена.");
     return [];
   }
   final tbody = table.querySelector('tbody');
@@ -65,7 +65,7 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
     final cells = row.querySelectorAll('td');
 
     // 1. Проверяем строку с датой
-    if (cells.length == 1 && cells.first.attributes['colspan'] == '6') {
+    if (cells.length == 1 && cells.first.attributes['colspan'] == '5') {
       final htmlDateString = cells.first.text.trim();
       final parsedDate = _parseDateFromHtml(
         htmlDateString,
@@ -104,14 +104,13 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
     // 2. Проверяем строку с парой (и есть ли текущий день для добавления)
     if (currentDayDate != null &&
         currentDayEntries != null &&
-        cells.length >= 6) {
+        cells.length >= 5) {
       try {
         final timeString = cells[0].text.trim();
-        final group = cells[1].text.trim();
-        final discipline = cells[2].text.trim();
+        final group = cells[2].text.trim();
+        final discipline = cells[1].text.trim();
         final teacher = cells[3].text.trim();
-        final building = cells[4].text.trim();
-        final room = cells[5].text.trim();
+        final room = cells[4].text.trim();
         final timeParts = _parseTime(
           timeString,
         ); // Используем старый хелпер _parseTime
@@ -122,7 +121,6 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
           startTime: timeParts?['start'] ?? '',
           endTime: timeParts?['end'] ?? '',
           group: group,
-          building: building,
           room: room,
           date: currentDayDate,
         );
@@ -130,7 +128,7 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
       } catch (e) {
         print("Ошибка парсинга строки с парой: $e. Строка: ${row.innerHtml}");
       }
-    } else if (cells.length >= 6 && currentDayDate == null) {
+    } else if (cells.length >= 5 && currentDayDate == null) {
       print(
         "Найдена строка с парой, но не определена текущая дата. Пропуск: ${row.innerHtml}",
       );

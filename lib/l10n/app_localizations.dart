@@ -362,6 +362,24 @@ abstract class AppLocalizations {
   /// **'Добавить формулу'**
   String get handbookCreate;
 
+  /// No description provided for @handbookTypeFormula.
+  ///
+  /// In ru, this message translates to:
+  /// **'Формула'**
+  String get handbookTypeFormula;
+
+  /// No description provided for @handbookTypeDefinition.
+  ///
+  /// In ru, this message translates to:
+  /// **'Определение'**
+  String get handbookTypeDefinition;
+
+  /// No description provided for @handbookTypeTheory.
+  ///
+  /// In ru, this message translates to:
+  /// **'Теория'**
+  String get handbookTypeTheory;
+
   /// No description provided for @handbookEdit.
   ///
   /// In ru, this message translates to:

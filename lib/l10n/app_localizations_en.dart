@@ -142,6 +142,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get handbookCreate => 'Add formula';
 
   @override
+  String get handbookTypeFormula => 'Formula';
+
+  @override
+  String get handbookTypeDefinition => 'Definition';
+
+  @override
+  String get handbookTypeTheory => 'Theory';
+
+  @override
   String get handbookEdit => 'Edit formula';
 
   @override

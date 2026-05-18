@@ -92,6 +92,12 @@
   
   "handbookCreate": "Add formula",
   "@handbookCreate": {},
+  "handbookTypeFormula": "Formula",
+  "@handbookTypeFormula": {},
+  "handbookTypeDefinition": "Definition",
+  "@handbookTypeDefinition": {},
+  "handbookTypeTheory": "Theory",
+  "@handbookTypeTheory": {},
   "handbookEdit": "Edit formula",
   "@handbookEdit": {},
   "handbookEnterName": "Enter name",

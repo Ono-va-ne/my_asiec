@@ -16,10 +16,10 @@ ParsedSchedule parseScheduleHtml(String htmlString) {
   // 1. Парсим HTML строку в документ
   final document = parse(htmlString);
 
-  // 2. Находим таблицу по классу 'table-3'
-  final table = document.querySelector('table.table-3');
+  // 2. Находим таблицу по классу 'schedule-table'
+  final table = document.querySelector('table.schedule-table');
   if (table == null) {
-    print("Ошибка: Таблица с классом 'table-3' не найдена.");
+    print("Ошибка: Таблица с классом 'schedule-table' не найдена.");
     return ParsedSchedule(entries: []); // Возвращаем пустой результат
   }
 
@@ -41,26 +41,22 @@ ParsedSchedule parseScheduleHtml(String htmlString) {
     // 6. Получаем все ячейки 'td' в строке
     final cells = row.querySelectorAll('td');
 
-    // 7. Проверяем, это строка с датой? (Одна ячейка с colspan='6')
-    if (cells.length == 1 && cells.first.attributes['colspan'] == '6') {
+    // 7. Проверяем, это строка с датой? (Одна ячейка с colspan='5')
+    if (cells.length == 1 && cells.first.attributes['colspan'] == '5') {
       scheduleDate = cells.first.text.trim(); // Извлекаем и сохраняем дату
-      // Пример: "Вторник, 15.10.2024"
-      // Ты можешь обработать эту строку дальше, если нужно только "15 Октября"
-      // Например, можно использовать регулярные выражения или split
       continue; // Переходим к следующей строке
     }
 
-    // 8. Проверяем, достаточно ли ячеек для данных о паре (минимум 6)
-    if (cells.length >= 6) {
+    // 8. Проверяем, достаточно ли ячеек для данных о паре (минимум 5)
+    if (cells.length >= 5) {
       try {
         // 9. Извлекаем данные из ячеек по их порядку
         // Важно: trim() удаляет лишние пробелы и переносы строк по краям
         final timeString = cells[0].text.trim(); // "1 (8:00 - 9:20)"
-        final group = cells[1].text.trim();
-        final discipline = cells[2].text.trim();
+        final group = cells[2].text.trim();
+        final discipline = cells[1].text.trim();
         final teacher = cells[3].text.trim();
-        final building = cells[4].text.trim(); // 'Корпус 1' из ter_pc
-        final room = cells[5].text.trim(); // '114' из aud_pc
+        final room = cells[4].text.trim(); // '114' из aud_pc
 
         // 10. Парсим время начала и конца из timeString
         final timeParts = _parseTime(timeString); // Используем хелпер
@@ -74,7 +70,6 @@ ParsedSchedule parseScheduleHtml(String htmlString) {
               timeParts?['end'] ??
               '', // или оставляем пустым, если не распарсилось
           group: group,
-          building: building,
           room: room,
           date: DateTime.parse(scheduleDate ?? DateTime.now().toString()),
         );
