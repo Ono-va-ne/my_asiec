@@ -1,5 +1,7 @@
 // Файл: lib/services/settings_service.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:my_asiec/models/schedule_filter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Ключи для хранения в SharedPreferences
@@ -13,6 +15,7 @@ const String _showBreaksInScheduleKey = 'show_breaks_in_schedule';
 const String _pomodoroWorkDurationKey = 'pomodoro_work_duration';
 const String _localeKey = 'app_locale';
 const String _pomodoroShortBreakDurationKey = 'pomodoro_short_break_duration';
+const String _scheduleFiltersKey = 'schedule_filters';
 const String _pomodoroLongBreakDurationKey = 'pomodoro_long_break_duration';
 
 
@@ -33,6 +36,8 @@ class SettingsService {
   final ValueNotifier<int> pomodoroWorkDurationNotifier = ValueNotifier(25);
   final ValueNotifier<int> pomodoroShortBreakDurationNotifier = ValueNotifier(5);
   final ValueNotifier<int> pomodoroLongBreakDurationNotifier = ValueNotifier(15);
+  // Notifier для фильтров расписания
+  final ValueNotifier<List<ScheduleFilter>> scheduleFiltersNotifier = ValueNotifier([]);
 
 
   SharedPreferences? _prefs; // Экземпляр SharedPreferences
@@ -76,6 +81,8 @@ class SettingsService {
 
     // Загрузка группы по умолчанию
     defaultGroupIdNotifier.value = _prefs?.getString(_defaultGroupIdKey);
+    // Загрузка фильтров расписания
+    _loadScheduleFilters();
     // Можно добавить notifier и для группы, если нужно реагировать где-то еще
   }
 
@@ -179,6 +186,56 @@ class SettingsService {
   String? getDefaultGroupId() {
     // Возвращаем сразу из SharedPreferences (можно кэшировать, если надо)
     return defaultGroupIdNotifier.value;
+  }
+
+  // --- Методы для управления фильтрами расписания ---
+
+  void _loadScheduleFilters() {
+    final List<String>? filtersJson = _prefs?.getStringList(_scheduleFiltersKey);
+    if (filtersJson == null) {
+      // Если фильтров нет, создаем встроенные по умолчанию
+      final builtInFilters = [
+        ScheduleFilter(id: 'distant', keyword: 'Дистант', isBuiltIn: true, isEnabled: false),
+        ScheduleFilter(id: 'exam', keyword: 'Экзамен', isBuiltIn: true, isEnabled: false),
+        ScheduleFilter(id: 'up', keyword: 'УП.', isBuiltIn: true, isEnabled: false),
+      ];
+      scheduleFiltersNotifier.value = builtInFilters;
+      _saveScheduleFilters(); // Сохраняем их
+    } else {
+      scheduleFiltersNotifier.value = filtersJson
+          .map((json) => ScheduleFilter.fromJson(json))
+          .toList();
+    }
+  }
+
+  Future<void> saveScheduleFilters() async {
+    await _saveScheduleFilters();
+  }
+
+  Future<void> _saveScheduleFilters() async {
+    if (_prefs == null) await loadSettings();
+    final List<String> filtersJson = scheduleFiltersNotifier.value
+        .map((filter) => filter.toJson())
+        .toList();
+    await _prefs?.setStringList(_scheduleFiltersKey, filtersJson);
+    // Уведомляем слушателей, создавая новый список
+    scheduleFiltersNotifier.value = List.from(scheduleFiltersNotifier.value);
+  }
+
+  Future<void> addScheduleFilter(ScheduleFilter filter) async {
+    scheduleFiltersNotifier.value.add(filter);
+    await _saveScheduleFilters();
+  }
+
+  Future<void> updateScheduleFilter(ScheduleFilter filter) async {
+    // Этот метод просто сохраняет текущее состояние, так как изменения isEnabled
+    // уже должны быть применены к объекту в Notifier.
+    await _saveScheduleFilters();
+  }
+
+  Future<void> deleteScheduleFilter(String id) async {
+    scheduleFiltersNotifier.value.removeWhere((f) => f.id == id);
+    await _saveScheduleFilters();
   }
 }
 

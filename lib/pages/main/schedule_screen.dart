@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 
+import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
@@ -20,8 +21,10 @@ import '../../services/groups_service.dart';
 import '../../services/teachers_service.dart';
 import '../../services/local_homework_service.dart';
 import '../../services/schedule_service.dart';
+import '../../models/schedule_filter.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/homework.dart';
+import '../schedule_filter_screen.dart';
 import '../../data/text_emojis.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -44,6 +47,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   bool _isLoading = true;
   String _filterText = '';
   String? _errorMessage;
+  List<ScheduleFilter> _activeHideFilters = [];
+  late final ScrollController _scrollController;
+  bool _isFabVisible = true;
 
   final _client = Supabase.instance.client;
   final _localHomeworkService = LocalHomeworkService();
@@ -147,10 +153,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_scrollListener);
+
     _showBreaks = settingsService.showBreaksInScheduleNotifier.value;
     settingsService.showBreaksInScheduleNotifier.addListener(() {
       if (mounted) setState(() => _showBreaks = settingsService.showBreaksInScheduleNotifier.value);
     });
+    // Слушаем изменения в фильтрах скрытия
+    settingsService.scheduleFiltersNotifier.addListener(_updateActiveFilters);
+    _updateActiveFilters();
+
+
     // _initializeScheduleObjects(); // Инициализируем список И выбранную группу
     _loadInitialData();
     final serverStream = _client
@@ -173,6 +187,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     });
   }
 
+  void _updateActiveFilters() {
+    if (mounted) {
+      setState(() {
+        _activeHideFilters = settingsService.scheduleFiltersNotifier.value.where((f) => f.isEnabled).toList();
+      });
+    }
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.userScrollDirection == ScrollDirection.reverse) {
+      if (_isFabVisible) {
+        setState(() {
+          _isFabVisible = false;
+        });
+      }
+    } else if (_scrollController.position.userScrollDirection == ScrollDirection.forward) {
+      if (!_isFabVisible) {
+        setState(() {
+          _isFabVisible = true;
+        });
+      }
+    }
+  }
   Future<void> _loadInitialData() async {
     // Параллельно загружаем группы и преподавателей
     await Future.wait([
@@ -607,6 +644,43 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     }
   }
 
+  void _openFilterScreen() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ScheduleFilterScreen(
+          initialRasType: _rasType,
+          initialSelectedGroup: _selectedGroup,
+          initialSelectedTeacher: _selectedTeacher,
+          initialSelectedRoom: _selectedRoom,
+          initialFilterText: _filterText,
+          availableGroups: _availableGroups,
+          availableTeachers: _availableTeachers,
+          availableRooms: _availableRooms,
+        ),
+      ),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      final newRasType = result['rasType'] as ScheduleType;
+      final selectedObject = result['selectedObject'];
+      final newFilterText = result['filterText'] as String;
+
+      setState(() {
+        _rasType = newRasType;
+        _filterText = newFilterText;
+        _filterController.text = newFilterText;
+
+        if (newRasType == ScheduleType.grup) _selectedGroup = selectedObject as GroupInfo?;
+        if (newRasType == ScheduleType.prep) _selectedTeacher = selectedObject as TeacherInfo?;
+        if (newRasType == ScheduleType.aud) _selectedRoom = selectedObject as RoomInfo?;
+      });
+
+      if (selectedObject != null) {
+        _loadScheduleData(_startDate, _endDate, newRasType, selectedObject);
+      }
+    }
+  }
   Widget _buildScheduleTypeButtons(Orientation orientation) {
     final isLandscape = orientation == Orientation.landscape;
 
@@ -780,49 +854,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ),
                     ),
                   ),
-                  Theme(
-                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent), // Делает разделитель прозрачным
-                    child: ExpansionTile(
-                      title: Text(AppLocalizations.of(context)!.filters),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16.0,
-                            vertical: 4.0
-                          ),
-                          child: _buildObjectSelector(),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                          child: _buildScheduleTypeButtons(orientation),
-                        ),
-                        SizedBox(height: 4.0),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 16.0),
-                          child: TextField(
-                            controller: _filterController,
-                            decoration: InputDecoration(
-                              labelText: AppLocalizations.of(context)!.search,
-                              // prefixIcon: Icon(Icons.filter_list),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.0),
-                              ),
-                              suffixIcon: _filterText.isNotEmpty
-                              ? IconButton(
-                                  icon: Icon(Icons.clear),
-                                  onPressed: () => _filterController.clear(),
-                                )
-                              : Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: Icon(Icons.filter_list, color: Theme.of(context).colorScheme.primary),
-                              ),
-                              suffixIconConstraints: BoxConstraints(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   Expanded(
                     child: StreamBuilder<List<Homework>>(
                       stream: _homeworkStream,
@@ -888,47 +919,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             ),
                           ),
                         ),
-                        Expanded(
-                          child: Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 4.0),
-                            child: _buildObjectSelector(),
-                          ),
-                        ),
-                        Flexible(
-                          child: SizedBox(
-                            height: 48,
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 4.0),
-                              child: _buildScheduleTypeButtons(orientation),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                            child: TextField(
-                              controller: _filterController,
-                              decoration: InputDecoration(
-                                labelText: AppLocalizations.of(context)!.search,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                ),
-                                suffixIcon: _filterText.isNotEmpty
-                                ? IconButton(
-                                    icon: Icon(Icons.clear),
-                                    onPressed: () => _filterController.clear(),
-                                  )
-                                : Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: Icon(Icons.filter_list, color: Theme.of(context).colorScheme.primary),
-                                ),
-                                suffixIconConstraints: BoxConstraints(),
-                              ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -946,6 +936,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             }
           },
         ),
+        floatingActionButton: AnimatedSlide(
+          duration: const Duration(milliseconds: 200),
+          offset: _isFabVisible ? Offset.zero : const Offset(0, 2),
+          child: FloatingActionButton(
+            onPressed: _openFilterScreen,
+            heroTag: 'schedule_fab',
+            child: const Icon(Icons.filter_list),
+          ),
+        ),
       ),
     );
   }
@@ -959,6 +958,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return RefreshIndicator(
         onRefresh: _refreshSchedule,
         child: ListView(
+          controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 16.0),
           children: [
@@ -1024,6 +1024,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       return RefreshIndicator(
         onRefresh: _refreshSchedule,
         child: ListView(
+          controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 16.0),
           children: [
@@ -1053,12 +1054,23 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     return RefreshIndicator(
       onRefresh: _refreshSchedule,
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.only(bottom: 16.0), // Отступ снизу списка
         itemCount:
             _dailySchedules
                 .length, // Количество дней = количество элементов в главном списке
         itemBuilder: (context, dayIndex) {
           final dailySchedule = _dailySchedules[dayIndex];
+
+          // --- Применение фильтров скрытия ---
+          final filteredEntries = dailySchedule.entries.where((entry) {
+            // Если нет активных фильтров, показываем все
+            if (_activeHideFilters.isEmpty) return true;
+            // Проверяем, содержит ли дисциплина ключевое слово какого-либо из активных фильтров
+            return _activeHideFilters.any((filter) =>
+                entry.discipline.toLowerCase().contains(filter.keyword.toLowerCase()));
+          }).toList();
+
 
           // Создаем столбец для каждого дня: Заголовок + список пар (или сообщение "Пар нет")
           return Column(
@@ -1095,7 +1107,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ),
 
               // --- Список пар для этого дня ---
-              if (dailySchedule.entries.isEmpty)
+              if (filteredEntries.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(
                     left: 16.0,
@@ -1103,14 +1115,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     bottom: 8.0,
                   ),
                   child: Text(
-                    'Пар нет',
+                    dailySchedule.entries.isEmpty ? 'Пар нет' : 'Все пары скрыты фильтром',
                     style: TextStyle(fontSize: 14.0, color: Colors.grey[600]),
                   ),
                 )
               else
                 Builder(builder: (context) {
                   // Сортируем пары по времени начала
-                  dailySchedule.entries.sort((a, b) {
+                  filteredEntries.sort((a, b) {
                     try {
                       final timeA = TimeOfDay(
                           hour: int.parse(a.startTime.split(':')[0]),
@@ -1127,18 +1139,18 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   });
 
                   List<Widget> scheduleWidgets = [];
-                  for (int i = 0; i < dailySchedule.entries.length; i++) {
-                    final entry = dailySchedule.entries[i];
+                  for (int i = 0; i < filteredEntries.length; i++) {
+                    final entry = filteredEntries[i];
                     scheduleWidgets.add(ScheduleCard(
                       entry: entry,
-                      allEntriesForDay: dailySchedule.entries,
+                      allEntriesForDay: filteredEntries,
                       homeworks: allHomeworks,
                       filterText: _filterText,
                     ));
 
                     // Если включено отображение перемен и это не последняя пара
-                    if (_showBreaks && i < dailySchedule.entries.length - 1) {
-                      final nextEntry = dailySchedule.entries[i + 1];
+                    if (_showBreaks && i < filteredEntries.length - 1) {
+                      final nextEntry = filteredEntries[i + 1];
                       try {
                         final endCurrent = TimeOfDay(
                             hour: int.parse(entry.endTime.split(':')[0]),
@@ -1185,7 +1197,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
     _filterController.dispose();
+    settingsService.scheduleFiltersNotifier.removeListener(_updateActiveFilters);
     super.dispose();
   }
 }

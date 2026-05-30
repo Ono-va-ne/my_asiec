@@ -30,6 +30,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get close => 'Закрыть';
 
   @override
+  String get apply => 'Применить';
+
+  @override
   String get empty => 'Пусто';
 
   @override
@@ -90,10 +93,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get group => 'Группа';
 
   @override
-  String get teacher => 'Препод.';
+  String get teacher => 'Преподаватель';
 
   @override
-  String get room => 'Ауд.';
+  String get room => 'Аудитория';
 
   @override
   String get scheduleShortBreak => 'Короткий перерыв';
@@ -103,6 +106,26 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get scheduleWindow => 'Окно';
+
+  @override
+  String get filterConfigure => 'Настройка фильтров';
+
+  @override
+  String get filterDescription =>
+      'Здесь можно настроить отображение пар. Если все фильтры выключены, отображаются все пары.';
+
+  @override
+  String get filterCreate => 'Добавить фильтр';
+
+  @override
+  String get filterKeyword => 'Ключевое слово';
+
+  @override
+  String get filterCreateTip =>
+      'Учтите, что ключевое слово должно быть указано в названии занятия, иначе фильтр не будет работать.';
+
+  @override
+  String get presetApplied => 'Настройки применены';
 
   @override
   String get taskEmpty => 'Заданий нет';

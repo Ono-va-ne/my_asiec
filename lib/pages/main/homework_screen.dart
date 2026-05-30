@@ -219,6 +219,7 @@ class _HomeworkScreenState extends State<HomeworkScreen> with SingleTickerProvid
             },
           ),
           floatingActionButton: FloatingActionButton(
+            heroTag: 'homework_fab',
             onPressed: () {
               Navigator.push(
                 context,

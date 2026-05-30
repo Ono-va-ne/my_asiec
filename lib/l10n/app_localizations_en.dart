@@ -30,6 +30,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get close => 'Close';
 
   @override
+  String get apply => 'Apply';
+
+  @override
   String get empty => 'Empty';
 
   @override
@@ -103,6 +106,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get scheduleWindow => 'Window';
+
+  @override
+  String get filterConfigure => 'Filters settings';
+
+  @override
+  String get filterDescription =>
+      'Here you can configure the display of pairs. If all filters are disabled, all pairs are displayed.';
+
+  @override
+  String get filterCreate => 'Add filter';
+
+  @override
+  String get filterKeyword => 'Keyword';
+
+  @override
+  String get filterCreateTip =>
+      'Please note that the keyword must be specified in the class name, otherwise the filter will not work.';
+
+  @override
+  String get presetApplied => 'Preset applied';
 
   @override
   String get taskEmpty => 'There is no tasks';

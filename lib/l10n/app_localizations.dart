@@ -140,6 +140,12 @@ abstract class AppLocalizations {
   /// **'Закрыть'**
   String get close;
 
+  /// No description provided for @apply.
+  ///
+  /// In ru, this message translates to:
+  /// **'Применить'**
+  String get apply;
+
   /// No description provided for @empty.
   ///
   /// In ru, this message translates to:
@@ -263,13 +269,13 @@ abstract class AppLocalizations {
   /// No description provided for @teacher.
   ///
   /// In ru, this message translates to:
-  /// **'Препод.'**
+  /// **'Преподаватель'**
   String get teacher;
 
   /// No description provided for @room.
   ///
   /// In ru, this message translates to:
-  /// **'Ауд.'**
+  /// **'Аудитория'**
   String get room;
 
   /// No description provided for @scheduleShortBreak.
@@ -289,6 +295,42 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Окно'**
   String get scheduleWindow;
+
+  /// No description provided for @filterConfigure.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройка фильтров'**
+  String get filterConfigure;
+
+  /// No description provided for @filterDescription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Здесь можно настроить отображение пар. Если все фильтры выключены, отображаются все пары.'**
+  String get filterDescription;
+
+  /// No description provided for @filterCreate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить фильтр'**
+  String get filterCreate;
+
+  /// No description provided for @filterKeyword.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ключевое слово'**
+  String get filterKeyword;
+
+  /// No description provided for @filterCreateTip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Учтите, что ключевое слово должно быть указано в названии занятия, иначе фильтр не будет работать.'**
+  String get filterCreateTip;
+
+  /// No description provided for @presetApplied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки применены'**
+  String get presetApplied;
 
   /// No description provided for @taskEmpty.
   ///
