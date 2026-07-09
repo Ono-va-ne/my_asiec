@@ -25,6 +25,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
   List<Map<String, dynamic>> _allItems = [];
   List<Map<String, dynamic>> _filteredItems = [];
   final Set<String> _selectedTags = {};
+  final Set<String> _selectedPrimaryTags = {};
   final TextEditingController _searchController = TextEditingController();
   bool _loading = true;
 
@@ -84,6 +85,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
     final q = _searchController.text.trim().toLowerCase();
     if (!mounted) return;
     setState(() {
+      // Фильтр карт
       _filteredItems =
           _allItems.where((f) {
             // search match
@@ -100,12 +102,16 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                 formula.contains(q);
 
             // Фильтр: если нет выбранных тегов, то отображаем всё
-            if (_selectedTags.isEmpty) return searchMatch;
+            if (_selectedTags.isEmpty && _selectedPrimaryTags.isEmpty) return searchMatch;
             final itemTags =
                 List<dynamic>.from(
                   f['tags'] ?? [],
                 ).map((e) => e.toString()).toSet();
-            final tagMatch = itemTags.any((t) => _selectedTags.contains(t));
+            final itemPrimaryTags =
+                List<dynamic>.from(
+                  f['primary_tags'] ?? [],
+                ).map((e) => e.toString()).toSet();
+            final tagMatch = itemTags.any((t) => _selectedTags.contains(t)) || itemPrimaryTags.any((t) => _selectedPrimaryTags.contains(t));
             return searchMatch && tagMatch;
           }).toList();
     });
@@ -113,9 +119,12 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
 
   Future<Set<String>> get allTags async {
     Set<String> tags = {};
+    Set<String> primaryTags = {};
     for (var formula in _allItems) {
       final t = List<dynamic>.from(formula['tags'] ?? []);
+      final pt = List<dynamic>.from(formula['primary_tags'] ?? []);
       tags.addAll(t.map((e) => e.toString()));
+      primaryTags.addAll(pt.map((e) => e.toString()));
     }
     return tags;
   }
@@ -156,39 +165,70 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                 child: Builder(
                   builder: (context) {
                     final tagsSet = <String>{};
+                    final primaryTagsSet = <String>{};
                     for (var f in _allItems) {
                       final t = List<dynamic>.from(f['tags'] ?? []);
+                      final pt = List<dynamic>.from(f['primary_tags'] ?? []);
                       tagsSet.addAll(t.map((e) => e.toString()));
+                      primaryTagsSet.addAll(pt.map((e) => e.toString()));
                     }
                     final tagsList = tagsSet.toList()..sort();
+                    final primaryTagsList = primaryTagsSet.toList()..sort();
                     return SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children:
-                            tagsList.map((tag) {
-                              final selected = _selectedTags.contains(
-                                tag,
-                              );
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                  right: 8.0,
-                                ),
-                                child: FilterChip(
-                                  label: Text(tag),
-                                  selected: selected,
-                                  onSelected: (v) {
-                                    setState(() {
-                                      if (v) {
-                                        _selectedTags.add(tag);
-                                      } else {
-                                        _selectedTags.remove(tag);
-                                      }
-                                    });
-                                    _applyFilters();
-                                  },
-                                ),
-                              );
-                            }).toList(),
+                        children: [
+                          ...tagsList.map((tag) {
+                            final selected = _selectedTags.contains(
+                              tag,
+                            );
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                right: 8.0,
+                              ),
+                              child: FilterChip(
+                                label: Text(tag),
+                                selected: selected,
+                                onSelected: (v) {
+                                  setState(() {
+                                    if (v) {
+                                      _selectedTags.add(tag);
+                                    } else {
+                                      _selectedTags.remove(tag);
+                                    }
+                                  });
+                                  _applyFilters();
+                                },
+                              ),
+                            );
+                          }).toList(),
+                          Container(height: 30, width: 1, color: Theme.of(context).dividerColor, margin: const EdgeInsets.fromLTRB(0,0,8,0)),
+                          ...primaryTagsList.map((tag) {
+                            final selected = _selectedPrimaryTags.contains(
+                              tag,
+                            );
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                right: 8.0,
+                              ),
+                              child: FilterChip(
+                                label: Text(tag),
+                                selected: selected,
+                                onSelected: (v) {
+                                  setState(() {
+                                    if (v) {
+                                      _selectedPrimaryTags.add(tag);
+                                    } else {
+                                      _selectedPrimaryTags.remove(tag);
+                                    }
+                                  });
+                                  _applyFilters();
+                                },
+                              ),
+                            );
+                          }).toList(),
+                          ]
+                          
                       ),
                     );
                   },
