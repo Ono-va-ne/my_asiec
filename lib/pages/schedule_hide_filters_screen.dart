@@ -20,36 +20,6 @@ class _ScheduleHideFiltersScreenState extends State<ScheduleHideFiltersScreen> {
       for (var f in filters) {
         f.isEnabled = false;
       }
-    } else if (presetType == 'offline') {
-      for (var f in filters) {
-        if (f.id == 'distant' || f.keyword.toLowerCase() == 'дистант') {
-          f.isEnabled = true;
-        } else {
-          f.isEnabled = false;
-        }
-      }
-    } else if (presetType == 'minimalist') {
-      final targetKeywords = ['физическая культура', 'разговоры о важном'];
-      
-      // Сначала выключаем всё лишнее, если нужно, или просто добавляем/включаем эти
-      for (var f in filters) {
-        if (f.id == 'distant' || f.keyword.toLowerCase() == 'дистант' || 
-            targetKeywords.contains(f.keyword.toLowerCase())) {
-          f.isEnabled = true;
-        }
-      }
-      
-      // Добавляем отсутствующие
-      for (var kw in targetKeywords) {
-        if (!filters.any((f) => f.keyword.toLowerCase() == kw)) {
-          filters.add(ScheduleFilter(
-            id: const Uuid().v4(),
-            keyword: kw[0].toUpperCase() + kw.substring(1),
-            isBuiltIn: false,
-            isEnabled: true,
-          ));
-        }
-      }
     } else if (presetType == 'session') {
       final targetKeywords = ['зачёт', 'экзамен'];
       
@@ -68,6 +38,7 @@ class _ScheduleHideFiltersScreenState extends State<ScheduleHideFiltersScreen> {
           filters.add(ScheduleFilter(
             id: const Uuid().v4(),
             keyword: kw[0].toUpperCase() + kw.substring(1),
+            type: 'lesson',
             isBuiltIn: false,
             isEnabled: true,
           ));
@@ -89,6 +60,8 @@ class _ScheduleHideFiltersScreenState extends State<ScheduleHideFiltersScreen> {
 
   void _addNewFilter() {
     final textController = TextEditingController();
+    // По умолчанию тип фильтра - 'lesson'
+    String selectedType = 'lesson'; 
     showDialog(
       context: context,
       builder: (context) {
@@ -96,13 +69,14 @@ class _ScheduleHideFiltersScreenState extends State<ScheduleHideFiltersScreen> {
           title: Text(AppLocalizations.of(context)!.filterCreate),
           content:
             Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: textController,
                   autofocus: true,
                   decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context)!.filterKeyword,
+                    labelText: AppLocalizations.of(context)!.filterKeyword, // Ключевое слово
                     hintText: 'например, История',
                   ),
                 ),
@@ -110,7 +84,36 @@ class _ScheduleHideFiltersScreenState extends State<ScheduleHideFiltersScreen> {
                 Text(
                   AppLocalizations.of(context)!.filterCreateTip,
                   style: Theme.of(context).textTheme.bodySmall,
-                )
+                ),
+                const SizedBox(height: 8),
+                Text('Тип фильтра:', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 4),
+                // Используем StatefulBuilder, чтобы обновлять только чипсы внутри диалога
+                StatefulBuilder(
+                  builder: (context, setDialogState) {
+                    return Wrap(
+                      spacing: 8.0,
+                      children: [
+                        ChoiceChip(
+                          label: Text(AppLocalizations.of(context)!.discipline), // Дисциплина
+                          selected: selectedType == 'lesson',
+                          onSelected: (selected) => setDialogState(() => selectedType = 'lesson'),
+                        ),
+                        ChoiceChip(
+                          label: Text(AppLocalizations.of(context)!.teacher), // Преподаватель
+                          selected: selectedType == 'teacher',
+                          onSelected: (selected) => setDialogState(() => selectedType = 'teacher'),
+                        ),
+                        ChoiceChip(
+                          label: Text(AppLocalizations.of(context)!.room), // Аудитория
+                          selected: selectedType == 'room',
+                          onSelected: (selected) => setDialogState(() => selectedType = 'room'),
+                        ),
+                      ],
+                    );
+                  }
+                ),
+
               ],
             ),
           actions: [
@@ -118,13 +121,14 @@ class _ScheduleHideFiltersScreenState extends State<ScheduleHideFiltersScreen> {
               onPressed: () => Navigator.of(context).pop(),
               child: Text(AppLocalizations.of(context)!.cancel),
             ),
-            ElevatedButton(
+            TextButton(
               onPressed: () {
                 final keyword = textController.text.trim();
                 if (keyword.isNotEmpty) {
                   final newFilter = ScheduleFilter(
                     id: const Uuid().v4(),
                     keyword: keyword,
+                    type: selectedType, // Используем выбранный тип
                     isBuiltIn: false,
                     isEnabled: true,
                   );
@@ -184,44 +188,32 @@ class _ScheduleHideFiltersScreenState extends State<ScheduleHideFiltersScreen> {
                     ),
                     const SizedBox(width: 8),
                     ActionChip(
-                      avatar: const Icon(Icons.school, size: 18),
-                      label: const Text('Только очные'),
-                      onPressed: () => _applyPreset('offline'),
-                    ),
-                    const SizedBox(width: 8),
-                    ActionChip(
-                      avatar: const Icon(Icons.filter_list_alt, size: 18),
-                      label: const Text('Скрыть лишнее'),
-                      onPressed: () => _applyPreset('minimalist'),
-                    ),
-                    const SizedBox(width: 8),
-                    ActionChip(
-                      avatar: const Icon(Icons.filter_list_alt, size: 18),
+                      avatar: const Icon(Icons.book, size: 18),
                       label: const Text('Сессия'),
                       onPressed: () => _applyPreset('session'),
                     ),
                   ],
                 ),
               ),
-              if (builtInFilters.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text('Встроенные фильтры',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-                ...builtInFilters.map((filter) => SwitchListTile(
-                      title: Text(filter.keyword),
-                      value: filter.isEnabled,
-                      onChanged: (value) {
-                        setState(() {
-                          filter.isEnabled = value;
-                        });
-                        settingsService.updateScheduleFilter(filter);
-                      },
-                    )),
-                const Divider(),
-              ],
+              // if (builtInFilters.isNotEmpty) ...[
+              //   const Padding(
+              //     padding: EdgeInsets.all(16.0),
+              //     child: Text('Встроенные фильтры',
+              //         style: TextStyle(
+              //             fontSize: 16, fontWeight: FontWeight.bold)),
+              //   ),
+              //   ...builtInFilters.map((filter) => SwitchListTile(
+              //         title: Text(filter.keyword),
+              //         value: filter.isEnabled,
+              //         onChanged: (value) {
+              //           setState(() {
+              //             filter.isEnabled = value;
+              //           });
+              //           settingsService.updateScheduleFilter(filter);
+              //         },
+              //       )),
+              //   const Divider(),
+              // ],
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Text('Пользовательские фильтры',

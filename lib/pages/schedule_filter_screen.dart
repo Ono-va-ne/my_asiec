@@ -80,8 +80,15 @@ class _ScheduleFilterScreenState extends State<ScheduleFilterScreen> {
     Navigator.of(context).pop(result);
   }
 
-  Widget _buildScheduleTypeButtons() {
+  Widget _buildScheduleTypeButtons() { // Сегментная кнопка с выбором типа расписания
     return SegmentedButton<ScheduleType>(
+      style: ButtonStyle( 
+        shape: WidgetStateProperty.all<RoundedRectangleBorder>( 
+          RoundedRectangleBorder( 
+            borderRadius: BorderRadius.circular(8), 
+          ), 
+        )
+      ),
       segments: [
         ButtonSegment(
           value: ScheduleType.grup,
@@ -104,7 +111,6 @@ class _ScheduleFilterScreenState extends State<ScheduleFilterScreen> {
         if (newSelection.isNotEmpty) {
           setState(() {
             _rasType = newSelection.first;
-            // Clear the controller when switching types
             _dropdownController.clear();
           });
         }
@@ -112,7 +118,7 @@ class _ScheduleFilterScreenState extends State<ScheduleFilterScreen> {
     );
   }
 
-  Widget _buildObjectSelector() {
+  Widget _buildObjectSelector() { // Выпадающий список объектов с поиском
     String hintText;
     List<DropdownMenuEntry<dynamic>> items = [];
     dynamic currentValue;
@@ -159,6 +165,11 @@ class _ScheduleFilterScreenState extends State<ScheduleFilterScreen> {
       enableSearch: true,
       requestFocusOnTap: true,
       expandedInsets: EdgeInsets.zero,
+      inputDecorationTheme: InputDecorationTheme(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
       onSelected: (dynamic newValue) {
         setState(() {
           if (newValue != null) {
@@ -198,7 +209,7 @@ class _ScheduleFilterScreenState extends State<ScheduleFilterScreen> {
             decoration: InputDecoration(
               labelText: AppLocalizations.of(context)!.search,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
+                borderRadius: BorderRadius.circular(8),
               ),
               suffixIcon: _filterController.text.isNotEmpty
                   ? IconButton(
@@ -208,23 +219,45 @@ class _ScheduleFilterScreenState extends State<ScheduleFilterScreen> {
                   : const Icon(Icons.filter_list),
             ),
           ),
-          const SizedBox(height: 24.0),
-          ElevatedButton(
-            onPressed: _applyFilters,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16.0),
-            ),
-            child: Text(AppLocalizations.of(context)!.apply),
-          ),
           const SizedBox(height: 16.0),
-          OutlinedButton.icon(
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                builder: (context) => const ScheduleHideFiltersScreen(),
-              ));
-            },
-            icon: const Icon(Icons.visibility_off_outlined),
-            label: const Text('Управление скрытием пар'),
+          Row(
+            spacing: 12.0,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _applyFilters,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: const Icon(Icons.check),
+                  label: Text(AppLocalizations.of(context)!.apply),
+                ),
+              ),
+              // const SizedBox(width: 16.0),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => const ScheduleHideFiltersScreen(),
+                  ));
+                },
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                    padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                icon: const Icon(Icons.visibility_off_outlined),
+                label: const Text('Фильтры'),
+              ),
+            ],
           ),
         ],
       ),

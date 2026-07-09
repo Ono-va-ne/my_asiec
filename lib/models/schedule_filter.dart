@@ -1,7 +1,15 @@
 import 'dart:convert';
 
+/// Перечисление для типов фильтров.
+/// lesson - по названию дисциплины
+/// teacher - по имени преподавателя
+/// room - по названию аудитории
+enum ScheduleFilterType { lesson, teacher, room }
+
+
 class ScheduleFilter {
   final String id;
+  final String type;
   final String keyword;
   final bool isBuiltIn;
   bool isEnabled;
@@ -9,6 +17,7 @@ class ScheduleFilter {
   ScheduleFilter({
     required this.id,
     required this.keyword,
+    required this.type, // 'lesson', 'teacher', 'room'
     this.isBuiltIn = false,
     this.isEnabled = true,
   });
@@ -17,6 +26,7 @@ class ScheduleFilter {
     return {
       'id': id,
       'keyword': keyword,
+      'type': type,
       'isBuiltIn': isBuiltIn,
       'isEnabled': isEnabled,
     };
@@ -26,6 +36,7 @@ class ScheduleFilter {
     return ScheduleFilter(
       id: map['id'] ?? '',
       keyword: map['keyword'] ?? '',
+      type: map['type'] ?? '',
       isBuiltIn: map['isBuiltIn'] ?? false,
       isEnabled: map['isEnabled'] ?? true,
     );
@@ -35,4 +46,14 @@ class ScheduleFilter {
 
   factory ScheduleFilter.fromJson(String source) =>
       ScheduleFilter.fromMap(json.decode(source));
+}
+
+class ScheduleFilterPreset {
+  final String name;
+  final List<String> keywords;
+
+  ScheduleFilterPreset({
+    required this.name,
+    required this.keywords,
+  });
 }

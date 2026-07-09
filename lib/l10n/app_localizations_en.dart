@@ -99,6 +99,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get room => 'Room';
 
   @override
+  String get discipline => 'Discipline';
+
+  @override
   String get scheduleShortBreak => 'Short Break';
 
   @override

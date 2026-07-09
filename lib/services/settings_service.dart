@@ -192,20 +192,10 @@ class SettingsService {
 
   void _loadScheduleFilters() {
     final List<String>? filtersJson = _prefs?.getStringList(_scheduleFiltersKey);
-    if (filtersJson == null) {
-      // Если фильтров нет, создаем встроенные по умолчанию
-      final builtInFilters = [
-        ScheduleFilter(id: 'distant', keyword: 'Дистант', isBuiltIn: true, isEnabled: false),
-        ScheduleFilter(id: 'exam', keyword: 'Экзамен', isBuiltIn: true, isEnabled: false),
-        ScheduleFilter(id: 'up', keyword: 'УП.', isBuiltIn: true, isEnabled: false),
-      ];
-      scheduleFiltersNotifier.value = builtInFilters;
-      _saveScheduleFilters(); // Сохраняем их
-    } else {
-      scheduleFiltersNotifier.value = filtersJson
-          .map((json) => ScheduleFilter.fromJson(json))
-          .toList();
-    }
+
+    scheduleFiltersNotifier.value = filtersJson!
+      .map((json) => ScheduleFilter.fromJson(json))
+      .toList();
   }
 
   Future<void> saveScheduleFilters() async {

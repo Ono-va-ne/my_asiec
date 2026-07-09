@@ -95,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSectionHeader(l10n.scheduleScreen),
           ListTile(
             leading: Icon(Icons.group_outlined),
-            title: Text(l10n.group),
+            title: Text(l10n.group, overflow: TextOverflow.ellipsis),
             trailing: SizedBox(
               width: 200,
               child: DropdownButtonHideUnderline(
@@ -126,7 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ListTile(
             leading: Icon(Icons.person_outlined),
-            title: Text(l10n.teacher),
+            title: Text(l10n.teacher, overflow: TextOverflow.ellipsis),
             trailing: SizedBox(
               width: 200,
               child: DropdownButtonHideUnderline(
@@ -162,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ListTile(
             leading: Icon(Icons.room_outlined),
-            title: Text(l10n.room),
+            title: Text(l10n.room, overflow: TextOverflow.ellipsis),
             trailing: SizedBox(
               width: 200,
               child: DropdownButtonHideUnderline(
@@ -204,7 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             builder: (context, isBreaksEnabled, _) {
               return SwitchListTile(
                 secondary: Icon(Icons.free_breakfast_outlined),
-                title: Text(l10n.settingShowBreaks),
+                title: Text(l10n.settingShowBreaks, overflow: TextOverflow.ellipsis),
                 value: isBreaksEnabled,
                 onChanged: (bool enabled) {
                   settingsService.setShowBreaksInSchedule(enabled);
@@ -212,9 +212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-
           Divider(),
-
           // --- Секция: Тема ---
           _buildSectionHeader(l10n.settingAppearance),
           // Выбор режима темы
@@ -253,7 +251,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           // Material You (Dynamic Color) - доступно только на Android 12+
-          // Можно добавить проверку платформы и версии ОС, если нужно
+          // Можно добавить проверку платформы и версии ОС
           ValueListenableBuilder<bool>(
             valueListenable: settingsService.materialYouNotifier,
             builder: (context, isMaterialYouEnabled, _) {
@@ -268,8 +266,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-          Divider(),
-          _buildSectionHeader(l10n.settingLanguage),
+          // Divider(),
+          // --- Секция: Язык ---
+          // _buildSectionHeader(l10n.settingLanguage),
           ValueListenableBuilder<Locale?>(
             valueListenable: settingsService.localeNotifier,
             builder: (context, currentLocale, _) {
@@ -303,7 +302,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-          Divider(),
+          // Divider(),
+          // --- Секция: Иконка приложения ---
           _buildSectionHeader(l10n.settingIcons),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),

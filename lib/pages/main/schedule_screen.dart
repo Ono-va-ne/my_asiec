@@ -1064,11 +1064,23 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
           // --- Применение фильтров скрытия ---
           final filteredEntries = dailySchedule.entries.where((entry) {
-            // Если нет активных фильтров, показываем все
-            if (_activeHideFilters.isEmpty) return true;
-            // Проверяем, содержит ли дисциплина ключевое слово какого-либо из активных фильтров
-            return _activeHideFilters.any((filter) =>
-                entry.discipline.toLowerCase().contains(filter.keyword.toLowerCase()));
+            if (_activeHideFilters.isEmpty) return true; // Показываем все, если фильтров нет
+
+            // Проверяем, соответствует ли запись ХОТЯ БЫ ОДНОМУ активному фильтру
+            return _activeHideFilters.any((filter) {
+              final keyword = filter.keyword.toLowerCase();
+              switch (filter.type) {
+                case 'lesson':
+                  return entry.discipline.toLowerCase().contains(keyword);
+                case 'teacher':
+                  return entry.teacher.toLowerCase().contains(keyword);
+                case 'room':
+                  return entry.room.toLowerCase().contains(keyword);
+                default:
+                  // Если тип неизвестен, не применяем фильтр
+                  return false;
+              }
+            });
           }).toList();
 
 

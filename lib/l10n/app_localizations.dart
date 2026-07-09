@@ -278,6 +278,12 @@ abstract class AppLocalizations {
   /// **'Аудитория'**
   String get room;
 
+  /// No description provided for @discipline.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дисциплина'**
+  String get discipline;
+
   /// No description provided for @scheduleShortBreak.
   ///
   /// In ru, this message translates to:
@@ -575,7 +581,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingAppearance.
   ///
   /// In ru, this message translates to:
-  /// **'Оформление'**
+  /// **'Внешний вид'**
   String get settingAppearance;
 
   /// No description provided for @settingTheme.
@@ -599,7 +605,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingThemeMaterialYou.
   ///
   /// In ru, this message translates to:
-  /// **'Динамическое оформление'**
+  /// **'Динамические цвета'**
   String get settingThemeMaterialYou;
 
   /// No description provided for @settingThemeMaterialYouDescription.

@@ -75,6 +75,8 @@
   "@teacher": {},
   "room": "Room",
   "@room": {},
+  "discipline": "Discipline",
+  "@discipline": {},
   "scheduleShortBreak": "Short Break",
   "@scheduleShortBreak": {},
   "scheduleLongBreak": "Long Break",

@@ -99,6 +99,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get room => 'Аудитория';
 
   @override
+  String get discipline => 'Дисциплина';
+
+  @override
   String get scheduleShortBreak => 'Короткий перерыв';
 
   @override
@@ -257,7 +260,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingShowBreaks => 'Показывать перерывы';
 
   @override
-  String get settingAppearance => 'Оформление';
+  String get settingAppearance => 'Внешний вид';
 
   @override
   String get settingTheme => 'Тема';
@@ -269,7 +272,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingThemeDark => 'Тёмная';
 
   @override
-  String get settingThemeMaterialYou => 'Динамическое оформление';
+  String get settingThemeMaterialYou => 'Динамические цвета';
 
   @override
   String get settingThemeMaterialYouDescription =>
