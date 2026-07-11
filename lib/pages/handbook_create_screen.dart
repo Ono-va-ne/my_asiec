@@ -70,13 +70,14 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
 
       final payload = {
         'title': _titleController.text.trim(),
+        'type': _selectedValue == 0 ? 'formula' : 'definition',
         'formula': _formulaController.text.trim(),
         'summary': _summaryController.text.trim(),
         'description': _descriptionController.text.trim(),
         'image_url': _imageController.text.trim(),
         'primary_tags': primaryTags,
         'tags': tags,
-        'spec_id': widget.specialtyId,
+        // 'spec_id': widget.specialtyId,
       };
 
       await _client.from('formulas').insert(payload);
@@ -139,13 +140,7 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
                     selected: _selectedValue == 1,
                     // showCheckmark: false,
                     onSelected: (selected) => setState(() => _selectedValue = selected ? 1 : null),
-                  ),
-                  ChoiceChip(
-                    label: Text(l10n.handbookTypeTheory),
-                    selected: _selectedValue == 2,
-                    // showCheckmark: false,
-                    onSelected: (selected) => setState(() => _selectedValue = selected ? 2 : null),
-                  ),
+                  )
                 ],
               ),
               const SizedBox(height: 12),
@@ -180,14 +175,7 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
                   ),
                 ],
               ),
-              // const SizedBox(height: 8),
-              // _snippetButtons(_formulaController),
               const SizedBox(height: 12),
-              // TextFormField(
-              //   controller: _summaryController,
-              //   decoration: InputDecoration(labelText: l10n.handbookSummary),
-              // ),
-              // const SizedBox(height: 12),
               TextFormField(
                 controller: _descriptionController,
                 decoration: InputDecoration(labelText: l10n.handbookDescription),
@@ -211,7 +199,21 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
               const SizedBox(height: 20),
               _saving
                   ? const CircularProgressIndicator()
-                  : ElevatedButton(onPressed: _save, child: Text(l10n.save)),
+                  : SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                        onPressed: _save,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(l10n.save)
+                      ),
+                  ),
             ],
           ),
         ),
@@ -228,6 +230,7 @@ class FullscreenLatexEditor extends StatefulWidget {
   State<FullscreenLatexEditor> createState() => _FullscreenLatexEditorState();
 }
 
+// Редактор LaTeX формул
 class _FullscreenLatexEditorState extends State<FullscreenLatexEditor> {
   late final TextEditingController _editorController;
 
@@ -261,6 +264,7 @@ class _FullscreenLatexEditorState extends State<FullscreenLatexEditor> {
     controller.selection = TextSelection.collapsed(offset: newPos);
   }
 
+  // Сниппеты для LaTeX
   Widget _snippetButtons() {
     return Wrap(
       spacing: 8,
