@@ -257,7 +257,9 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                 ),
       
               Expanded(
-                child: ListView.builder(
+                child: RefreshIndicator(
+                  onRefresh: _loadHandbook,
+                  child: ListView.builder(
                   padding: const EdgeInsets.all(8),
                   controller: _scrollController,
                   itemCount: _filteredItems.length,
@@ -336,39 +338,32 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                                 f['description'] ?? '',
                                 maxLines: f['type'] == 'formula' ? 2 : 3,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 16,
-                                  color: Colors.grey,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              // Ряд тегов: сначала первичные (primary_tags), затем остальные (tags)
-                              Row(
+                              // Оборачиваем все теги в один Wrap, чтобы избежать переполнения
+                              Wrap(
+                                spacing: 6.0,
+                                crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
                                   // Primary tags
-                                  Wrap(
-                                    spacing: 6,
-                                    runSpacing: 6,
-                                    children: itemPrimaryTags.map(
-                                      (t) => Chip(
-                                        label: Text(t, style: const TextStyle(fontSize: 12)),
-                                        visualDensity: VisualDensity.compact,
-                                      ),
-                                    ).toList(),
-                                  ),
-                                  Container(height: 20, width: 1, color: Theme.of(context).dividerColor, margin: const EdgeInsets.symmetric(horizontal: 6)),
-                                  // Tags (if any)
-                                  if (itemTags.isNotEmpty)
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
-                                      children: itemTags.map(
-                                        (t) => Chip(
-                                          label: Text(t, style: const TextStyle(fontSize: 12)),
-                                          visualDensity: VisualDensity.compact,
-                                        ),
-                                      ).toList(),
+                                  ...itemPrimaryTags.map(
+                                    (t) => Chip(
+                                      label: Text(t, style: const TextStyle(fontSize: 12)),
+                                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                                      visualDensity: VisualDensity.compact,
                                     ),
+                                  ),
+                                  // Regular tags
+                                  ...itemTags.take(5).map(
+                                    (t) => Chip(
+                                      label: Text(t, style: const TextStyle(fontSize: 12)),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                  ),
                                 ],
                               ),
                               
@@ -380,6 +375,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                   },
                 ),
               ),
+                ),
             ],
           ),
         floatingActionButton: AnimatedSlide(

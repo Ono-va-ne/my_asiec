@@ -215,7 +215,7 @@ class _MainScreenState extends State<MainScreen> {
         backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onItemTapped,
-        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+        // labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         destinations: <Widget>[
           NavigationDestination(
             icon: const Icon(Icons.access_time),
