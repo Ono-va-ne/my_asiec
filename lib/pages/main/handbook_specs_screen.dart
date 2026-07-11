@@ -62,8 +62,8 @@ class _SpecialtiesScreenState extends State<SpecialtiesScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => HandbookBySpecialtyScreen(
-                            specialtyId: sp['id'],
-                            specialtyName: sp['name'] ?? 'Специальность',
+                            // specialtyId: sp['id'],
+                            // specialtyName: sp['name'] ?? 'Специальность',
                           ),
                         ),
                       );

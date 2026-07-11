@@ -3,20 +3,24 @@ import 'package:flutter_math_fork/flutter_math.dart';
 
 class HandbookViewScreen extends StatelessWidget {
   final String title;
+  final String type;
   final String formula;
   final String description;
   final String imageUrl;
   final String latexHandbook;
   final String tags;
+  final String primaryTags;
 
   const HandbookViewScreen({
     super.key,
     required this.title,
+    required this.type,
     required this.formula,
     required this.description,
     required this.imageUrl,
     required this.latexHandbook,
     required this.tags,
+    required this.primaryTags
   });
 
   @override

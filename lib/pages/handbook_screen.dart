@@ -138,11 +138,13 @@ class _HandbookScreenState extends State<HandbookScreen> {
                   builder:
                       (context) => HandbookViewScreen(
                         title: formula['title']!,
+                        type: formula['type']!,
                         formula: formula['formula']!,
                         description: formula['fullDescription']!,
                         imageUrl: formula['imageUrl'] ?? '',
                         latexHandbook: formula['latexHandbook']!,
                         tags: formula['tags'] ?? '',
+                        primaryTags: formula['primary_tags'] ?? ''
                       ),
                 ),
               );

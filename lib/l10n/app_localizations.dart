@@ -434,11 +434,11 @@ abstract class AppLocalizations {
   /// **'Редактировать формулу'**
   String get handbookEdit;
 
-  /// No description provided for @handbookEnterName.
+  /// No description provided for @handbookName.
   ///
   /// In ru, this message translates to:
-  /// **'Введите название'**
-  String get handbookEnterName;
+  /// **'Название'**
+  String get handbookName;
 
   /// No description provided for @handbookFormula.
   ///
@@ -481,6 +481,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'URL изображения'**
   String get handbookPhotoURL;
+
+  /// No description provided for @handbookPrimaryTags.
+  ///
+  /// In ru, this message translates to:
+  /// **'Главные теги (через запятую)'**
+  String get handbookPrimaryTags;
 
   /// No description provided for @handbookTags.
   ///

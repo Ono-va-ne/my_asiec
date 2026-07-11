@@ -180,7 +180,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get handbookEdit => 'Edit formula';
 
   @override
-  String get handbookEnterName => 'Enter name';
+  String get handbookName => 'Name';
 
   @override
   String get handbookFormula => 'Formula';
@@ -202,6 +202,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get handbookPhotoURL => 'Photo URL';
+
+  @override
+  String get handbookPrimaryTags => 'Primary tags (separated by commas)';
 
   @override
   String get handbookTags => 'Tags (separated by commas)';

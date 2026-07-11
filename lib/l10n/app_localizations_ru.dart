@@ -180,7 +180,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get handbookEdit => 'Редактировать формулу';
 
   @override
-  String get handbookEnterName => 'Введите название';
+  String get handbookName => 'Название';
 
   @override
   String get handbookFormula => 'Формула';
@@ -202,6 +202,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get handbookPhotoURL => 'URL изображения';
+
+  @override
+  String get handbookPrimaryTags => 'Главные теги (через запятую)';
 
   @override
   String get handbookTags => 'Теги (через запятую)';

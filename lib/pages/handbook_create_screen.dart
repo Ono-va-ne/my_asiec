@@ -21,6 +21,7 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
   final TextEditingController _summaryController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _imageController = TextEditingController();
+  final TextEditingController _primaryTagsController = TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
   bool _saving = false;
   
@@ -36,6 +37,7 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
     _summaryController.dispose();
     _descriptionController.dispose();
     _imageController.dispose();
+    _primaryTagsController.dispose();
     _tagsController.dispose();
     super.dispose();
   }
@@ -60,6 +62,11 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList();
+        final primaryTags = _primaryTagsController.text
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
 
       final payload = {
         'title': _titleController.text.trim(),
@@ -67,6 +74,7 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
         'summary': _summaryController.text.trim(),
         'description': _descriptionController.text.trim(),
         'image_url': _imageController.text.trim(),
+        'primary_tags': primaryTags,
         'tags': tags,
         'spec_id': widget.specialtyId,
       };
@@ -112,30 +120,30 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
             children: [
               TextFormField(
                 controller: _titleController,
-                decoration: InputDecoration(labelText: l10n.handbookEnterName),
-                validator: (v) => (v == null || v.trim().isEmpty) ? l10n.handbookEnterName : null,
+                decoration: InputDecoration(labelText: l10n.handbookName),
+                validator: (v) => (v == null || v.trim().isEmpty) ? l10n.handbookName : null,
               ),
               const SizedBox(height: 12),
-              // Новое: выбор типа записи (WIP, внесено в комменты, т.к. пока не готово)
+              // Новое: выбор типа записи
               Wrap(
                 spacing: 8,
                 children: [
                   ChoiceChip(
                     label: Text(l10n.handbookTypeFormula),
                     selected: _selectedValue == 0,
-                    showCheckmark: false,
+                    // showCheckmark: false,
                     onSelected: (selected) => setState(() => _selectedValue = selected ? 0 : null),
                   ),
                   ChoiceChip(
                     label: Text(l10n.handbookTypeDefinition),
                     selected: _selectedValue == 1,
-                    showCheckmark: false,
+                    // showCheckmark: false,
                     onSelected: (selected) => setState(() => _selectedValue = selected ? 1 : null),
                   ),
                   ChoiceChip(
                     label: Text(l10n.handbookTypeTheory),
                     selected: _selectedValue == 2,
-                    showCheckmark: false,
+                    // showCheckmark: false,
                     onSelected: (selected) => setState(() => _selectedValue = selected ? 2 : null),
                   ),
                 ],
@@ -175,11 +183,11 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
               // const SizedBox(height: 8),
               // _snippetButtons(_formulaController),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _summaryController,
-                decoration: InputDecoration(labelText: l10n.handbookSummary),
-              ),
-              const SizedBox(height: 12),
+              // TextFormField(
+              //   controller: _summaryController,
+              //   decoration: InputDecoration(labelText: l10n.handbookSummary),
+              // ),
+              // const SizedBox(height: 12),
               TextFormField(
                 controller: _descriptionController,
                 decoration: InputDecoration(labelText: l10n.handbookDescription),
@@ -189,6 +197,11 @@ class _HandbookCreateScreenState extends State<HandbookCreateScreen> {
               TextFormField(
                 controller: _imageController,
                 decoration: InputDecoration(labelText: '${l10n.handbookPhotoURL} (${l10n.optional})'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _primaryTagsController,
+                decoration: InputDecoration(labelText: l10n.handbookPrimaryTags),
               ),
               const SizedBox(height: 12),
               TextFormField(

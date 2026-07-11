@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'pages/main/schedule_screen.dart';
 import 'pages/main/homework_screen.dart';
 import 'pages/main/handbook_specs_screen.dart';
+import 'pages/handbook_by_speciality_screen.dart';
 import 'pages/main/more_screen.dart';
 
 import '../models/homework.dart';
@@ -190,10 +191,10 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _widgetOptions = <Widget>[
+  static  final List<Widget> _widgetOptions = <Widget>[
     ScheduleScreen(),
     HomeworkScreen(),
-    SpecialtiesScreen(),
+    HandbookBySpecialtyScreen(),
     MoreScreen(),
   ];
 
