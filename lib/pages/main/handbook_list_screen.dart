@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import 'handbook_view_screen.dart';
-import 'handbook_create_screen.dart';
-import '../l10n/app_localizations.dart';
-import '../data/text_emojis.dart';
+import '../handbook_view_screen.dart';
+import '../handbook_create_screen.dart';
+import '../../l10n/app_localizations.dart';
+import '../../data/text_emojis.dart';
+import '../../services/settings_service.dart';
 
 class HandbookBySpecialtyScreen extends StatefulWidget {
   // final String specialtyId;
@@ -31,6 +32,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
   bool _loading = true;
   late final ScrollController _scrollController;
   bool _isFabVisible = true;
+  List<String> _favoriteTags = [];
 
   Future<List<Map<String, dynamic>>> _fetchHandbook() async {
     final data = await _client
@@ -45,6 +47,8 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _favoriteTags = settingsService.favoriteHandbookTagsNotifier.value;
+    _selectedPrimaryTags.addAll(_favoriteTags);
     _loadHandbook();
     _searchController.addListener(_onSearchChanged);
     _scrollController.addListener(() {
@@ -59,6 +63,10 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
         }
       }
     });
+    settingsService.favoriteHandbookTagsNotifier.addListener(_onFavoritesChanged);
+  }
+  void _onFavoritesChanged() {
+  if (mounted) setState(() => _favoriteTags = settingsService.favoriteHandbookTagsNotifier.value);
   }
 
   @override
@@ -66,6 +74,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _scrollController.dispose();
+    settingsService.favoriteHandbookTagsNotifier.removeListener(_onFavoritesChanged);
     super.dispose();
   }
 
@@ -81,6 +90,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
         setState(() {
           _allItems = data;
           _filteredItems = List<Map<String, dynamic>>.from(_allItems);
+          _applyFilters();
         });
       }
     } catch (e) {
@@ -131,7 +141,10 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                 ).map((e) => e.toString()).toSet();
             final tagMatch = itemTags.any((t) => _selectedTags.contains(t)) || itemPrimaryTags.any((t) => _selectedPrimaryTags.contains(t));
             return searchMatch && tagMatch;
-          }).toList();
+          }).toList()
+          ..sort((a, b) {
+            return (a['title'] as String).compareTo(b['title'] as String);
+          });
     });
   }
 
@@ -157,7 +170,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
           ? const Center(child: CircularProgressIndicator())
           : (_allItems.isEmpty)
           ? Center(child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Text(getRandomEmoji(), style: TextStyle(fontSize: 72, color: Colors.grey[600])),
               const SizedBox(height: 8),
@@ -165,6 +178,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
             ],
           ))
           : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.all(8.0),
@@ -184,16 +198,32 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Builder(
                     builder: (context) {
-                      final tagsSet = <String>{};
+                      // Сначала собираем все основные теги
                       final primaryTagsSet = <String>{};
                       for (var f in _allItems) {
-                        final t = List<dynamic>.from(f['tags'] ?? []);
                         final pt = List<dynamic>.from(f['primary_tags'] ?? []);
-                        tagsSet.addAll(t.map((e) => e.toString()));
                         primaryTagsSet.addAll(pt.map((e) => e.toString()));
                       }
-                      final tagsList = tagsSet.toList()..sort();
                       final primaryTagsList = primaryTagsSet.toList()..sort();
+
+                      // Теперь собираем обычные теги в зависимости от выбранных основных
+                      final tagsSet = <String>{};
+                      if (_selectedPrimaryTags.isEmpty) {
+                        // Если основные теги не выбраны, показываем все обычные теги
+                        for (var f in _allItems) {
+                          final t = List<dynamic>.from(f['tags'] ?? []);
+                          tagsSet.addAll(t.map((e) => e.toString()));
+                        }
+                      } else {
+                        // Иначе, показываем только те теги, которые есть в записях с выбранными основными тегами
+                        final relatedItems = _allItems.where((item) => List<String>.from(item['primary_tags'] ?? []).any(_selectedPrimaryTags.contains));
+                        for (var item in relatedItems) {
+                          final t = List<dynamic>.from(item['tags'] ?? []);
+                          tagsSet.addAll(t.map((e) => e.toString()));
+                        }
+                      }
+                      final tagsList = tagsSet.toList()..sort();
+
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -202,24 +232,45 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                               scrollDirection: Axis.horizontal,
                               child: Row(
                                 children: primaryTagsList.map((tag) {
-                                  final selected =
-                                      _selectedPrimaryTags.contains(tag);
+                                  final isSelected = _selectedPrimaryTags.contains(tag);
+                                  final isFavorite = _favoriteTags.contains(tag);
                                   return Padding(
                                     padding: const EdgeInsets.only(right: 8.0),
-                                    child: FilterChip(
-                                      label: Text(tag),
-                                      selected: selected,
-                                      onSelected: (v) {
-                                        setState(() {
-                                          if (v) {
-                                            _selectedPrimaryTags.add(tag);
-                                          } else {
-                                            _selectedPrimaryTags.remove(tag);
-                                          }
-                                        });
-                                        _applyFilters();
+                                    child: GestureDetector(
+                                      onLongPress: () {
+                                        final currentFavorites = List<String>.from(settingsService.favoriteHandbookTagsNotifier.value);
+                                        final wasFavorite = currentFavorites.contains(tag);
+                                        if (wasFavorite) {
+                                          currentFavorites.remove(tag);
+                                        } else {
+                                          currentFavorites.add(tag);
+                                        }
+                                        settingsService.setFavoriteHandbookTags(currentFavorites);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(wasFavorite
+                                            ? 'Тег удалён из избранных'
+                                            : 'Тег добавлен в избранные'),
+                                            duration: const Duration(seconds: 1),
+                                          )
+                                        );
                                       },
-                                    ),
+                                      child: FilterChip(
+                                        label: Text(tag),
+                                        avatar: isFavorite ? Icon(Icons.star, size: 16, color: Theme.of(context).colorScheme.primary) : null,
+                                        selected: isSelected,
+                                        onSelected: (v) {
+                                          setState(() {
+                                            if (v) {
+                                              _selectedPrimaryTags.add(tag);
+                                            } else {
+                                              _selectedPrimaryTags.remove(tag);
+                                            }
+                                          });
+                                          _applyFilters();
+                                        }
+                                      )
+                                    )
                                   );
                                 }).toList(),
                               ),

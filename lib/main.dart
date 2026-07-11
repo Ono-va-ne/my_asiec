@@ -9,8 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'pages/main/schedule_screen.dart';
 import 'pages/main/homework_screen.dart';
-import 'pages/main/handbook_specs_screen.dart';
-import 'pages/handbook_by_speciality_screen.dart';
+import 'pages/main/handbook_list_screen.dart';
 import 'pages/main/more_screen.dart';
 
 import '../models/homework.dart';

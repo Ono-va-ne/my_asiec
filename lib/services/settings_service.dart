@@ -17,6 +17,7 @@ const String _localeKey = 'app_locale';
 const String _pomodoroShortBreakDurationKey = 'pomodoro_short_break_duration';
 const String _scheduleFiltersKey = 'schedule_filters';
 const String _pomodoroLongBreakDurationKey = 'pomodoro_long_break_duration';
+const String _favoriteHandbookTagsKey = 'favorite_handbook_tags';
 
 
 class SettingsService {
@@ -38,6 +39,7 @@ class SettingsService {
   final ValueNotifier<int> pomodoroLongBreakDurationNotifier = ValueNotifier(15);
   // Notifier для фильтров расписания
   final ValueNotifier<List<ScheduleFilter>> scheduleFiltersNotifier = ValueNotifier([]);
+  final ValueNotifier<List<String>> favoriteHandbookTagsNotifier = ValueNotifier([]);
 
 
   SharedPreferences? _prefs; // Экземпляр SharedPreferences
@@ -82,6 +84,7 @@ class SettingsService {
     // Загрузка группы по умолчанию
     defaultGroupIdNotifier.value = _prefs?.getString(_defaultGroupIdKey);
     // Загрузка фильтров расписания
+    _loadFavoriteHandbookTags();
     _loadScheduleFilters();
     // Можно добавить notifier и для группы, если нужно реагировать где-то еще
   }
@@ -201,6 +204,22 @@ class SettingsService {
   Future<void> saveScheduleFilters() async {
     await _saveScheduleFilters();
   }
+
+  void _loadFavoriteHandbookTags() {
+    final List<String>? tags = _prefs?.getStringList(_favoriteHandbookTagsKey);
+    if (tags != null) {
+      favoriteHandbookTagsNotifier.value = tags;
+    }
+  }
+
+  Future<void> setFavoriteHandbookTags(List<String> tags) async {
+    if (_prefs == null) await loadSettings();
+    await _prefs?.setStringList(_favoriteHandbookTagsKey, tags);
+    favoriteHandbookTagsNotifier.value = List.from(tags);
+  }
+
+// --- Глобальный экземпляр сервиса (Singleton Pattern) ---
+
 
   Future<void> _saveScheduleFilters() async {
     if (_prefs == null) await loadSettings();
