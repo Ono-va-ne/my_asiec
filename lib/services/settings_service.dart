@@ -1,5 +1,3 @@
-// Файл: lib/services/settings_service.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:my_asiec/models/schedule_filter.dart';
 import 'package:shared_preferences/shared_preferences.dart';

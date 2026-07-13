@@ -45,3 +45,4 @@ app.*.map.json
 /android/app/release
 
 lib/supabase_options.dart
+desktop.ini

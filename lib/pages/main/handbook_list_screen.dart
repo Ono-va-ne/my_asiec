@@ -9,6 +9,8 @@ import '../../data/text_emojis.dart';
 import '../../services/settings_service.dart';
 
 class HandbookBySpecialtyScreen extends StatefulWidget {
+  const HandbookBySpecialtyScreen({super.key});
+
   // final String specialtyId;
   // final String specialtyName;
   // const HandbookBySpecialtyScreen({
@@ -117,7 +119,6 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
           _allItems.where((f) {
             // search match
             final title = (f['title'] ?? '').toString().toLowerCase();
-            final type = (f['type'] ?? '').toString().toLowerCase();
             final summary = (f['summary'] ?? '').toString().toLowerCase();
             final description =
                 (f['description'] ?? '').toString().toLowerCase();
@@ -354,6 +355,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                           ),
                         );
                       },
+                      // Карточка записи
                       child: Card(
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         child: Padding(
@@ -391,7 +393,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                                   scrollDirection: Axis.horizontal,
                                   child: Math.tex(
                                     f['formula'] ?? '',
-                                    textStyle: const TextStyle(fontSize: 18),
+                                    textStyle: TextStyle(fontSize: 18, color: Theme.of(context).colorScheme.onPrimaryContainer),
                                   ),
                                 ),
                               const SizedBox(height: 8),
