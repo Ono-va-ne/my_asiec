@@ -129,18 +129,29 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                 description.contains(q) ||
                 formula.contains(q);
 
-            // Фильтр: если нет выбранных тегов, то отображаем всё
-            if (_selectedTags.isEmpty && _selectedPrimaryTags.isEmpty) return searchMatch;
-            final itemTags =
-                List<dynamic>.from(
-                  f['tags'] ?? [],
-                ).map((e) => e.toString()).toSet();
-            final itemPrimaryTags =
-                List<dynamic>.from(
-                  f['primary_tags'] ?? [],
-                ).map((e) => e.toString()).toSet();
-            final tagMatch = itemTags.any((t) => _selectedTags.contains(t)) || itemPrimaryTags.any((t) => _selectedPrimaryTags.contains(t));
-            return searchMatch && tagMatch;
+            // Если не совпало с поиском, исключаем
+            if (!searchMatch) return false;
+
+            // Логика фильтрации по тегам
+            final itemPrimaryTags = List<String>.from(f['primary_tags'] ?? []);
+            final itemTags = List<String>.from(f['tags'] ?? []);
+
+            // 1. Проверка по основным тегам
+            final primaryTagMatch = _selectedPrimaryTags.isEmpty ||
+                itemPrimaryTags.any((t) => _selectedPrimaryTags.contains(t));
+
+            // Если не совпало по основным тегам, исключаем
+            if (!primaryTagMatch) return false;
+
+            // 2. Проверка по обычным тегам
+            final tagMatch = _selectedTags.isEmpty ||
+                itemTags.any((t) => _selectedTags.contains(t));
+
+            // Если не совпало по обычным тегам, исключаем
+            if (!tagMatch) return false;
+
+            // Если все проверки пройдены, включаем элемент в результат
+            return true;
           }).toList()
           ..sort((a, b) {
             return (a['title'] as String).compareTo(b['title'] as String);
@@ -384,7 +395,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                                   ),
                                 ),
                               const SizedBox(height: 8),
-                              // Описание (2 строки если это формула, в остальных случаях (определение) - 3)
+                              // Описание (2 строки если это формула, если определение - 3)
                               Text(
                                 f['description'] ?? '',
                                 maxLines: f['type'] == 'formula' ? 2 : 3,
@@ -400,7 +411,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                                 spacing: 6.0,
                                 crossAxisAlignment: WrapCrossAlignment.center,
                                 children: [
-                                  // Primary tags
+                                  // Основные теги
                                   ...itemPrimaryTags.map(
                                     (t) => Chip(
                                       label: Text(t, style: const TextStyle(fontSize: 12)),
@@ -408,7 +419,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                                       visualDensity: VisualDensity.compact,
                                     ),
                                   ),
-                                  // Regular tags
+                                  // Обычные теги (первые 5)
                                   ...itemTags.take(5).map(
                                     (t) => Chip(
                                       label: Text(t, style: const TextStyle(fontSize: 12)),
@@ -429,9 +440,10 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
                 ),
             ],
           ),
+        // FAB для создания новой записи
         floatingActionButton: AnimatedSlide(
           duration: const Duration(milliseconds: 200),
-          offset: _isFabVisible ? Offset.zero : const Offset(0, 2),
+          offset: _isFabVisible ? Offset.zero : const Offset(0, 2), // Сдвиг FAB'а при скролле вниз
           child: FloatingActionButton(
             child: const Icon(Icons.add),
             onPressed: () async {
