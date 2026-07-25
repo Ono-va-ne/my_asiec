@@ -31,7 +31,7 @@ class NotificationService {
       iOS: initializationSettingsIOS,
     );
 
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await flutterLocalNotificationsPlugin.initialize(settings: initializationSettings);
   }
 
   // Запрос разрешений (особенно важно для Android 13+ и iOS)
@@ -54,22 +54,26 @@ class NotificationService {
   // Показать уведомление с прогрессом
   Future<void> showProgressNotification(String title, String body, int maxProgress, int progress) async {
     final AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'pomodoro_progress_channel', // ID канала
-      'Pomodoro Progress', // Имя канала
-      channelDescription: 'Shows the progress of the pomodoro timer.',
-      importance: Importance.low, // Низкий приоритет, чтобы не мешать
-      priority: Priority.low,
-      showProgress: true,
-      maxProgress: maxProgress,
-      progress: progress,
-      onlyAlertOnce: true, // Не издавать звук при обновлении
-      playSound: false,
-    );
+      AndroidNotificationDetails(
+        'pomodoro_progress_channel', // ID канала
+        'Pomodoro Progress', // Имя канала
+        channelDescription: 'Shows the progress of the pomodoro timer.',
+        importance: Importance.low, // Низкий приоритет, чтобы не мешать
+        priority: Priority.low,
+        showProgress: true,
+        maxProgress: maxProgress,
+        progress: progress,
+        onlyAlertOnce: true, // Не издавать звук при обновлении
+        playSound: false,
+      );
     final NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
+      NotificationDetails(android: androidPlatformChannelSpecifics);
     await flutterLocalNotificationsPlugin.show(
-        0, title, body, platformChannelSpecifics);
+      id: 0,
+      title: title,
+      body: body,
+      notificationDetails: platformChannelSpecifics
+    );
   }
 
   // Показать уведомление о завершении с звуком
@@ -85,7 +89,12 @@ class NotificationService {
     );
     const NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
-    await flutterLocalNotificationsPlugin.show(0, title, body, platformChannelSpecifics);
+    await flutterLocalNotificationsPlugin.show(
+        id: 0,
+        title: title,
+        body: body,
+        notificationDetails: platformChannelSpecifics
+    );
   }
 
   // Отменить все уведомления
