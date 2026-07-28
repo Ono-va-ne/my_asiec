@@ -82,7 +82,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       (data) {
         final jsonMsg = jsonDecode(data);
 
-        // Расшифровываем входящий текст
         final decryptedText = CryptoService.decryptText(
           jsonMsg['text'] ?? '',
           widget.chat.id,
@@ -90,6 +89,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
         final newMessage = ChatMessage(
           senderId: jsonMsg['sender_id'],
+          senderName: jsonMsg['sender_name'], // <--- Передаем имя, прилетевшее из WS
           text: decryptedText,
           createdAt: DateTime.now(),
         );
