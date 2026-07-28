@@ -62,6 +62,7 @@ dependencies:
   supabase_flutter: ^2.10.3
   url_launcher: ^6.3.1
   uuid: ^4.5.1
+  web_socket_channel: ^3.0.3
 dependency_overrides:
   material_color_utilities: ^0.12.0
 
