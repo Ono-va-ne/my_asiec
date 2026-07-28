@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../settings_screen.dart';
 import '../pomodoro_screen.dart';
 import '../hall_of_fame_screen.dart';
+import '../messenger/chat_list_screen.dart';
 import 'package:my_asiec/l10n/app_localizations.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -102,6 +103,16 @@ class _MoreScreenState extends State<MoreScreen> {
             title: Text(l10n.hallOfFame),
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const HallOfFameScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.message_outlined),
+            title: Text("Сообщения"),
+            onTap:() {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChatListScreen(currentUserId: 1)),
+              );
             },
           ),
           Divider(),
