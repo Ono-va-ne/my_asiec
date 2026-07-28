@@ -1,10 +1,11 @@
 import 'package:encrypt/encrypt.dart' as encrypt;
 
 class CryptoService {
-  // Фиксированный вектор инициализации (IV) для MVP
-  static final _iv = encrypt.IV.fromLength(16);
+  // ФИКСИРОВАННЫЙ ВЕКТОР ИНИЦИАЛИЗАЦИИ (ровно 16 символов = 16 байт)
+  // Теперь он НЕ сбрасывается и НЕ генерируется заново при перезапуске приложения!
+  static final _iv = encrypt.IV.fromUtf8('college_iv_12345');
 
-  // Генерация 32-байтного ключа на основе ID чата
+  // 32-байтный ключ чата
   static encrypt.Key _getKeyForChat(int chatId) {
     final rawKey = 'college_messenger_secret_chat_$chatId'.padRight(32, '0').substring(0, 32);
     return encrypt.Key.fromUtf8(rawKey);
@@ -21,12 +22,14 @@ class CryptoService {
   // Расшифровать Base64 в открытый текст
   static String decryptText(String cipherText, int chatId) {
     if (cipherText.isEmpty) return '';
+    
     try {
+      final sanitizedText = cipherText.replaceAll(' ', '+');
       final encrypter = encrypt.Encrypter(encrypt.AES(_getKeyForChat(chatId)));
-      return encrypter.decrypt64(cipherText, iv: _iv);
+      return encrypter.decrypt64(sanitizedText, iv: _iv);
     } catch (e) {
-      // Если сообщение не получилось расшифровать (напр. старые нешифрованные данные)
-      return cipherText; 
+      // Если это старое нешифрованное сообщение или не Base64 — возвращаем как есть
+      return cipherText;
     }
   }
 }
