@@ -1,3 +1,5 @@
+import '/services/crypto_service.dart';
+
 class Chat {
   final int id;
   final String title;
@@ -16,12 +18,20 @@ class Chat {
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
+    final chatId = json['id'] as int;
+    final rawLastMessage = json['last_message'] as String?;
+
+    // Расшифровываем последнее сообщение с помощью ключа этого чата
+    final decryptedLastMsg = rawLastMessage != null
+        ? CryptoService.decryptText(rawLastMessage, chatId)
+        : null;
+
     return Chat(
-      id: json['id'],
+      id: chatId,
       title: json['title'],
       type: json['type'],
       isReadOnly: json['is_read_only'] ?? false,
-      lastMessage: json['last_message'],
+      lastMessage: decryptedLastMsg,
       lastMessageTime: json['last_message_time'] != null
           ? DateTime.parse(json['last_message_time'])
           : null,

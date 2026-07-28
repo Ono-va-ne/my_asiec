@@ -103,6 +103,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           padding: EdgeInsets.only(left: 4.0),
                           child: Icon(Icons.lock, size: 14, color: Colors.grey),
                         ),
+                      Text(chat.id.toString(), style: const TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
                   ),
                   subtitle: Text(
