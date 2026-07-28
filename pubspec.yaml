@@ -32,6 +32,7 @@ dependencies:
   dropdown_search: ^7.0.0
   dynamic_app_icon_flutter_plus: ^1.0.1
   dynamic_color: ^1.8.1
+  encrypt: ^5.0.3
   flutter:
     sdk: flutter
   flutter_gen: ^5.9.0
