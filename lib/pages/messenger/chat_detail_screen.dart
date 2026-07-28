@@ -151,8 +151,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           children: [
             Text(widget.chat.title),
             Text(
-              widget.chat.isReadOnly ? 'Новостной канал' : widget.chat.type.toUpperCase(),
-              style: const TextStyle(fontSize: 11, color: Colors.white70),
+              widget.chat.isReadOnly ? 'Новостной канал' : widget.chat.type,
+              style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.outline),
             ),
           ],
         ),
@@ -196,12 +196,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         decoration: BoxDecoration(
-          color: isMe ? Colors.blue.shade600 : Colors.grey.shade200,
+          color: isMe ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surfaceBright,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isMe ? 16 : 0),
-            bottomRight: Radius.circular(isMe ? 0 : 16),
+            topLeft: const Radius.circular(12),
+            topRight: const Radius.circular(12),
+            bottomLeft: Radius.circular(isMe ? 12 : 2),
+            bottomRight: Radius.circular(isMe ? 2 : 12),
           ),
         ),
         child: Column(
@@ -215,16 +215,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 child: Text(
                   msg.senderName!,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade800,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               ),
             Text(
               msg.text,
               style: TextStyle(
-                color: isMe ? Colors.white : Colors.black87,
+                color: isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
                 fontSize: 15,
               ),
             ),
@@ -233,7 +233,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               "${msg.createdAt.hour.toString().padLeft(2, '0')}:${msg.createdAt.minute.toString().padLeft(2, '0')}",
               style: TextStyle(
                 fontSize: 10,
-                color: isMe ? Colors.white70 : Colors.grey.shade600,
+                color: isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onTertiaryContainer,
               ),
             ),
           ],
@@ -246,7 +246,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Widget _buildInputArea() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.primaryContainer.withAlpha(100),
       child: SafeArea(
         child: Row(
           children: [
@@ -261,22 +261,24 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     vertical: 10,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
-                  fillColor: Colors.grey.shade100,
+                  fillColor: Theme.of(context).colorScheme.primaryContainer,
                 ),
                 onFieldSubmitted: (_) => _sendMessage(),
               ),
             ),
             const SizedBox(width: 8),
-            CircleAvatar(
-              backgroundColor: Theme.of(context).primaryColor,
-              child: IconButton(
-                icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                onPressed: _sendMessage,
+            IconButton(
+              icon: Icon(Icons.send, color: Theme.of(context).colorScheme.onPrimary),
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.all(12),
               ),
+              onPressed: _sendMessage,
             ),
           ],
         ),
