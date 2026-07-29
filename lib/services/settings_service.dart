@@ -36,7 +36,7 @@ class SettingsService {
   final ValueNotifier<int> pomodoroShortBreakDurationNotifier = ValueNotifier(5);
   final ValueNotifier<int> pomodoroLongBreakDurationNotifier = ValueNotifier(15);
   // Notifier для фильтров расписания
-  final ValueNotifier<List<ScheduleFilter>> scheduleFiltersNotifier = ValueNotifier([]);
+  late final ValueNotifier<List<ScheduleFilter>> scheduleFiltersNotifier = ValueNotifier([]);
   final ValueNotifier<List<String>> favoriteHandbookTagsNotifier = ValueNotifier([]);
 
 
@@ -192,9 +192,10 @@ class SettingsService {
   // --- Методы для управления фильтрами расписания ---
 
   void _loadScheduleFilters() {
-    final List<String>? filtersJson = _prefs?.getStringList(_scheduleFiltersKey);
-
-    scheduleFiltersNotifier.value = filtersJson!
+    final List<String> filtersJson =
+        _prefs?.getStringList(_scheduleFiltersKey) ??
+            []; // Provide an empty list if null
+    scheduleFiltersNotifier.value = filtersJson
       .map((json) => ScheduleFilter.fromJson(json))
       .toList();
   }
