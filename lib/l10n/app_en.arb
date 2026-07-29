@@ -51,6 +51,8 @@
   "@scheduleScreen": {},
   "taskScreen": "Tasks",
   "@taskScreen": {},
+  "messengerScreen": "Messenger",
+  "@messengerScreen": {},
   "handbookScreen": "Handbook",
   "@handbookScreen": {},
   "moreScreen": "More",

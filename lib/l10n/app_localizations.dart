@@ -248,6 +248,12 @@ abstract class AppLocalizations {
   /// **'Задания'**
   String get taskScreen;
 
+  /// No description provided for @messengerScreen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сообщения'**
+  String get messengerScreen;
+
   /// No description provided for @handbookScreen.
   ///
   /// In ru, this message translates to:

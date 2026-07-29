@@ -51,6 +51,8 @@
   "@scheduleScreen": {},
   "taskScreen": "Задания",
   "@taskScreen": {},
+  "messengerScreen": "Сообщения",
+  "@messengerScreen": {},
   "handbookScreen": "Справочник",
   "@handbookScreen": {},
   "moreScreen": "Больше",

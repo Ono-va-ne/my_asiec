@@ -3,6 +3,7 @@ import '../settings_screen.dart';
 import '../pomodoro_screen.dart';
 import '../hall_of_fame_screen.dart';
 import '../messenger/chat_list_screen.dart';
+import '../handbook_list_screen.dart';
 import 'package:my_asiec/l10n/app_localizations.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -106,12 +107,12 @@ class _MoreScreenState extends State<MoreScreen> {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.message_outlined),
-            title: Text("Сообщения"),
+            leading: const Icon(Icons.bookmark_border),
+            title: Text(l10n.handbookScreen),
             onTap:() {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ChatListScreen(currentUserId: 1)),
+                MaterialPageRoute(builder: (context) => const HandbookListScreen()),
               );
             },
           ),

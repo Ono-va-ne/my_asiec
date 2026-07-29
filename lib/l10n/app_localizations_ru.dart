@@ -84,6 +84,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get taskScreen => 'Задания';
 
   @override
+  String get messengerScreen => 'Сообщения';
+
+  @override
   String get handbookScreen => 'Справочник';
 
   @override

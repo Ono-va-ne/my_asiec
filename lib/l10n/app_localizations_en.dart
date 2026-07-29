@@ -84,6 +84,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskScreen => 'Tasks';
 
   @override
+  String get messengerScreen => 'Messenger';
+
+  @override
   String get handbookScreen => 'Handbook';
 
   @override

@@ -2,29 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import '../handbook_view_screen.dart';
-import '../handbook_create_screen.dart';
-import '../../l10n/app_localizations.dart';
-import '../../data/text_emojis.dart';
-import '../../services/settings_service.dart';
+import 'handbook_view_screen.dart';
+import 'handbook_create_screen.dart';
+import '../l10n/app_localizations.dart';
+import '../data/text_emojis.dart';
+import '../services/settings_service.dart';
 
-class HandbookBySpecialtyScreen extends StatefulWidget {
-  const HandbookBySpecialtyScreen({super.key});
-
-  // final String specialtyId;
-  // final String specialtyName;
-  // const HandbookBySpecialtyScreen({
-  //   super.key,
-  //   required this.specialtyId,
-  //   required this.specialtyName,
-  // });
+class HandbookListScreen extends StatefulWidget {
+  const HandbookListScreen({super.key});
 
   @override
-  State<HandbookBySpecialtyScreen> createState() =>
-      _HandbookBySpecialtyScreenState();
+  State<HandbookListScreen> createState() =>
+      _HandbookListScreenState();
 }
 
-class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
+class _HandbookListScreenState extends State<HandbookListScreen> {
   final _client = Supabase.instance.client;
   List<Map<String, dynamic>> _allItems = [];
   List<Map<String, dynamic>> _filteredItems = [];
@@ -177,7 +169,7 @@ class _HandbookBySpecialtyScreenState extends State<HandbookBySpecialtyScreen> {
     final l10n = AppLocalizations.of(context)!;
     return SafeArea(
       child: Scaffold(
-        // appBar: AppBar(title: Text(widget.specialtyName)),
+        appBar: AppBar(title: Text(l10n.handbookScreen)),
         body:_loading
           ? const Center(child: CircularProgressIndicator())
           : (_allItems.isEmpty)

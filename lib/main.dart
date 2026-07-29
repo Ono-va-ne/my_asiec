@@ -9,8 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'pages/main/schedule_screen.dart';
 import 'pages/main/homework_screen.dart';
-import 'pages/main/handbook_list_screen.dart';
 import 'pages/main/more_screen.dart';
+import 'pages/messenger/chat_list_screen.dart';
 
 import '../models/homework.dart';
 // import '../data/group_uploader.dart';
@@ -193,7 +193,8 @@ class _MainScreenState extends State<MainScreen> {
   static  final List<Widget> _widgetOptions = <Widget>[
     ScheduleScreen(),
     HomeworkScreen(),
-    HandbookBySpecialtyScreen(),
+    ChatListScreen(currentUserId: 1), // TODO: Брать ID из `settings_service.dart`, но для начала сделать экран авторизации
+    // HandbookBySpecialtyScreen(),
     MoreScreen(),
   ];
 
@@ -238,9 +239,9 @@ class _MainScreenState extends State<MainScreen> {
             label: AppLocalizations.of(context)!.taskScreen,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.bookmark_border),
-            selectedIcon: const Icon(Icons.bookmark),
-            label: AppLocalizations.of(context)!.handbookScreen,
+            icon: const Icon(Icons.chat_bubble_outline),
+            selectedIcon: const Icon(Icons.chat_bubble),
+            label: AppLocalizations.of(context)!.messengerScreen,
           ),
           NavigationDestination(
             icon: const Icon(Icons.more_horiz),

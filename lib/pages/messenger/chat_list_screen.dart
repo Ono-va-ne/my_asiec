@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_asiec/l10n/app_localizations.dart';
 import '../../models/chat.dart';
 import '../../services/chat_api.dart';
 import 'chat_detail_screen.dart'; // Экран конкретного чата с сообщениями
@@ -44,9 +45,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Сообщения'),
+        title: Text(l10n.messengerScreen),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
