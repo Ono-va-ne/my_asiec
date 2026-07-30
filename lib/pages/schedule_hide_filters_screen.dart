@@ -170,7 +170,6 @@ class _ScheduleHideFiltersScreenState extends State<ScheduleHideFiltersScreen> {
       body: ValueListenableBuilder<List<ScheduleFilter>>(
         valueListenable: settingsService.scheduleFiltersNotifier,
         builder: (context, filters, _) {
-          final builtInFilters = filters.where((f) => f.isBuiltIn).toList();
           final customFilters = filters.where((f) => !f.isBuiltIn).toList();
           // TODO: Исправить удаление фильтров
           return ListView(

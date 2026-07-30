@@ -193,7 +193,7 @@ class _MainScreenState extends State<MainScreen> {
   static  final List<Widget> _widgetOptions = <Widget>[
     ScheduleScreen(),
     HomeworkScreen(),
-    ChatListScreen(), // TODO: Брать ID из `settings_service.dart`, но для начала сделать экран авторизации
+    ChatListScreen(),
     MoreScreen(),
   ];
 
