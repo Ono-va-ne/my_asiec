@@ -158,6 +158,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             ),
                           ).then((_) => _refreshChats());
                         },
+                        trailing: chat.lastMessageTime != null
+                      ? Text(
+                          "${chat.lastMessageTime!.hour.toString().padLeft(2, '0')}:${chat.lastMessageTime!.minute.toString().padLeft(2, '0')}",
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        )
+                      : null,
                       );
                     },
                   );
