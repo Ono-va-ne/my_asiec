@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_asiec/l10n/app_localizations.dart';
+import 'package:my_asiec/pages/messenger/search_screen.dart';
 import '../../models/chat.dart';
 import '../../services/chat_api.dart';
 import '../../services/auth_service.dart';
@@ -59,8 +60,16 @@ class _ChatListScreenState extends State<ChatListScreen> {
         title: Text(AppLocalizations.of(context)!.messengerScreen),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshChats,
+            icon: const Icon(Icons.search),
+            tooltip: "Поиск",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SearchScreen(
+                  currentUserId: _currentUserId ?? 0,
+                ) )
+              );
+            },
           ),
         ],
       ),
