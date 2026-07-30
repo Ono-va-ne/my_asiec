@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:my_asiec/pages/profile/profile_screen.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../models/chat.dart';
 import '../../models/chat_message.dart';
@@ -210,15 +211,29 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           children: [
             // Имя отправителя (отображаем только для чужих сообщений)
             if (!isMe && msg.senderName != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2.0),
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero, // Removes internal text padding
+                  minimumSize: Size.zero, // Overrides the default 48x48dp minimum size
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Removes the outer touch target margin
+                ),
+                onPressed:() {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProfileScreen(
+                        targetUserId: msg.senderId,
+                        currentUserId: widget.currentUserId,
+                      ),
+                    ),
+                  );
+                },
                 child: Text(
                   msg.senderName!,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                  )
                 ),
               ),
             Text(

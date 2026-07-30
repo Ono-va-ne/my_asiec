@@ -9,10 +9,10 @@ class ProfileScreen extends StatefulWidget {
   final int currentUserId; // Наш ID
 
   const ProfileScreen({
-    Key? key,
+    super.key,
     required this.targetUserId,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -152,6 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // Имя
                 Text(
                   profile['full_name'] ?? '',
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
