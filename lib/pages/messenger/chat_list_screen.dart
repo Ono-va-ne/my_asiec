@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_asiec/l10n/app_localizations.dart';
+import 'package:my_asiec/pages/messenger/create_chat_screen.dart';
 import 'package:my_asiec/pages/messenger/search_screen.dart';
 import '../../models/chat.dart';
 import '../../services/chat_api.dart';
@@ -173,6 +174,24 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ],
         ),
       ),
+      floatingActionButton: _currentUserId != null
+        ? FloatingActionButton(
+            child: const Icon(Icons.add_comment),
+            onPressed: () async {
+              final created = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CreateChatScreen(
+                    currentUserId: _currentUserId!,
+                  ),
+                ),
+              );
+              if (created == true) {
+                _refreshChats(); // Обновляем список чатов
+              }
+            },
+          )
+        : null,
     );
   }
 }

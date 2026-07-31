@@ -59,4 +59,45 @@ class ChatApiService {
       throw Exception('Ошибка загрузки сообщений');
     }
   }
+
+  // Получить всех пользователей для выбора (одногруппники сверху)
+  static Future<List<Map<String, dynamic>>> getUsersForInvite(int currentUserId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/for_invite/$currentUserId'),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Ошибка загрузки участников');
+    }
+  }
+
+  // Создать новый чат
+  static Future<int> createChat({
+    required String title,
+    required String type,
+    required int createdBy,
+    required List<int> memberIds,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/chats/create'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'title': title,
+        'type': type,
+        'created_by': createdBy,
+        'member_ids': memberIds,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['chatId'];
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['detail'] ?? 'Ошибка создания чата');
+    }
+  }
 }
