@@ -132,17 +132,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.all(24.0),
             child: Column(
               children: [
-                const SizedBox(height: 20),
+                const SizedBox(height: 8),
 
                 // Аватарка с инициалами
                 CircleAvatar(
                   radius: 50,
-                  backgroundColor: Theme.of(context).primaryColor,
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                   child: Text(
                     initials,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 36,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -165,7 +165,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
                     color: roleBadge['color'].withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     roleBadge['label'],
@@ -194,7 +194,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   subtitle: Text(profile['login'] ?? ''),
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
                 // Кнопка "Написать сообщение" (показываем только на чужом профиле)
                 if (!isMyProfile)
@@ -207,6 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).primaryColor,
                         foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
                       ),
                       onPressed: _openDirectChat,
                     ),

@@ -1,5 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:my_asiec/services/media_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:my_asiec/pages/profile/profile_screen.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../models/chat.dart';
@@ -27,7 +31,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   WebSocketChannel? _wsChannel;
   List<ChatMessage> _messages = [];
+  final List<PlatformFile> _pendingFiles = [];
   bool _isLoading = true;
+  bool _isUploadingFile = false;
 
   // Базовый адрес WebSocket:
   // 10.0.2.2 — для Android эмулятора
@@ -53,6 +59,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           senderName: msg.senderName,
           text: CryptoService.decryptText(msg.text, widget.chat.id),
           createdAt: msg.createdAt,
+          mediaFiles: msg.mediaFiles,
         );
       }).toList();
 
@@ -88,12 +95,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           widget.chat.id,
         );
 
-        final newMessage = ChatMessage(
-          senderId: jsonMsg['sender_id'],
-          senderName: jsonMsg['sender_name'], // <--- Передаем имя, прилетевшее из WS
-          text: decryptedText,
-          createdAt: DateTime.now(),
-        );
+        final newMessage = ChatMessage.fromWsJson({
+          ...jsonMsg,
+          'text': decryptedText,
+        });
 
         setState(() {
           _messages.add(newMessage);
@@ -107,20 +112,58 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
-  void _sendMessage() {
-    final text = _messageController.text.trim();
-    if (text.isEmpty || _wsChannel == null) return;
+  // ВЫБОР И ОТПРАВКА МЕДИАФАЙЛА
+  Future<void> _pickAndSendMedia() async {
+    final result = await FilePicker.pickFiles();
+    if (result == null || result.files.isEmpty) return;
 
-    // 1. Зашифровываем перед отправкой
+    setState(() {
+      _pendingFiles.addAll(result.files.where((f) => f.path != null));
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty && _pendingFiles.isEmpty) return;
+    if (_wsChannel == null) return;
+
+    List<int> uploadedMediaIds = [];
+
+    // Если есть прикрепленные файлы — загружаем их на сервер
+    if (_pendingFiles.isNotEmpty) {
+      setState(() => _isUploadingFile = true);
+      try {
+        for (var pFile in _pendingFiles) {
+          final file = File(pFile.path!);
+          final mediaData = await MediaService.uploadOrGetMedia(file, pFile.name);
+          uploadedMediaIds.add(mediaData['media_id']);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка загрузки файлов: $e')),
+          );
+        }
+        setState(() => _isUploadingFile = false);
+        return;
+      }
+    }
+
+    // Зашифровываем перед отправкой
     final encryptedText = CryptoService.encryptText(text, widget.chat.id);
 
-    // 2. Отправляем зашифрованный JSON в WebSocket
+    // Отправляем зашифрованный JSON в WebSocket
     final payload = jsonEncode({
       "encrypted_text": encryptedText,
+      "media_ids": uploadedMediaIds,
     });
 
     _wsChannel!.sink.add(payload);
     _messageController.clear();
+    setState(() {
+      _pendingFiles.clear();
+      _isUploadingFile = false;
+    });
   }
 
   void _scrollToBottom() {
@@ -133,6 +176,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
       }
     });
+  }
+
+  // Открыть/скачать файл при клике
+  void _openFile(String? mediaUrl) async {
+    if (mediaUrl == null) return;
+    final fullUrl = '${MediaService.baseUrl}$mediaUrl';
+    final uri = Uri.parse(fullUrl);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  String _formatFileSize(int? bytes) {
+    if (bytes == null) return '';
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
   @override
@@ -160,6 +218,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       ),
       body: Column(
         children: [
+          if (_isUploadingFile)
+            LinearProgressIndicator(backgroundColor: Theme.of(context).primaryColor),
           // Список сообщений
           Expanded(
             child: _isLoading
@@ -178,16 +238,88 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                         },
                       ),
           ),
-
+          if (_pendingFiles.isNotEmpty) _buildPendingFilesBar(),
           // Поле ввода текста (скрывается, если новостной канал / read-only)
           if (!widget.chat.isReadOnly) _buildInputArea(),
         ],
       ),
     );
   }
+  
+  // Панель с миниатюрами прикрепленных файлов перед отправкой
+  Widget _buildPendingFilesBar() {
+    return Container(
+      height: 75,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      color: Colors.grey.shade100,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: _pendingFiles.length,
+        itemBuilder: (context, index) {
+          final file = _pendingFiles[index];
+          final isImage = ['jpg', 'jpeg', 'png', 'webp'].any((ext) => file.name.toLowerCase().endsWith(ext));
+
+          return Stack(
+            children: [
+              Container(
+                width: 65,
+                height: 65,
+                margin: const EdgeInsets.only(right: 8, top: 4),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: isImage && file.path != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(File(file.path!), fit: BoxFit.cover),
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.insert_drive_file, color: Colors.blue),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            child: Text(
+                              file.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 9),
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+
+              // КНОПКА КРЕСТИКА ДЛЯ УДАЛЕНИЯ ФАЙЛА ИЗ ПРИКРЕПЛЕННЫХ
+              Positioned(
+                top: 0,
+                right: 4,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _pendingFiles.removeAt(index);
+                    });
+                  },
+                  child: const CircleAvatar(
+                    radius: 10,
+                    backgroundColor: Colors.red,
+                    child: Icon(Icons.close, size: 12, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   // Виджет сообщения ("Облачко")
   Widget _buildMessageBubble(ChatMessage msg, bool isMe) {
+    // final isImage = msg.mimeType?.startsWith('image/') ?? false;
+    // final fullMediaUrl = msg.mediaUrl != null ? '${MediaService.baseUrl}${msg.mediaUrl}' : null;
+    
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -206,8 +338,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ),
         ),
         child: Column(
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             // Имя отправителя (отображаем только для чужих сообщений)
             if (!isMe && msg.senderName != null)
@@ -236,13 +367,80 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   )
                 ),
               ),
-            Text(
-              msg.text,
-              style: TextStyle(
-                color: isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
-                fontSize: 15,
+
+            // Отрисовка списка прикрепленных файлов
+            if (msg.mediaFiles.isNotEmpty)
+              Column(
+                children: msg.mediaFiles.map((media) {
+                  final isImage = media.mimeType.startsWith('image/');
+                  final fullUrl = '${MediaService.baseUrl}${media.url}';
+
+                  if (isImage) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 4.0),
+                      child: GestureDetector(
+                        onTap: () => _openFile(media.url),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(fullUrl, fit: BoxFit.cover),
+                        ),
+                      ),
+                    );
+                  }
+
+                  return InkWell(
+                    onTap: () => _openFile(media.url),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isMe ? Colors.blue.shade700 : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.insert_drive_file, color: isMe ? Colors.white : Colors.blue),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  media.originalName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: isMe ? Colors.white : Colors.black87,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  _formatFileSize(media.fileSize),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isMe ? Colors.white70 : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.download, color: isMe ? Colors.white70 : Colors.grey),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
-            ),
+
+            if (msg.text.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  msg.text,
+                  style: TextStyle(color: isMe ? Colors.white : Colors.black87),
+                ),
+              ),
+
             const SizedBox(height: 2),
             Text(
               "${msg.createdAt.hour.toString().padLeft(2, '0')}:${msg.createdAt.minute.toString().padLeft(2, '0')}",
@@ -265,6 +463,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       child: SafeArea(
         child: Row(
           children: [
+            IconButton(
+              icon: Icon(Icons.attach_file, color: Theme.of(context).colorScheme.primary),
+              onPressed: _isUploadingFile ? null : _pickAndSendMedia,
+            ),
             Expanded(
               child: TextFormField(
                 controller: _messageController,

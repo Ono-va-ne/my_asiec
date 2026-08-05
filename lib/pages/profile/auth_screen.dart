@@ -23,7 +23,6 @@ class _AuthScreenState extends State<AuthScreen> {
   final Map<String, String> rolesMap = {
     'student': 'Студент',
     'teacher': 'Преподаватель',
-    'council': 'Студенческий совет',
     'director': 'Дирекция',
     'admin': 'Администратор',
   };
