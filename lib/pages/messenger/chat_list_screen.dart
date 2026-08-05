@@ -17,27 +17,30 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   int? _currentUserId;
+  bool _isAuthChecked = false;
   late Future<List<Chat>> _chatsFuture;
 
   @override
   void initState() {
     super.initState();
-    _chatsFuture = _fetchChatsAndSetUserId(); // Initialize _chatsFuture synchronously
+    _chatsFuture = _loadInitialData();
   }
 
-  // This method fetches the userId and chats, and updates _currentUserId.
-  // It returns the Future for the chats.
-  Future<List<Chat>> _fetchChatsAndSetUserId() async {
+  Future<List<Chat>> _loadInitialData() async {
     final userId = await AuthService.getCurrentUserId();
-    _currentUserId = userId; // Update _currentUserId directly, no setState needed here.
+    if(mounted) {
+      setState(() {
+        _currentUserId = userId;
+        _isAuthChecked = true;
+      });
+    }
     return ChatApiService.getUserChats(userId ?? 0);
   }
 
   // This method is called to refresh the UI.
   Future<void> _refreshChats() async {
-    setState(() {
-      _chatsFuture = _fetchChatsAndSetUserId(); // Re-assign the future to trigger FutureBuilder
-    });
+    _chatsFuture = _loadInitialData();
+    setState(() {}); // Trigger rebuild
   }
 
   Map<String, dynamic> _getChatTypeStyle(String type) {
@@ -79,7 +82,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
         child: Column(
           children: [
             // Баннер для гостевого режима
-            if (_currentUserId == null)
+            if (_isAuthChecked && _currentUserId == null)
               Container(
                 color: Colors.amber.withAlpha(55),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
