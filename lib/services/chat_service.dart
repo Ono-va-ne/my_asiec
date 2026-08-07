@@ -1,13 +1,12 @@
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:convert';
+import '../some_fuv.dart';
 
 class ChatService {
   late WebSocketChannel channel;
 
   void connectToChat(int chatId, int userId) {
-    // В локальной сети / эмуляторе:
-    // Android Emulator -> 10.0.2.2, iOS / реальное устройство -> IP твоего ПК в Wi-Fi
-    final wsUrl = Uri.parse('ws://10.0.2.2:8000/ws/chat/$chatId/$userId');
+    final wsUrl = Uri.parse('ws://$apiBackendUrl:$apiBackendPort/ws/chat/$chatId/$userId');
     channel = WebSocketChannel.connect(wsUrl);
 
     // Слушаем входящие сообщения

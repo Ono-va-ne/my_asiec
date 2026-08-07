@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../some_fuv.dart';
 
 class AuthService {
-  static const String baseUrl = 'http://10.0.2.2:8000'; // Измените IP при необходимости
+  static const String baseUrl = 'http://$apiBackendUrl:$apiBackendPort';
 
   // Сохранить данные сессии
   static Future<void> saveSession(int userId, String fullName, String role) async {

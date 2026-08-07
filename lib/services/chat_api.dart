@@ -2,12 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/chat.dart';
 import '../models/chat_message.dart';
+import '../some_fuv.dart';
 
 class ChatApiService {
-  // Для эмулятора Android — 10.0.2.2
-  // Для iOS эмулятора — localhost
-  // Для реального телефона — локальный IP твоего ПК в Wi-Fi (напр. 192.168.1.50)
-  static const String baseUrl = 'http://10.0.2.2:8000';
+  static const String baseUrl = 'http://$apiBackendUrl:$apiBackendPort';
 
   // Получение списка чатов
   static Future<List<Chat>> getUserChats(int userId) async {

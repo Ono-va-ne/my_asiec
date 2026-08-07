@@ -10,6 +10,7 @@ import '../../models/chat.dart';
 import '../../models/chat_message.dart';
 import '../../services/chat_api.dart';
 import '../../services/crypto_service.dart';
+import '../../some_fuv.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final Chat chat;
@@ -35,11 +36,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _isLoading = true;
   bool _isUploadingFile = false;
 
-  // Базовый адрес WebSocket:
-  // 10.0.2.2 — для Android эмулятора
-  // localhost — для iOS эмулятора
-  // 192.168.x.x — локальный IP вашего ПК для физического телефона
-  final String _wsBaseUrl = 'ws://10.0.2.2:8000';
+  final String _wsBaseUrl = 'ws://$apiBackendUrl:$apiBackendPort';
 
   @override
   void initState() {

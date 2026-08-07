@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
+import '../some_fuv.dart';
 
 class MediaService {
-  static const String baseUrl = 'http://10.0.2.2:8000';
+  static const String baseUrl = 'http://$apiBackendUrl:$apiBackendPort';
 
   // 1. Быстрое вычисление SHA-256 хэша файла
   static Future<String> calculateSha256(File file) async {
