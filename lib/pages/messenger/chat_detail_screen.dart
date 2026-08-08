@@ -455,10 +455,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   // Панель ввода и отправки текста
   Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       color: Theme.of(context).colorScheme.primaryContainer.withAlpha(100),
       child: SafeArea(
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             IconButton(
               icon: Icon(Icons.attach_file, color: Theme.of(context).colorScheme.primary),
@@ -468,9 +469,31 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               child: TextFormField(
                 controller: _messageController,
                 textCapitalization: TextCapitalization.sentences,
+                keyboardType: TextInputType.multiline,
+                maxLines: 3,
+                minLines: 1,
+                maxLength: 4096,
+                onChanged: (value) {
+                  setState(() {});
+                },
+                buildCounter: (
+                  BuildContext context, {
+                  required int currentLength,
+                  required int? maxLength,
+                  required bool isFocused,
+                }) {
+                  // Показывать счетчик только если введено больше 10 символов
+                  if (currentLength > 3072) {
+                    return Text(
+                      '$currentLength / $maxLength',
+                      style: TextStyle(color: Theme.of(context).colorScheme.outline),
+                    );
+                  }
+                  return null; // Возвращаем null, чтобы полностью скрыть счетчик и убрать отступ под полем
+                },
                 decoration: InputDecoration(
                   hintText: 'Напишите сообщение...',
-                  contentPadding: const EdgeInsets.symmetric(
+                  contentPadding: EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 10,
                   ),
