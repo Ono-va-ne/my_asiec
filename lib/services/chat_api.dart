@@ -18,6 +18,18 @@ class ChatApiService {
       throw Exception('Не удалось загрузить список чатов');
     }
   }
+  // Получение информации о чате
+  static Future<Map<String, dynamic>> getChatInfo(int chatId, int currentUserId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/chats/$chatId/info?current_user_id=$currentUserId'),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Не удалось загрузить информацию о чате');
+    }
+  }
   // Получение истории чата
   static Future<List<ChatMessage>> getChatMessages(int chatId) async {
     final response = await http.get(Uri.parse('$baseUrl/chats/$chatId/messages'));

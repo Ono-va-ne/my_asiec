@@ -38,10 +38,74 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   final String _wsBaseUrl = 'ws://$apiBackendUrl:$apiBackendPort';
 
+  int _membersCount = 0;
+  bool _isInterlocutorOnline = false;
+
   @override
   void initState() {
     super.initState();
     _initChat();
+    _loadChatInfo();
+  }
+
+  Future<void> _loadChatInfo() async {
+    try {
+      final info = await ChatApiService.getChatInfo(widget.chat.id, widget.currentUserId);
+      if (mounted) {
+        setState(() {
+          _membersCount = info['members_count'] ?? 0;
+          _isInterlocutorOnline = info['is_online'] ?? false;
+        });
+      }
+    } catch (e) {
+      print('Ошибка загрузки инфо о чате: $e');
+    }
+  }
+
+  // Правильное склонение русского слова "участник"
+  String _formatMembersCount(int count) {
+    if (count % 10 == 1 && count % 100 != 11) {
+      return '$count участник';
+    } else if ([2, 3, 4].contains(count % 10) && ![12, 13, 14].contains(count % 100)) {
+      return '$count участника';
+    } else {
+      return '$count участников';
+    }
+  }
+
+  // Формирование текста подзаголовка
+  Widget? _buildAppBarSubtitle() {
+    if (widget.chat.type == 'group' || widget.chat.type == 'subgroup') {
+      return Text(
+        _formatMembersCount(_membersCount),
+        style: const TextStyle(fontSize: 12, color: Colors.white70),
+      );
+    } else if (widget.chat.type == 'direct') {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: _isInterlocutorOnline ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline,
+            ),
+          ),
+          Text(
+            _isInterlocutorOnline ? 'В сети' : 'Не в сети',
+            style: TextStyle(
+              fontSize: 12,
+              color: _isInterlocutorOnline ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.outline,
+            ),
+          ),
+        ],
+      );
+    } else if (widget.chat.type == 'news') {
+      return null; // Для новостей ничего не отображаем
+    }
+    return null;
   }
 
   Future<void> _initChat() async {
@@ -211,10 +275,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(widget.chat.title),
-            Text(
-              widget.chat.isReadOnly ? 'Новостной канал' : widget.chat.type,
-              style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.outline),
-            ),
+            if (_buildAppBarSubtitle() != null) _buildAppBarSubtitle()!,
           ],
         ),
       ),
@@ -343,7 +404,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             // Имя отправителя (отображаем только для чужих сообщений)
-            if (!isMe && msg.senderName != null)
+            if (!isMe && msg.senderName != null && widget.chat.type != 'direct')
               TextButton(
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero, // Removes internal text padding
@@ -393,7 +454,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   return InkWell(
                     onTap: () => _openFile(media.url),
                     child: Container(
-                      margin: const EdgeInsets.only(bottom: 4),
+                      // margin: const EdgeInsets.only(bottom: 4),
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       decoration: BoxDecoration(
                         // color: isMe ? Colors.blue.shade700 : Theme.of(context).colorScheme.surface,
