@@ -85,23 +85,27 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     // Слушаем входящие сообщения из сокета
     _wsChannel!.stream.listen(
       (data) {
-        final jsonMsg = jsonDecode(data);
+        try {
+          final jsonMsg = jsonDecode(data);
 
-        final decryptedText = CryptoService.decryptText(
-          jsonMsg['text'] ?? '',
-          widget.chat.id,
-        );
+          final decryptedText = CryptoService.decryptText(
+            jsonMsg['text'] ?? '',
+            widget.chat.id,
+          );
 
-        final newMessage = ChatMessage.fromWsJson({
-          ...jsonMsg,
-          'text': decryptedText,
-        });
+          final newMessage = ChatMessage.fromWsJson({
+            ...jsonMsg,
+            'text': decryptedText,
+          });
 
-        setState(() {
-          _messages.add(newMessage);
-        });
-
-        _scrollToBottom();
+          setState(() {
+            _messages.add(newMessage);
+          });
+          _scrollToBottom();
+        } catch (e, stack) {
+          print('Ошибка обработки сообщения: $e');
+          print(stack);
+        }
       },
       onError: (error) {
         print('WebSocket ошибка: $error');
@@ -121,6 +125,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
+    print('Отправлено');
     if (text.isEmpty && _pendingFiles.isEmpty) return;
     if (_wsChannel == null) return;
 
@@ -167,7 +172,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0.0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -225,12 +230,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     ? const Center(child: Text('Нет сообщений'))
                     : ListView.builder(
                         controller: _scrollController,
+                        reverse: true,
                         padding: const EdgeInsets.all(12),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) {
-                          final msg = _messages[index];
+                          final msg = _messages[_messages.length - 1 - index];
                           final isMe = msg.senderId == widget.currentUserId;
-
                           return _buildMessageBubble(msg, isMe);
                         },
                       ),
@@ -248,7 +253,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     return Container(
       height: 75,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      color: Colors.grey.shade100,
+      color: Theme.of(context).colorScheme.primaryContainer.withAlpha(100),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _pendingFiles.length,
@@ -263,7 +268,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 height: 65,
                 margin: const EdgeInsets.only(right: 8, top: 4),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: Theme.of(context).colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: isImage && file.path != null
@@ -274,7 +279,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.insert_drive_file, color: Colors.blue),
+                          Icon(Icons.insert_drive_file, color: Theme.of(context).colorScheme.primary),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 2.0),
                             child: Text(
@@ -288,7 +293,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       ),
               ),
 
-              // КНОПКА КРЕСТИКА ДЛЯ УДАЛЕНИЯ ФАЙЛА ИЗ ПРИКРЕПЛЕННЫХ
+              // Удаление прикреплённого файла
               Positioned(
                 top: 0,
                 right: 4,
@@ -298,10 +303,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       _pendingFiles.removeAt(index);
                     });
                   },
-                  child: const CircleAvatar(
+                  child: CircleAvatar(
                     radius: 10,
-                    backgroundColor: Colors.red,
-                    child: Icon(Icons.close, size: 12, color: Colors.white),
+                    backgroundColor: Theme.of(context).colorScheme.tertiary,
+                    child: Icon(Icons.close, size: 12, color: Theme.of(context).colorScheme.onTertiary),
                   ),
                 ),
               ),
@@ -321,7 +326,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
@@ -330,8 +335,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(12),
             topRight: const Radius.circular(12),
-            bottomLeft: Radius.circular(isMe ? 12 : 2),
-            bottomRight: Radius.circular(isMe ? 2 : 12),
+            bottomLeft: Radius.circular(isMe ? 12 : 6),
+            bottomRight: Radius.circular(isMe ? 6 : 12),
           ),
         ),
         child: Column(
@@ -374,7 +379,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
                   if (isImage) {
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0),
+                      padding: const EdgeInsets.only(bottom: 4.0, top: 4),
                       child: GestureDetector(
                         onTap: () => _openFile(media.url),
                         child: ClipRRect(
@@ -389,14 +394,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     onTap: () => _openFile(media.url),
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 4),
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
                       decoration: BoxDecoration(
-                        color: isMe ? Colors.blue.shade700 : Colors.white,
+                        // color: isMe ? Colors.blue.shade700 : Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.insert_drive_file, color: isMe ? Colors.white : Colors.blue),
+                          CircleAvatar(
+                            backgroundColor: isMe ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).colorScheme.primary,
+                            foregroundColor: isMe ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.surface,
+                            child: Icon(Icons.insert_drive_file)
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Column(
@@ -407,21 +416,21 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: isMe ? Colors.white : Colors.black87,
-                                    fontWeight: FontWeight.bold,
+                                    color: isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
+                                    // fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 Text(
                                   _formatFileSize(media.fileSize),
                                   style: TextStyle(
                                     fontSize: 10,
-                                    color: isMe ? Colors.white70 : Colors.grey,
+                                    color: isMe ? Theme.of(context).colorScheme.onPrimary.withAlpha(155) : Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(155),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          Icon(Icons.download, color: isMe ? Colors.white70 : Colors.grey),
+                          // Icon(Icons.download, color: isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer),
                         ],
                       ),
                     ),
@@ -434,11 +443,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 padding: const EdgeInsets.only(top: 4.0),
                 child: Text(
                   msg.text,
-                  style: TextStyle(color: isMe ? Colors.white : Colors.black87),
+                  textAlign: TextAlign.start,
+                  style: TextStyle(color: isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface),
                 ),
               ),
 
-            const SizedBox(height: 2),
+            // const SizedBox(height: 2),
             Text(
               "${msg.createdAt.hour.toString().padLeft(2, '0')}:${msg.createdAt.minute.toString().padLeft(2, '0')}",
               style: TextStyle(

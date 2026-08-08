@@ -43,7 +43,9 @@ class ChatMessage {
 
   factory ChatMessage.fromRestJson(Map<String, dynamic> json) {
     final rawMedia = (json['media_files'] as List? ?? []);
-    final mediaList = rawMedia.map((m) => MediaAttachment.fromJson(m)).toList();
+    final mediaList = rawMedia
+        .map((m) => MediaAttachment.fromJson(Map<String, dynamic>.from(m as Map)))
+        .toList();
 
     return ChatMessage(
       id: json['id'],
@@ -57,7 +59,9 @@ class ChatMessage {
 
   factory ChatMessage.fromWsJson(Map<String, dynamic> json) {
     final rawMedia = (json['media_files'] as List? ?? []);
-    final mediaList = rawMedia.map((m) => MediaAttachment.fromJson(m)).toList();
+    final mediaList = rawMedia
+        .map((m) => MediaAttachment.fromJson(Map<String, dynamic>.from(m as Map)))
+        .toList();
 
     return ChatMessage(
       senderId: json['sender_id'],
