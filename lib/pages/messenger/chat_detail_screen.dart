@@ -11,6 +11,7 @@ import '../../models/chat_message.dart';
 import '../../services/chat_api.dart';
 import '../../services/crypto_service.dart';
 import '../../some_fuv.dart';
+import 'chat_info_screen.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final Chat chat;
@@ -35,6 +36,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final List<PlatformFile> _pendingFiles = [];
   bool _isLoading = true;
   bool _isUploadingFile = false;
+  int? _interlocutorId;
 
   final String _wsBaseUrl = 'ws://$apiBackendUrl:$apiBackendPort';
 
@@ -55,6 +57,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         setState(() {
           _membersCount = info['members_count'] ?? 0;
           _isInterlocutorOnline = info['is_online'] ?? false;
+          _interlocutorId = info['interlocutor_id'];
         });
       }
     } catch (e) {
@@ -259,6 +262,50 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  Future<void> _onAppBarTap() async {
+    if (widget.chat.type == 'direct') {
+      int? targetId = _interlocutorId;
+
+      // Если ID собеседника еще не успел подгрузиться, загружаем его прямо сейчас!
+      if (targetId == null) {
+        try {
+          final info = await ChatApiService.getChatInfo(widget.chat.id, widget.currentUserId);
+          targetId = info['interlocutor_id'];
+          if (mounted) {
+            setState(() {
+              _interlocutorId = targetId;
+            });
+          }
+        } catch (e) {
+          print('Ошибка получения ID собеседника: $e');
+        }
+      }
+
+      // Если ID найден — открываем его профиль!
+      if (targetId != null && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfileScreen(
+              targetUserId: targetId!,
+              currentUserId: widget.currentUserId,
+            ),
+          ),
+        );
+      }
+    } else {
+      // Для групп и каналов открываем экран информации о чате
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatInfoScreen(
+            chatId: widget.chat.id,
+            currentUserId: widget.currentUserId,
+          ),
+        ),
+      );
+    }
+  }
   @override
   void dispose() {
     _wsChannel?.sink.close();
@@ -271,12 +318,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.chat.title),
-            if (_buildAppBarSubtitle() != null) _buildAppBarSubtitle()!,
-          ],
+        title: InkWell(
+          onTap: _onAppBarTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.chat.title),
+              if (_buildAppBarSubtitle() != null) _buildAppBarSubtitle()!,
+            ],
+          ),
         ),
       ),
       body: Column(
@@ -380,8 +430,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   // Виджет сообщения ("Облачко")
   Widget _buildMessageBubble(ChatMessage msg, bool isMe) {
-    // final isImage = msg.mimeType?.startsWith('image/') ?? false;
-    // final fullMediaUrl = msg.mediaUrl != null ? '${MediaService.baseUrl}${msg.mediaUrl}' : null;
     
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -454,10 +502,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   return InkWell(
                     onTap: () => _openFile(media.url),
                     child: Container(
-                      // margin: const EdgeInsets.only(bottom: 4),
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       decoration: BoxDecoration(
-                        // color: isMe ? Colors.blue.shade700 : Theme.of(context).colorScheme.surface,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -478,7 +524,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     color: isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onPrimaryContainer,
-                                    // fontWeight: FontWeight.bold,
                                   ),
                                 ),
                                 Text(
@@ -509,7 +554,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 ),
               ),
 
-            // const SizedBox(height: 2),
             Text(
               "${msg.createdAt.hour.toString().padLeft(2, '0')}:${msg.createdAt.minute.toString().padLeft(2, '0')}",
               style: TextStyle(

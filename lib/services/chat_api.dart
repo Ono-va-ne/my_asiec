@@ -30,6 +30,19 @@ class ChatApiService {
       throw Exception('Не удалось загрузить информацию о чате');
     }
   }
+  // Получение списка участников чата
+  static Future<List<Map<String, dynamic>>> getChatMembers(int chatId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/chats/$chatId/members'),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Не удалось загрузить список участников');
+    }
+  }
   // Получение истории чата
   static Future<List<ChatMessage>> getChatMessages(int chatId) async {
     final response = await http.get(Uri.parse('$baseUrl/chats/$chatId/messages'));

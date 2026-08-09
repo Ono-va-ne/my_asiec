@@ -45,4 +45,5 @@ app.*.map.json
 /android/app/release
 
 lib/supabase_options.dart
+lib/some_fuv.dart
 desktop.ini
