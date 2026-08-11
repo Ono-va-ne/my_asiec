@@ -9,6 +9,7 @@ import '../models/group_info.dart';
 import '../data/teachers.dart';
 import '../data/rooms.dart'; // Импортируем список аудиторий
 import '../l10n/app_localizations.dart';
+import 'storage_usage_screen.dart';
 // import '../models/group_info.dart'; // Импортируем модель группы
 
 
@@ -91,6 +92,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: EdgeInsets.symmetric(vertical: 8.0),
         children: [
+          ListTile(
+            leading: Icon(Icons.sd_storage_outlined),
+            title: Text("Использование памяти"),
+            trailing: Icon(Icons.chevron_right),
+            onTap:() {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const StorageUsageScreen()));
+            },
+          ),
           // --- Секция: Группа по умолчанию ---
           _buildSectionHeader(l10n.scheduleScreen),
           ListTile(
@@ -199,6 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
+          // Переключатель отображения перерывов
           ValueListenableBuilder<bool>(
             valueListenable: settingsService.showBreaksInScheduleNotifier,
             builder: (context, isBreaksEnabled, _) {
