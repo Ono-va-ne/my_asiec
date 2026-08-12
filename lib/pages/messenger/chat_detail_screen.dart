@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:open_file_plus/open_file_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:my_asiec/services/media_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:my_asiec/pages/profile/profile_screen.dart';
@@ -180,6 +183,80 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  void _openFullImage(String imageUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: IconThemeData(color: Colors.white),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4,
+              child: Image.network(imageUrl)
+            )
+          )
+        )
+      )
+    );
+  }
+  Future<void> _openDocumentFile(MediaAttachment media) async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Открытие файла "${media.originalName}"...'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      final tempDir = await getTemporaryDirectory();
+      final localFilePath = '${tempDir.path}/${media.originalName}';
+      final localFile = File(localFilePath);
+
+      // Скачиваем файл во временный кэш, если его еще нет
+      if (!await localFile.exists()) {
+        final fullUrl = '${MediaService.baseUrl}${media.url}';
+        final response = await http.get(Uri.parse(fullUrl));
+        await localFile.writeAsBytes(response.bodyBytes);
+      }
+
+      if (mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      // Открываем файл через системный просмотрщик (Word, PowerPoint, PDF Reader и т.д.)
+      final result = await OpenFile.open(localFilePath);
+
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось открыть файл: ${result.message}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        print(e);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка открытия файла: $e')),
+        );
+      }
+    }
+  }
+
+  // Выбор обработчика в зависимости от типа файла
+  void _handleMediaTap(MediaAttachment media) {
+    final isImage = media.mimeType.startsWith('image/');
+    final fullUrl = '${MediaService.baseUrl}${media.url}';
+
+    if (isImage) {
+      _openFullImage(fullUrl);
+    } else {
+      _openDocumentFile(media);
+    }
+  }
+
   // ВЫБОР И ОТПРАВКА МЕДИАФАЙЛА
   Future<void> _pickAndSendMedia() async {
     final result = await FilePicker.pickFiles();
@@ -336,20 +413,20 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           // Список сообщений
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
-                    ? const Center(child: Text('Нет сообщений'))
-                    : ListView.builder(
-                        controller: _scrollController,
-                        reverse: true,
-                        padding: const EdgeInsets.all(12),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final msg = _messages[_messages.length - 1 - index];
-                          final isMe = msg.senderId == widget.currentUserId;
-                          return _buildMessageBubble(msg, isMe);
-                        },
-                      ),
+              ? const Center(child: CircularProgressIndicator())
+              : _messages.isEmpty
+                ? const Center(child: Text('Нет сообщений'))
+                : ListView.builder(
+                    controller: _scrollController,
+                    reverse: true,
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = _messages[_messages.length - 1 - index];
+                      final isMe = msg.senderId == widget.currentUserId;
+                      return _buildMessageBubble(msg, isMe);
+                    },
+                  ),
           ),
           if (_pendingFiles.isNotEmpty) _buildPendingFilesBar(),
           // Поле ввода текста (скрывается, если новостной канал / read-only)
@@ -451,13 +528,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         child: Column(
           crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            // Имя отправителя (отображаем только для чужих сообщений)
+            // Имя отправителя
             if (!isMe && msg.senderName != null && widget.chat.type != 'direct')
               TextButton(
                 style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero, // Removes internal text padding
-                  minimumSize: Size.zero, // Overrides the default 48x48dp minimum size
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Removes the outer touch target margin
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 onPressed:() {
                   Navigator.push(
@@ -490,7 +567,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 4.0, top: 4),
                       child: GestureDetector(
-                        onTap: () => _openFile(media.url),
+                        onTap: () => _handleMediaTap(media),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.network(fullUrl, fit: BoxFit.cover),
@@ -500,7 +577,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   }
 
                   return InkWell(
-                    onTap: () => _openFile(media.url),
+                    onTap: () => _handleMediaTap(media),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       decoration: BoxDecoration(

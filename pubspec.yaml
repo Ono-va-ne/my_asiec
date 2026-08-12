@@ -55,7 +55,9 @@ dependencies:
   logger: ^2.5.0
   markdown_widget: ^2.3.2
   material_color_utilities: ^0.12.0
-  open_file: ^4.0.0
+  open_file_plus:
+    git:
+      url: https://github.com/postflow/open_file_plus.git
   package_info_plus: ^10.2.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
