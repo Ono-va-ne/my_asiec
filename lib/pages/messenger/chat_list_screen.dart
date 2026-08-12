@@ -120,7 +120,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   }
 
                   if (snapshot.hasError) {
-                    return Center(child: Text('Ошибка: ${snapshot.error}'));
+                    return ListView(
+                      physics: const AlwaysScrollableScrollPhysics(), // Всегда разрешаем прокрутку
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Center(
+                            child: Text('Ошибка загрузки чатов: ${snapshot.error}'),
+                          ),
+                        ),
+                      ],
+                    );
                   }
 
                   final chats = snapshot.data ?? [];
