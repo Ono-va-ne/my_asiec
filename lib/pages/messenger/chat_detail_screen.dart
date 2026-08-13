@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:my_asiec/widgets/voice_message_widget.dart';
 import 'package:open_file_plus/open_file_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:my_asiec/services/media_service.dart';
+import 'package:record/record.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:my_asiec/pages/profile/profile_screen.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -33,6 +35,7 @@ class ChatDetailScreen extends StatefulWidget {
 class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final AudioRecorder _audioRecorder = AudioRecorder();
 
   WebSocketChannel? _wsChannel;
   List<ChatMessage> _messages = [];
@@ -40,6 +43,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _isLoading = true;
   bool _isUploadingFile = false;
   int? _interlocutorId;
+  bool _isRecording = false;
+  bool _hasText = false;
 
   final String _wsBaseUrl = 'ws://$apiBackendUrl:$apiBackendPort';
 
@@ -51,6 +56,70 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     super.initState();
     _initChat();
     _loadChatInfo();
+
+    _messageController.addListener(() {
+      final isNotEmpty = _messageController.text.trim().isNotEmpty;
+      if (isNotEmpty != _hasText) {
+        setState(() {
+          _hasText = isNotEmpty;
+        });
+      }
+    });
+  }
+
+  Future<void> _toggleRecording() async {
+    try {
+      if (_isRecording) {
+        // ОСТАНОВКА ЗАПИСИ И ОТПРАВКА
+        final path = await _audioRecorder.stop();
+        setState(() => _isRecording = false);
+
+        if (path != null) {
+          final voiceFile = File(path);
+          setState(() => _isUploadingFile = true);
+
+          // Дедупликация и загрузка ГС на сервер
+          final mediaData = await MediaService.uploadOrGetMedia(
+            voiceFile,
+            'voice_${DateTime.now().millisecondsSinceEpoch}.m4a',
+          );
+
+          // Отправка через WebSocket
+          final payload = jsonEncode({
+            "encrypted_text": "", // ГС без текста
+            "media_ids": [mediaData['media_id']],
+          });
+
+          _wsChannel!.sink.add(payload);
+          setState(() => _isUploadingFile = false);
+        }
+      } else {
+        // СТАРТ ЗАПИСИ
+        if (await _audioRecorder.hasPermission()) {
+          final tempDir = await getTemporaryDirectory();
+          final filePath = '${tempDir.path}/voice_temp.m4a';
+
+          // Конфигурация: AAC-LC, 16 кбит/с, Моно (1 канал), 16000 Гц
+          await _audioRecorder.start(
+            const RecordConfig(
+              encoder: AudioEncoder.aacLc,
+              bitRate: 64000,
+              numChannels: 1,
+              sampleRate:64000,
+            ),
+            path: filePath,
+          );
+
+          setState(() => _isRecording = true);
+        }
+      }
+    } catch (e) {
+      print('Ошибка записи ГС: $e');
+      setState(() {
+        _isRecording = false;
+        _isUploadingFile = false;
+      });
+    }
   }
 
   Future<void> _loadChatInfo() async {
@@ -385,6 +454,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   }
   @override
   void dispose() {
+    _audioRecorder.dispose();
     _wsChannel?.sink.close();
     _messageController.dispose();
     _scrollController.dispose();
@@ -561,8 +631,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               Column(
                 children: msg.mediaFiles.map((media) {
                   final isImage = media.mimeType.startsWith('image/');
+                  final isVoice = media.mimeType.startsWith('voice_') || media.originalName.endsWith('.m4a');
                   final fullUrl = '${MediaService.baseUrl}${media.url}';
-
+                  // Если голосовое
+                  if (isVoice) {
+                    return VoiceMessageWidget(audioUrl: fullUrl, isMe: isMe);
+                  }
+                  // Если изображение
                   if (isImage) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 4.0, top: 4),
@@ -575,7 +650,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       ),
                     );
                   }
-
+                  // Всё остальное (документы, аудио и т.д.)
                   return InkWell(
                     onTap: () => _handleMediaTap(media),
                     child: Container(
@@ -646,6 +721,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   // Панель ввода и отправки текста
   Widget _buildInputArea() {
+    final showSendButton = _hasText || _pendingFiles.isNotEmpty;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       color: Theme.of(context).colorScheme.primaryContainer.withAlpha(100),
@@ -655,12 +731,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           children: [
             IconButton(
               icon: Icon(Icons.attach_file, color: Theme.of(context).colorScheme.primary),
-              onPressed: _isUploadingFile ? null : _pickAndSendMedia,
+              onPressed: _isUploadingFile || _isRecording ? null : _pickAndSendMedia,
             ),
             Expanded(
               child: TextFormField(
                 controller: _messageController,
                 textCapitalization: TextCapitalization.sentences,
+                enabled: !_isRecording,
                 keyboardType: TextInputType.multiline,
                 maxLines: 3,
                 minLines: 1,
@@ -684,7 +761,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   return null; // Возвращаем null, чтобы полностью скрыть счетчик и убрать отступ под полем
                 },
                 decoration: InputDecoration(
-                  hintText: 'Напишите сообщение...',
+                  hintText: _isRecording ? 'Запись...' : 'Напишите сообщение...',
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 10,
@@ -701,13 +778,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
             const SizedBox(width: 8),
             IconButton(
-              icon: Icon(Icons.send, color: Theme.of(context).colorScheme.onPrimary),
+              icon: Icon(showSendButton ? Icons.send : (_isRecording ? Icons.stop : Icons.mic), color: Theme.of(context).colorScheme.onPrimary),
               style: IconButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.all(12),
               ),
-              onPressed: _sendMessage,
+              onPressed: _isUploadingFile
+                ? null
+                : (showSendButton ? _sendMessage : _toggleRecording),
             ),
           ],
         ),

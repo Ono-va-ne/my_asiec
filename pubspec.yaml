@@ -28,6 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  audioplayers: ^6.8.1
   crypto: ^3.0.7
   cupertino_icons: ^1.0.8
   dropdown_search: ^7.0.0
@@ -54,13 +55,14 @@ dependencies:
   introduction_screen: ^4.0.0
   logger: ^2.5.0
   markdown_widget: ^2.3.2
-  material_color_utilities: ^0.12.0
+  material_color_utilities: ^0.13.1
   open_file_plus:
     git:
       url: https://github.com/postflow/open_file_plus.git
   package_info_plus: ^10.2.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
+  record: ^7.1.1
   rxdart: ^0.28.0
   share_plus: ^13.3.0
   shared_preferences: ^2.5.3
