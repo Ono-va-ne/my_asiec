@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -46,6 +48,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   bool _isRecording = false;
   bool _hasText = false;
 
+  late AudioPlayer _previewPlayer;
   final String _wsBaseUrl = 'ws://$apiBackendUrl:$apiBackendPort';
 
   int _membersCount = 0;
@@ -53,6 +56,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   @override
   void initState() {
+    _previewPlayer = AudioPlayer();
     super.initState();
     _initChat();
     _loadChatInfo();
@@ -99,13 +103,13 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           final tempDir = await getTemporaryDirectory();
           final filePath = '${tempDir.path}/voice_temp.m4a';
 
-          // Конфигурация: AAC-LC, 16 кбит/с, Моно (1 канал), 16000 Гц
+          // Конфигурация: AAC-LC, 50 кбит/с, Моно (1 канал), 50000 Гц
           await _audioRecorder.start(
             const RecordConfig(
               encoder: AudioEncoder.aacLc,
-              bitRate: 64000,
+              bitRate: 50000,
               numChannels: 1,
-              sampleRate:64000,
+              sampleRate:50000,
             ),
             path: filePath,
           );
@@ -120,6 +124,163 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         _isUploadingFile = false;
       });
     }
+  }
+  // 1. СТАРТ ЗАПИСИ
+  Future<void> _startRecording() async {
+    if (await _audioRecorder.hasPermission()) {
+      final tempDir = await getTemporaryDirectory();
+      _recordedVoicePath = '${tempDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+      await _audioRecorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.aacLc,
+          bitRate: 48000,
+          numChannels: 1,
+          sampleRate: 48000,
+        ),
+        path: _recordedVoicePath!,
+      );
+
+      _recordingSeconds = 0;
+      _recordTimer?.cancel();
+      _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (mounted) {
+          setState(() {
+            _recordingSeconds++;
+          });
+        }
+      });
+
+      setState(() {
+        _recordingState = RecordingState.recording;
+      });
+    }
+  }
+
+  // 2. ПАУЗА ЗАПИСИ
+  Future<void> _pauseRecording() async {
+    _recordTimer?.cancel();
+    
+    // Вызываем stop(), чтобы плагин закрыл файл и записал заголовок .m4a!
+    final path = await _audioRecorder.stop();
+    if (path != null) {
+      _recordedVoicePath = path;
+    }
+
+    setState(() {
+      _recordingState = RecordingState.paused;
+    });
+  }
+
+  // 3. ВОЗОБНОВЛЕНИЕ ЗАПИСИ
+  Future<void> _resumeRecording() async {
+    await _previewPlayer.stop();
+    setState(() => _isPreviewPlaying = false);
+
+    await _audioRecorder.resume();
+    _recordTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          _recordingSeconds++;
+        });
+      }
+    });
+
+    setState(() {
+      _recordingState = RecordingState.recording;
+    });
+  }
+
+  // 4. УДАЛЕНИЕ / ОТМЕНА ЗАПИСИ
+  Future<void> _cancelRecording() async {
+    _recordTimer?.cancel();
+    await _audioRecorder.stop();
+    await _previewPlayer.stop();
+
+    if (_recordedVoicePath != null) {
+      final file = File(_recordedVoicePath!);
+      if (await file.exists()) {
+        await file.delete(); // Удаляем файл с диска
+      }
+    }
+
+    setState(() {
+      _recordingState = RecordingState.none;
+      _recordingSeconds = 0;
+      _recordedVoicePath = null;
+      _isPreviewPlaying = false;
+    });
+  }
+
+  // 5. ОСТАНОВКА И ОТПРАВКА
+  Future<void> _stopAndSendRecording() async {
+    _recordTimer?.cancel();
+    await _previewPlayer.stop();
+
+    // Если мы уже были на паузе, файл уже финализирован. Если еще писали — останавливаем.
+    String? filePath = _recordedVoicePath;
+    if (_recordingState == RecordingState.recording) {
+      filePath = await _audioRecorder.stop();
+    }
+
+    setState(() {
+      _recordingState = RecordingState.none;
+      _isUploadingFile = true;
+    });
+
+    if (filePath != null) {
+      final voiceFile = File(filePath);
+      try {
+        final mediaData = await MediaService.uploadOrGetMedia(
+          voiceFile,
+          'voice_${DateTime.now().millisecondsSinceEpoch}.m4a',
+        );
+
+        final payload = jsonEncode({
+          "encrypted_text": "",
+          "media_ids": [mediaData['media_id']],
+        });
+
+        _wsChannel!.sink.add(payload);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка отправки ГС: $e')),
+          );
+        }
+      }
+    }
+
+    setState(() {
+      _recordingSeconds = 0;
+      _recordedVoicePath = null;
+      _isUploadingFile = false;
+    });
+  }
+
+  // 6. ПРОСЛУШИВАНИЕ ПРЕДПРОСМОТРА НА ПАУЗЕ
+  void _togglePreviewPlay() async {
+    if (_isPreviewPlaying) {
+      await _previewPlayer.pause();
+      setState(() => _isPreviewPlaying = false);
+    } else if (_recordedVoicePath != null) {
+      // Ensure the player is stopped and its source is cleared before setting a new one.
+      await _previewPlayer.stop(); // Stop any previous playback
+      await _previewPlayer.setSource(DeviceFileSource(_recordedVoicePath!)); // Set the new source
+      setState(() => _isPreviewPlaying = true);
+      await _previewPlayer.resume(); // Start playback
+
+      _previewPlayer.onPlayerComplete.listen((_) {
+        if (mounted) setState(() => _isPreviewPlaying = false);
+      });
+    }
+  }
+
+  // Вспомогательный форматировщик времени 0:05
+  String _formatTimer(int totalSeconds) {
+    final minutes = (totalSeconds ~/ 60).toString().padLeft(1, '0');
+    final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   Future<void> _loadChatInfo() async {
@@ -453,14 +614,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
   }
   @override
-  void dispose() {
-    _audioRecorder.dispose();
-    _wsChannel?.sink.close();
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -621,7 +774,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   msg.senderName!,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                    fontVariations: [FontVariation('wght', 650),FontVariation('wdth', 150), FontVariation('XTRA', 550), FontVariation('YTUC', 760), FontVariation('YTLC', 570)]
                   )
                 ),
               ),
@@ -727,70 +880,191 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       color: Theme.of(context).colorScheme.primaryContainer.withAlpha(100),
       child: SafeArea(
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            IconButton(
-              icon: Icon(Icons.attach_file, color: Theme.of(context).colorScheme.primary),
-              onPressed: _isUploadingFile || _isRecording ? null : _pickAndSendMedia,
-            ),
-            Expanded(
-              child: TextFormField(
-                controller: _messageController,
-                textCapitalization: TextCapitalization.sentences,
-                enabled: !_isRecording,
-                keyboardType: TextInputType.multiline,
-                maxLines: 3,
-                minLines: 1,
-                maxLength: 4096,
-                onChanged: (value) {
-                  setState(() {});
-                },
-                buildCounter: (
-                  BuildContext context, {
-                  required int currentLength,
-                  required int? maxLength,
-                  required bool isFocused,
-                }) {
-                  // Показывать счетчик только если введено больше 10 символов
-                  if (currentLength > 3072) {
-                    return Text(
-                      '$currentLength / $maxLength',
-                      style: TextStyle(color: Theme.of(context).colorScheme.outline),
-                    );
-                  }
-                  return null; // Возвращаем null, чтобы полностью скрыть счетчик и убрать отступ под полем
-                },
-                decoration: InputDecoration(
-                  hintText: _isRecording ? 'Запись...' : 'Напишите сообщение...',
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(context).colorScheme.primaryContainer,
+            // Режим 1: идёт запись (recording)
+            if (_recordingState == RecordingState.recording) ...[
+              // Корзина (Удалить)
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.onErrorContainer, size: 26),
+                onPressed: _cancelRecording,
+              ),
+              const SizedBox(width: 12),
+
+              // Красная точка + Таймер
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  shape: BoxShape.circle,
                 ),
-                onFieldSubmitted: (_) => _sendMessage(),
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: Icon(showSendButton ? Icons.send : (_isRecording ? Icons.stop : Icons.mic), color: Theme.of(context).colorScheme.onPrimary),
-              style: IconButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.all(12),
+              const SizedBox(width: 8),
+              Text(
+                _formatTimer(_recordingSeconds),
+                style: TextStyle(fontWeight: FontWeight.bold, fontVariations: [FontVariation('wdth', 150), FontVariation('XTRA', 600)], fontSize: 16),
               ),
-              onPressed: _isUploadingFile
-                ? null
-                : (showSendButton ? _sendMessage : _toggleRecording),
-            ),
+
+              const Spacer(),
+
+              // Пауза
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(Icons.pause_rounded, color: Theme.of(context).colorScheme.secondary, size: 30),
+                onPressed: _pauseRecording,
+              ),
+              const SizedBox(width: 4),
+
+              // Отправить
+              IconButton(
+                icon: Icon(Icons.send_rounded, color: Theme.of(context).colorScheme.onPrimary),
+                style: IconButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.all(12),
+                ),
+                onPressed: _stopAndSendRecording,
+              )
+            ]
+
+            // Режим 2: Запись на паузе (paused - предпросмотр)
+            else if (_recordingState == RecordingState.paused) ...[
+              // Корзина (Удалить)
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error, size: 26),
+                onPressed: _cancelRecording,
+              ),
+              // const SizedBox(width: 4),
+
+              // Воспроизведение записи для проверки перед отправкой
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(
+                  _isPreviewPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 32,
+                ),
+                onPressed: _togglePreviewPlay,
+              ),
+              // const SizedBox(width: 4),
+              Text(
+                _formatTimer(_recordingSeconds),
+                style: TextStyle(fontWeight: FontWeight.bold, fontVariations: [FontVariation('wdth', 150), FontVariation('XTRA', 600)], fontSize: 16),
+              ),
+
+              const Spacer(),
+
+              // Продолжить запись (Микрофон)
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: Icon(Icons.mic_rounded, color: Theme.of(context).colorScheme.secondary, size: 28),
+                onPressed: _resumeRecording,
+              ),
+              const SizedBox(width: 4),
+
+              // Отправить
+              IconButton(
+                icon: Icon(Icons.send_rounded, color: Theme.of(context).colorScheme.onPrimary),
+                style: IconButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.all(12),
+                ),
+                onPressed: _stopAndSendRecording,
+              )
+            ]
+
+            // Режим 3: Ввод текста (none)
+            else ...[
+              IconButton(
+                icon: Icon(Icons.attach_file, color: Theme.of(context).colorScheme.primary),
+                onPressed: _isUploadingFile || _isRecording ? null : _pickAndSendMedia,
+              ),
+              Expanded(
+                child: TextFormField(
+                  controller: _messageController,
+                  textCapitalization: TextCapitalization.sentences,
+                  enabled: !_isRecording,
+                  keyboardType: TextInputType.multiline,
+                  maxLines: 3,
+                  minLines: 1,
+                  maxLength: 4096,
+                  onChanged: (value) {
+                    setState(() {});
+                  },
+                  buildCounter: (
+                    BuildContext context, {
+                    required int currentLength,
+                    required int? maxLength,
+                    required bool isFocused,
+                  }) {
+                    // Показывать счетчик только если введено больше 10 символов
+                    if (currentLength > 3072) {
+                      return Text(
+                        '$currentLength / $maxLength',
+                        style: TextStyle(color: Theme.of(context).colorScheme.outline),
+                      );
+                    }
+                    return null; // Возвращаем null, чтобы полностью скрыть счетчик и убрать отступ под полем
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Сообщение',
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.primaryContainer,
+                  ),
+                  onFieldSubmitted: (_) => _sendMessage(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: Icon(showSendButton ? Icons.send_rounded : Icons.mic_rounded, color: Theme.of(context).colorScheme.onPrimary),
+                style: IconButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.all(12),
+                ),
+                onPressed: _isUploadingFile
+                  ? null
+                  : (showSendButton ? _sendMessage : _startRecording),
+              )
+            ],
           ],
         ),
-      ),
-    );
+      ));
+    }
+
+  @override
+  void dispose() {
+    _recordTimer?.cancel();
+    _previewPlayer.dispose();
+    _audioRecorder.dispose();
+    _wsChannel?.sink.close();
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 }
+
+// Состояния записи
+enum RecordingState { none, recording, paused }
+RecordingState _recordingState = RecordingState.none;
+
+Timer? _recordTimer;
+int _recordingSeconds = 0;
+String? _recordedVoicePath;
+bool _isPreviewPlaying = false;

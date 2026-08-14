@@ -20,7 +20,7 @@ class VoiceMessageWidget extends StatefulWidget {
 }
 
 class _VoiceMessageWidgetState extends State<VoiceMessageWidget> {
-  final AudioPlayer _player = AudioPlayer();
+  late AudioPlayer _player;
   bool _isPlaying = false;
   bool _isBuffering = false;
   Duration _duration = Duration.zero;
@@ -28,6 +28,7 @@ class _VoiceMessageWidgetState extends State<VoiceMessageWidget> {
 
   @override
   void initState() {
+    _player = AudioPlayer();
     super.initState();
 
     _player.onPlayerStateChanged.listen((state) {
@@ -101,25 +102,25 @@ class _VoiceMessageWidgetState extends State<VoiceMessageWidget> {
 
     return Container(
       width: 210,
-      padding: const EdgeInsets.all(0),
+      padding: EdgeInsets.zero,
       child: Row(
         children: [
           // Кнопка Play / Pause / Загрузка
           _isBuffering
               ? const SizedBox(
-                  width: 48,
-                  height: 48,
+                  width: 40,
+                  height: 40,
                   child: Padding(
-                    padding: EdgeInsets.all(4.0),
+                    padding: EdgeInsets.zero,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
                 )
               : IconButton(
                 padding: EdgeInsets.zero,
                   icon: Icon(
-                    _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_fill,
-                    color: widget.isMe ? Theme.of(context).colorScheme.onPrimary : Colors.blue,
-                    size: 48,
+                    _isPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
+                    color: widget.isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary,
+                    size: 40,
                   ),
                   onPressed: _togglePlay,
                 ),
@@ -139,8 +140,8 @@ class _VoiceMessageWidgetState extends State<VoiceMessageWidget> {
                   child: Slider(
                     year2023: false,
                     value: progress.clamp(0.0, 1.0),
-                    activeColor: widget.isMe ? Theme.of(context).colorScheme.onPrimary : Colors.blue,
-                    inactiveColor: widget.isMe ? Theme.of(context).colorScheme.onPrimary.withAlpha(100) : Colors.grey.shade300,
+                    activeColor: widget.isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary,
+                    inactiveColor: widget.isMe ? Theme.of(context).colorScheme.onPrimary.withAlpha(100) : Theme.of(context).colorScheme.primary.withAlpha(100),
                     onChanged: (val) {
                       final targetMs = (val * _duration.inMilliseconds).toInt();
                       _player.seek(Duration(milliseconds: targetMs));
@@ -153,7 +154,7 @@ class _VoiceMessageWidgetState extends State<VoiceMessageWidget> {
                     _isPlaying ? _formatDuration(_position) : _formatDuration(_duration),
                     style: TextStyle(
                       fontSize: 10,
-                      color: widget.isMe ? Theme.of(context).colorScheme.onPrimary : Colors.grey.shade600,
+                      color: widget.isMe ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
