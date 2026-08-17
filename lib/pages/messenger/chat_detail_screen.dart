@@ -10,7 +10,6 @@ import 'package:open_file_plus/open_file_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:my_asiec/services/media_service.dart';
 import 'package:record/record.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:my_asiec/pages/profile/profile_screen.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../models/chat.dart';
@@ -71,60 +70,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     });
   }
 
-  Future<void> _toggleRecording() async {
-    try {
-      if (_isRecording) {
-        // ОСТАНОВКА ЗАПИСИ И ОТПРАВКА
-        final path = await _audioRecorder.stop();
-        setState(() => _isRecording = false);
-
-        if (path != null) {
-          final voiceFile = File(path);
-          setState(() => _isUploadingFile = true);
-
-          // Дедупликация и загрузка ГС на сервер
-          final mediaData = await MediaService.uploadOrGetMedia(
-            voiceFile,
-            'voice_${DateTime.now().millisecondsSinceEpoch}.m4a',
-          );
-
-          // Отправка через WebSocket
-          final payload = jsonEncode({
-            "encrypted_text": "", // ГС без текста
-            "media_ids": [mediaData['media_id']],
-          });
-
-          _wsChannel!.sink.add(payload);
-          setState(() => _isUploadingFile = false);
-        }
-      } else {
-        // СТАРТ ЗАПИСИ
-        if (await _audioRecorder.hasPermission()) {
-          final tempDir = await getTemporaryDirectory();
-          final filePath = '${tempDir.path}/voice_temp.m4a';
-
-          // Конфигурация: AAC-LC, 50 кбит/с, Моно (1 канал), 50000 Гц
-          await _audioRecorder.start(
-            const RecordConfig(
-              encoder: AudioEncoder.aacLc,
-              bitRate: 50000,
-              numChannels: 1,
-              sampleRate:50000,
-            ),
-            path: filePath,
-          );
-
-          setState(() => _isRecording = true);
-        }
-      }
-    } catch (e) {
-      print('Ошибка записи ГС: $e');
-      setState(() {
-        _isRecording = false;
-        _isUploadingFile = false;
-      });
-    }
-  }
   // 1. СТАРТ ЗАПИСИ
   Future<void> _startRecording() async {
     if (await _audioRecorder.hasPermission()) {
@@ -365,6 +310,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         _isLoading = false;
       });
 
+      if (decryptedHistory.isNotEmpty) {
+        final lastMsgId = decryptedHistory.last.id;
+        if (lastMsgId != null && lastMsgId > 0) {
+          ChatApiService.markChatAsRead(widget.chat.id, widget.currentUserId, lastMsgId);
+        }
+      }
+
+
       _scrollToBottom();
     } catch (e) {
       setState(() => _isLoading = false);
@@ -397,6 +350,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ...jsonMsg,
             'text': decryptedText,
           });
+
+          if (newMessage.id != null && newMessage.id! > 0) {
+            ChatApiService.markChatAsRead(widget.chat.id, widget.currentUserId, newMessage.id!);
+          }
 
           setState(() {
             _messages.add(newMessage);
@@ -490,10 +447,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   // ВЫБОР И ОТПРАВКА МЕДИАФАЙЛА
   Future<void> _pickAndSendMedia() async {
     final result = await FilePicker.pickFiles();
-    if (result == null || result.files.isEmpty) return;
+    if (result.isEmpty) return;
 
     setState(() {
-      _pendingFiles.addAll(result.files.where((f) => f.path != null));
+      _pendingFiles.addAll(result.where((f) => f.path != null));
     });
   }
 
@@ -552,14 +509,6 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         );
       }
     });
-  }
-
-  // Открыть/скачать файл при клике
-  void _openFile(String? mediaUrl) async {
-    if (mediaUrl == null) return;
-    final fullUrl = '${MediaService.baseUrl}$mediaUrl';
-    final uri = Uri.parse(fullUrl);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   String _formatFileSize(int? bytes) {

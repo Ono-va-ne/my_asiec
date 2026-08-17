@@ -54,6 +54,22 @@ class ChatApiService {
       throw Exception('Не удалось загрузить историю сообщений');
     }
   }
+  // Пометка чата как прочитанного
+  static Future<void> markChatAsRead(int chatId, int userId, int lastMessageId) async {
+    if (userId == 0 || lastMessageId == 0) return;
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/chats/$chatId/read'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'last_message_id': lastMessageId,
+        }),
+      );
+    } catch (e) {
+      print('Ошибка отметки прочтения: $e');
+    }
+  }
   // Поиск пользователей по ФИО/логину
   static Future<List<Map<String, dynamic>>> searchUsers(String query) async {
     if (query.trim().isEmpty) return [];

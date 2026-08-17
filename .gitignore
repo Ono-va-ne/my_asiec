@@ -47,3 +47,4 @@ app.*.map.json
 lib/supabase_options.dart
 lib/some_fuv.dart
 desktop.ini
+android/build/reports/problems/problems-report.html

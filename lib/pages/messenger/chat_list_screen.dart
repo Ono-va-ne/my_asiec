@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:my_asiec/l10n/app_localizations.dart';
 import 'package:my_asiec/pages/messenger/create_chat_screen.dart';
 import 'package:my_asiec/pages/messenger/search_screen.dart';
+import 'package:my_asiec/some_fuv.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../models/chat.dart';
 import '../../services/chat_api.dart';
 import '../../services/auth_service.dart';
@@ -9,7 +11,7 @@ import 'chat_detail_screen.dart';
 import '../profile/auth_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
-  const ChatListScreen({Key? key}) : super(key: key);
+  const ChatListScreen({super.key});
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -19,6 +21,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
   int? _currentUserId;
   bool _isAuthChecked = false;
   late Future<List<Chat>> _chatsFuture;
+  WebSocketChannel? _notifChannel;
+  final String _wsBaseUrl = 'ws://$apiBackendUrl:$apiBackendPort';
 
   @override
   void initState() {
@@ -28,19 +32,45 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   Future<List<Chat>> _loadInitialData() async {
     final userId = await AuthService.getCurrentUserId();
-    if(mounted) {
+    if (mounted) {
       setState(() {
         _currentUserId = userId;
         _isAuthChecked = true;
       });
+
+      // Подключаем живые уведомления, если пользователь вошел!
+      if (userId != null && userId > 0 && _notifChannel == null) {
+        _connectNotifications(userId);
+      }
     }
     return ChatApiService.getUserChats(userId ?? 0);
   }
 
-  // This method is called to refresh the UI.
+  // Обновление списка чатов
   Future<void> _refreshChats() async {
-    _chatsFuture = _loadInitialData();
-    setState(() {}); // Trigger rebuild
+    setState(() {
+      _chatsFuture = _loadInitialData();
+    });
+  }
+
+  void _connectNotifications(int userId) {
+    try {
+      final wsUrl = Uri.parse('$_wsBaseUrl/ws/notifications/$userId');
+      _notifChannel = WebSocketChannel.connect(wsUrl);
+
+      _notifChannel!.stream.listen((_) {
+        // Как только пришло уведомление о новом сообщении -> обновляем список чатов на лету!
+        if (mounted) {
+          setState(() {
+            _chatsFuture = ChatApiService.getUserChats(userId);
+          });
+        }
+      }, onError: (e) {
+        print('Ошибка WS уведомлений: $e');
+      });
+    } catch (e) {
+      print('Ошибка подключения уведомлений: $e');
+    }
   }
 
   Map<String, dynamic> _getChatTypeStyle(String type) {
@@ -58,6 +88,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   @override
+  void dispose() {
+    _notifChannel?.sink.close();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -69,9 +105,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => SearchScreen(
-                  currentUserId: _currentUserId ?? 0,
-                ) )
+                MaterialPageRoute(
+                  builder: (context) => SearchScreen(
+                    currentUserId: _currentUserId ?? 0,
+                  ),
+                ),
               );
             },
           ),
@@ -121,7 +159,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
                   if (snapshot.hasError) {
                     return ListView(
-                      physics: const AlwaysScrollableScrollPhysics(), // Всегда разрешаем прокрутку
+                      physics: const AlwaysScrollableScrollPhysics(),
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(16.0),
@@ -154,11 +192,49 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         title: Text(
                           chat.title,
                           style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          
                         ),
                         subtitle: Text(
                           chat.lastMessage ?? 'Нет сообщений',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (chat.lastMessageTime != null)
+                              Text(
+                                "${chat.lastMessageTime!.hour.toString().padLeft(2, '0')}:${chat.lastMessageTime!.minute.toString().padLeft(2, '0')}",
+                                style: TextStyle(
+                                  color: chat.unreadCount > 0
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).colorScheme.outline,
+                                  fontWeight: chat.unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                            if (chat.unreadCount > 0) ...[
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                child: Text(
+                                  '${chat.unreadCount}',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onPrimary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         onTap: () {
                           Navigator.push(
@@ -166,18 +242,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             MaterialPageRoute(
                               builder: (context) => ChatDetailScreen(
                                 chat: chat,
-                                // Если гость, передаем id = 0 (только для чтения)
-                                currentUserId: _currentUserId ?? 0, 
+                                currentUserId: _currentUserId ?? 0,
                               ),
                             ),
                           ).then((_) => _refreshChats());
                         },
-                        trailing: chat.lastMessageTime != null
-                      ? Text(
-                          "${chat.lastMessageTime!.hour.toString().padLeft(2, '0')}:${chat.lastMessageTime!.minute.toString().padLeft(2, '0')}",
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
-                        )
-                      : null,
                       );
                     },
                   );
@@ -188,23 +257,23 @@ class _ChatListScreenState extends State<ChatListScreen> {
         ),
       ),
       floatingActionButton: _currentUserId != null
-        ? FloatingActionButton(
-            child: const Icon(Icons.add_comment),
-            onPressed: () async {
-              final created = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CreateChatScreen(
-                    currentUserId: _currentUserId!,
+          ? FloatingActionButton(
+              child: const Icon(Icons.add_comment),
+              onPressed: () async {
+                final created = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CreateChatScreen(
+                      currentUserId: _currentUserId!,
+                    ),
                   ),
-                ),
-              );
-              if (created == true) {
-                _refreshChats(); // Обновляем список чатов
-              }
-            },
-          )
-        : null,
+                );
+                if (created == true) {
+                  _refreshChats();
+                }
+              },
+            )
+          : null,
     );
   }
 }

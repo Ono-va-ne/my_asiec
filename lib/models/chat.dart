@@ -7,6 +7,7 @@ class Chat {
   final bool isReadOnly;
   final String? lastMessage;
   final DateTime? lastMessageTime;
+  final int unreadCount;
 
   Chat({
     required this.id,
@@ -15,6 +16,7 @@ class Chat {
     required this.isReadOnly,
     this.lastMessage,
     this.lastMessageTime,
+    this.unreadCount = 0,
   });
 
   factory Chat.fromJson(Map<String, dynamic> json) {
@@ -33,8 +35,9 @@ class Chat {
       isReadOnly: json['is_read_only'] ?? false,
       lastMessage: decryptedLastMsg,
       lastMessageTime: json['last_message_time'] != null
-          ? DateTime.parse(json['last_message_time'])
-          : null,
+        ? DateTime.parse(json['last_message_time'])
+        : null,
+      unreadCount: json['unread_count'] ?? 0,
     );
   }
 }
