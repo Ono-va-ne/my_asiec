@@ -19,9 +19,18 @@ class CacheCategory {
   });
 }
 
+Color shiftHue(Color color, double amount) {
+  final hsvColor = HSVColor.fromColor(color);
+  
+  // Keep the hue bounds between 0 and 360
+  double adjustedHue = (hsvColor.hue + amount) % 360.0;
+  
+  return hsvColor.withHue(adjustedHue).toColor();
+}
+
 class StorageService {
-  // Получить размер категорий кэша
-  static Future<List<CacheCategory>> getCacheBreakdown() async {
+  // Получить размер категорий кэша (требуется context для доступа к Theme)
+  static Future<List<CacheCategory>> getCacheBreakdown(BuildContext context) async {
     final tempDir = await getTemporaryDirectory();
     final docDir = await getApplicationDocumentsDirectory();
 
@@ -41,28 +50,28 @@ class StorageService {
         id: 'media',
         title: 'Медиа и файлы',
         sizeInBytes: mediaSize,
-        color: Colors.amber.shade700,
+        color: shiftHue(Theme.of(context).colorScheme.primary, 0),
         icon: Icons.perm_media_outlined,
       ),
       CacheCategory(
         id: 'messages',
         title: 'Сообщения',
         sizeInBytes: messagesSize,
-        color: Colors.blue,
+        color: shiftHue(Theme.of(context).colorScheme.primary, 90),
         icon: Icons.chat_bubble_outline,
       ),
       CacheCategory(
         id: 'schedule',
         title: 'Расписание',
         sizeInBytes: scheduleSize,
-        color: Colors.green,
+        color: shiftHue(Theme.of(context).colorScheme.primary, 180),
         icon: Icons.calendar_today_outlined,
       ),
       CacheCategory(
         id: 'homework',
         title: 'Задания',
         sizeInBytes: homeworkSize,
-        color: Colors.purple,
+        color: shiftHue(Theme.of(context).colorScheme.primary, 270),
         icon: Icons.assignment_outlined,
       ),
     ];

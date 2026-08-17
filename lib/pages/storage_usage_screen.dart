@@ -21,7 +21,7 @@ class _StorageUsageScreenState extends State<StorageUsageScreen> {
 
   Future<void> _loadCacheData() async {
     setState(() => _isLoading = true);
-    final breakdown = await StorageService.getCacheBreakdown();
+    final breakdown = await StorageService.getCacheBreakdown(context);
     setState(() {
       _categories = breakdown;
       _isLoading = false;
@@ -86,11 +86,11 @@ class _StorageUsageScreenState extends State<StorageUsageScreen> {
                               ),
                             ),
                             const SizedBox(height: 2),
-                            const Text(
+                            Text(
                               'Кэш приложения',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey,
+                                color: Theme.of(context).colorScheme.outline,
                               ),
                             ),
                           ],
