@@ -7,6 +7,8 @@ class Chat {
   final bool isReadOnly;
   final String? lastMessage;
   final DateTime? lastMessageTime;
+  final String? lastMessageMimeType;
+  final String? lastMessageFileName;
   final int unreadCount;
 
   Chat({
@@ -16,6 +18,8 @@ class Chat {
     required this.isReadOnly,
     this.lastMessage,
     this.lastMessageTime,
+    this.lastMessageMimeType,
+    this.lastMessageFileName,
     this.unreadCount = 0,
   });
 
@@ -37,6 +41,8 @@ class Chat {
       lastMessageTime: json['last_message_time'] != null
         ? DateTime.parse(json['last_message_time'])
         : null,
+      lastMessageFileName: json['last_message_file_name'],
+      lastMessageMimeType: json['last_message_mime_type'],
       unreadCount: json['unread_count'] ?? 0,
     );
   }

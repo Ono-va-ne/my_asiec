@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_asiec/l10n/app_localizations.dart';
+import 'package:my_asiec/main.dart';
 import 'package:my_asiec/pages/messenger/create_chat_screen.dart';
 import 'package:my_asiec/pages/messenger/search_screen.dart';
 import 'package:my_asiec/some_fuv.dart';
@@ -51,6 +52,71 @@ class _ChatListScreenState extends State<ChatListScreen> {
     setState(() {
       _chatsFuture = _loadInitialData();
     });
+  }
+
+  // Отображение последнего сообщения или названия файла
+  Widget _buildSubtitle(Chat chat, BuildContext context) {
+    final text = chat.lastMessage?.trim() ?? '';
+    final mime = chat.lastMessageMimeType ?? '';
+    final fileName = chat.lastMessageFileName ?? '';
+
+    // Есть текст, нет файла
+    if (text.isNotEmpty && (mime.isEmpty && fileName.isEmpty)) {
+      return Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    IconData? icon;
+    String label = 'Медиафайл';
+
+    // обработка разных типов файлов
+    if (fileName.startsWith('voice_') || mime.contains('audio')) {
+      icon = Icons.mic_rounded;
+      label = 'Голосовое сообщение';
+    } else if (mime.startsWith('image/')) {
+      icon = Icons.photo_rounded;
+      label = fileName.isNotEmpty ? fileName : 'Фотография';
+    } else if (mime.startsWith('video/')) {
+      icon = Icons.videocam_rounded;
+      label = fileName.isNotEmpty ? fileName : 'Видео';
+    } else if (mime.isNotEmpty || fileName.isNotEmpty) {
+      icon = Icons.insert_drive_file_rounded;
+      label = fileName.isNotEmpty ? fileName : 'Файл';
+    } else {
+      // Нет текста, нет файла (пустой чат)
+      return const Text('Нет сообщений');
+    }
+
+    // Иконка + подпись в цвете темы
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.primary,
+            fontVariations: [FontVariation('XTRA', 500), FontVariation('wght', 600)]
+          ),
+        ),
+        if (text.isNotEmpty)
+          Text(', '),
+          Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              // color: Theme.of(context).colorScheme.primary,
+              fontVariations: [FontVariation('wght', 500)]
+            ),
+          ),
+      ],
+    );
   }
 
   void _connectNotifications(int userId) {
@@ -122,7 +188,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             // Баннер для гостевого режима
             if (_isAuthChecked && _currentUserId == null)
               Container(
-                color: Colors.amber.withAlpha(55),
+                color: shiftHue(Theme.of(context).colorScheme.primaryContainer, -180).withAlpha(55),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
@@ -185,22 +251,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       final style = _getChatTypeStyle(chat.type);
 
                       return ListTile(
+                        // Иконка чата
                         leading: CircleAvatar(
                           backgroundColor: style['color'].withOpacity(0.2),
                           child: Icon(style['icon'], color: style['color']),
                         ),
+                        // Название чата
                         title: Text(
                           chat.title,
                           style: const TextStyle(fontWeight: FontWeight.bold),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          
                         ),
-                        subtitle: Text(
-                          chat.lastMessage ?? 'Нет сообщений',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        // Последнее сообщение (или файл)
+                        subtitle: _buildSubtitle(chat, context),
+                        // Время последнего сообщения и бейдж непрочитанных
                         trailing: Column(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.start,
@@ -256,6 +321,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ],
         ),
       ),
+      // Создание нового чата
       floatingActionButton: _currentUserId != null
           ? FloatingActionButton(
               child: const Icon(Icons.add_comment),

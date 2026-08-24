@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -176,8 +177,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (filePath != null) {
       final voiceFile = File(filePath);
       try {
-        final mediaData = await MediaService.uploadOrGetMedia(
-          voiceFile,
+        final mediaData = await MediaService.uploadOrGetMediaBytes(
+          await voiceFile.readAsBytes(),
           'voice_${DateTime.now().millisecondsSinceEpoch}.m4a',
         );
 
@@ -382,6 +383,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ),
           body: Center(
             child: InteractiveViewer(
+              clipBehavior: Clip.none,
               panEnabled: true,
               minScale: 0.5,
               maxScale: 4,
@@ -446,17 +448,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   // ВЫБОР И ОТПРАВКА МЕДИАФАЙЛА
   Future<void> _pickAndSendMedia() async {
-    final result = await FilePicker.pickFiles();
+    final result = await FilePicker.pickFiles(withData: kIsWeb);
     if (result.isEmpty) return;
 
     setState(() {
-      _pendingFiles.addAll(result.where((f) => f.path != null));
+      _pendingFiles.addAll(result);
     });
   }
 
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
-    print('Отправлено');
     if (text.isEmpty && _pendingFiles.isEmpty) return;
     if (_wsChannel == null) return;
 
@@ -467,8 +468,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       setState(() => _isUploadingFile = true);
       try {
         for (var pFile in _pendingFiles) {
-          final file = File(pFile.path!);
-          final mediaData = await MediaService.uploadOrGetMedia(file, pFile.name);
+          final mediaData = await MediaService.uploadOrGetMediaBytes(
+            await pFile.readAsBytes(),
+            pFile.name,
+          );
           uploadedMediaIds.add(mediaData['media_id']);
         }
       } catch (e) {
