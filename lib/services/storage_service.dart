@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:my_asiec/main.dart';
 import 'package:path_provider/path_provider.dart';
 
 class CacheCategory {
@@ -17,15 +18,6 @@ class CacheCategory {
     required this.color,
     required this.icon,
   });
-}
-
-Color shiftHue(Color color, double amount) {
-  final hsvColor = HSVColor.fromColor(color);
-  
-  // Keep the hue bounds between 0 and 360
-  double adjustedHue = (hsvColor.hue + amount) % 360.0;
-  
-  return hsvColor.withHue(adjustedHue).toColor();
 }
 
 class StorageService {

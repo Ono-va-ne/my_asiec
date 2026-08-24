@@ -58,9 +58,20 @@ void main() async {
       runApp(MyApp());
     },
     (error, stackTrace) {
-      recordError(error, stackTrace);
+      if (!kIsWeb) {
+        recordError(error, stackTrace);
+      }
     },
   );
+}
+
+Color shiftHue(Color color, double amount) {
+  final hsvColor = HSVColor.fromColor(color);
+  
+  // Keep the hue bounds between 0 and 360
+  double adjustedHue = (hsvColor.hue + amount) % 360.0;
+  
+  return hsvColor.withHue(adjustedHue).toColor();
 }
 
 class MyApp extends StatelessWidget {

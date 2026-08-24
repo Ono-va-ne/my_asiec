@@ -126,7 +126,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
-                    const Icon(Icons.info_outline, color: Colors.amber),
+                    Icon(Icons.info_outline, color: shiftHue(Theme.of(context).colorScheme.primary, -180)),
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Text(
