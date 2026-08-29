@@ -1,6 +1,6 @@
 import 'dart:math';
 
-const List<String> textEmojis = [
+const List<String> Sad = [
   '>⌓<｡',
   '(つ .•́ _ʖ •̀.)つ',
   '¯\\_(ツ)_/¯',
@@ -22,7 +22,16 @@ const List<String> textEmojis = [
   '（◞‸◟）'
 ];
 
-String getRandomEmoji() {
+const List<String> Happy = [
+  '⸜(｡˃ ᵕ ˂ )⸝♡',
+  '(˶ˆᗜˆ˵)',
+  'ヾ(≧∇≦)ゞ',
+  'ദ്ദി ˉ͈̀꒳ˉ͈́ )✧',
+  '₍₍⚞(˶˃ ꒳ ˂˶)⚟⁾⁾',
+  '◝(ᵔᗜᵔ)◜'
+];
+
+String getRandomEmoji(List<String> mood) {
   final random = Random();
-  return textEmojis[random.nextInt(textEmojis.length)];
+  return mood[random.nextInt(mood.length)];
 }

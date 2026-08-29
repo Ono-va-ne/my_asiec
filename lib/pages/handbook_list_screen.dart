@@ -176,7 +176,7 @@ class _HandbookListScreenState extends State<HandbookListScreen> {
           ? Center(child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Text(getRandomEmoji(), style: TextStyle(fontSize: 72, color: Colors.grey[600])),
+              Text(getRandomEmoji(Sad), style: TextStyle(fontSize: 72, color: Colors.grey[600])),
               const SizedBox(height: 8),
               Text(l10n.nothingFound, style: TextStyle(fontSize: 18, color: Colors.grey[400])),
             ],

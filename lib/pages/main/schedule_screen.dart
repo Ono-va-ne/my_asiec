@@ -870,7 +870,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(getRandomEmoji(), style: TextStyle(fontSize: 72, color: Colors.grey[600])),
+                    Text(getRandomEmoji(Sad), style: TextStyle(fontSize: 72, color: Colors.grey[600])),
                     const SizedBox(height: 8),
                     Text(
                       AppLocalizations.of(context)!.nothingFound,
