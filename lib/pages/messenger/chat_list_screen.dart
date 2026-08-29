@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:my_asiec/l10n/app_localizations.dart';
 import 'package:my_asiec/main.dart';
@@ -8,8 +9,11 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../models/chat.dart';
 import '../../services/chat_api.dart';
 import '../../services/auth_service.dart';
+import '../../services/push_notification_service.dart';
 import 'chat_detail_screen.dart';
 import '../profile/auth_screen.dart';
+import 'dart:convert';
+import '../../services/notification_service.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -18,17 +22,51 @@ class ChatListScreen extends StatefulWidget {
   State<ChatListScreen> createState() => _ChatListScreenState();
 }
 
-class _ChatListScreenState extends State<ChatListScreen> {
+class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObserver {
   int? _currentUserId;
   bool _isAuthChecked = false;
   late Future<List<Chat>> _chatsFuture;
   WebSocketChannel? _notifChannel;
+  Timer? _notifReconnectTimer;
   final String _wsBaseUrl = 'ws://$apiBackendUrl:$apiBackendPort';
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _chatsFuture = _loadInitialData();
+  }
+
+  void _scheduleNotifReconnect(int userId) {
+    _notifReconnectTimer?.cancel();
+    _notifReconnectTimer = Timer(const Duration(seconds: 2), () {
+      if (!mounted || _currentUserId == null || _currentUserId! <= 0) {
+        return;
+      }
+
+      _notifChannel?.sink.close();
+      _notifChannel = null;
+      _connectNotifications(userId);
+    });
+  }
+
+  Future<void> _handleAppResume() async {
+    _notifChannel?.sink.close();
+    _notifChannel = null;
+
+    final userId = _currentUserId;
+    if (userId != null && userId > 0) {
+      _connectNotifications(userId);
+    }
+
+    await _refreshChats();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _handleAppResume();
+    }
   }
 
   Future<List<Chat>> _loadInitialData() async {
@@ -40,8 +78,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
       });
 
       // Подключаем живые уведомления, если пользователь вошел!
-      if (userId != null && userId > 0 && _notifChannel == null) {
-        _connectNotifications(userId);
+      if (userId != null && userId > 0) {
+        await PushNotificationService.instance.configureForUser(userId);
+
+        if (_notifChannel == null) {
+          _connectNotifications(userId);
+        }
       }
     }
     return ChatApiService.getUserChats(userId ?? 0);
@@ -52,6 +94,53 @@ class _ChatListScreenState extends State<ChatListScreen> {
     setState(() {
       _chatsFuture = _loadInitialData();
     });
+  }
+
+  void _connectNotifications(int userId) {
+    try {
+      final wsUrl = Uri.parse('$_wsBaseUrl/ws/notifications/$userId');
+      _notifChannel = WebSocketChannel.connect(wsUrl);
+
+      _notifChannel!.stream.listen((data) {
+        final notif = jsonDecode(data);
+
+        if (notif['type'] == 'new_message') {
+          final chatId = notif['chat_id'] as int;
+
+          // Покажем уведомление в шторке только если пользователь НЕ находится сейчас внутри этого чата
+          NotificationService().showMessageNotification(
+            chatId: chatId,
+            currentUserId: userId,
+            messageId: notif['message_id'] ?? 0,
+            chatTitle: notif['chat_title'] ?? '',
+            senderName: notif['sender_name'] ?? 'Пользователь',
+            encryptedText: notif['encrypted_text'] ?? '',
+            mediaIds: notif['media_ids'] ?? [],
+          );
+
+          // Обновляем список чатов
+          if (mounted) {
+            setState(() {
+              _chatsFuture = ChatApiService.getUserChats(userId);
+            });
+          }
+        }
+      }, onDone: () {
+        print('WS уведомлений закрыт');
+        if (mounted) {
+          _notifChannel = null;
+          _scheduleNotifReconnect(userId);
+        }
+      }, onError: (e) {
+        print('Ошибка WS уведомлений: $e');
+        if (mounted) {
+          _notifChannel = null;
+          _scheduleNotifReconnect(userId);
+        }
+      });
+    } catch (e) {
+      print('Ошибка подключения уведомлений: $e');
+    }
   }
 
   // Отображение последнего сообщения или названия файла
@@ -73,9 +162,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
     String label = 'Медиафайл';
 
     // обработка разных типов файлов
-    if (fileName.startsWith('voice_') || mime.contains('audio')) {
+    if (fileName.startsWith('voice_')) {
       icon = Icons.mic_rounded;
       label = 'Голосовое сообщение';
+    } else if (mime.startsWith('audio/') && !fileName.startsWith('voice_')) {
+      icon = Icons.audiotrack_rounded;
+      label = fileName.isNotEmpty ? fileName : 'Аудио';
     } else if (mime.startsWith('image/')) {
       icon = Icons.photo_rounded;
       label = fileName.isNotEmpty ? fileName : 'Фотография';
@@ -119,43 +211,26 @@ class _ChatListScreenState extends State<ChatListScreen> {
     );
   }
 
-  void _connectNotifications(int userId) {
-    try {
-      final wsUrl = Uri.parse('$_wsBaseUrl/ws/notifications/$userId');
-      _notifChannel = WebSocketChannel.connect(wsUrl);
-
-      _notifChannel!.stream.listen((_) {
-        // Как только пришло уведомление о новом сообщении -> обновляем список чатов на лету!
-        if (mounted) {
-          setState(() {
-            _chatsFuture = ChatApiService.getUserChats(userId);
-          });
-        }
-      }, onError: (e) {
-        print('Ошибка WS уведомлений: $e');
-      });
-    } catch (e) {
-      print('Ошибка подключения уведомлений: $e');
-    }
-  }
-
   Map<String, dynamic> _getChatTypeStyle(String type) {
     switch (type) {
       case 'news':
-        return {'icon': Icons.campaign, 'color': Colors.orange, 'label': 'Канал'};
+        return {'icon': Icons.campaign, 'color': shiftHue(Theme.of(context).colorScheme.primary, 0), 'label': 'Канал'};
       case 'group':
-        return {'icon': Icons.groups, 'color': Colors.blue, 'label': 'Группа'};
+        return {'icon': Icons.groups, 'color': shiftHue(Theme.of(context).colorScheme.primary, 100), 'label': 'Группа'};
       case 'subgroup':
-        return {'icon': Icons.workspaces, 'color': Colors.purple, 'label': 'Подгруппа'};
+        return {'icon': Icons.workspaces, 'color': shiftHue(Theme.of(context).colorScheme.primary, 200), 'label': 'Подгруппа'};
       case 'direct':
       default:
-        return {'icon': Icons.person, 'color': Colors.green, 'label': 'ЛС'};
+        return {'icon': Icons.person, 'color': shiftHue(Theme.of(context).colorScheme.primary, 300), 'label': 'ЛС'};
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _notifReconnectTimer?.cancel();
     _notifChannel?.sink.close();
+    _notifChannel = null;
     super.dispose();
   }
 

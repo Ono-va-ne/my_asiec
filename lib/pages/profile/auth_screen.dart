@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../services/push_notification_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({Key? key}) : super(key: key);
@@ -34,15 +35,22 @@ class _AuthScreenState extends State<AuthScreen> {
 
     try {
       if (isLoginMode) {
-        // Вход
-        await AuthService.login(
+        final data = await AuthService.login(
           _loginController.text.trim(),
           _passwordController.text.trim(),
         );
 
+        final userId = (data['userId'] as num).toInt();
+
+        try {
+          await PushNotificationService.instance.configureForUser(userId);
+        } catch (e) {
+          // Ошибка FCM не должна отменять успешный вход
+          debugPrint('Ошибка настройки FCM: $e');
+        }
+
         if (mounted) {
-          // Просто возвращаемся на предыдущий экран (MoreScreen или ChatListScreen)
-          Navigator.pop(context, true); 
+          Navigator.pop(context, true);
         }
       } else {
         // Регистрация

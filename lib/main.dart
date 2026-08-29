@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_tex/flutter_tex.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:my_asiec/l10n/app_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 import 'pages/main/schedule_screen.dart';
 import 'pages/main/homework_screen.dart';
@@ -24,6 +26,16 @@ import '../services/homework_completion_service.dart';
 import 'utils/logger_setup_mobile.dart';
 import '../supabase_options.dart';
 // import 'package:http/http.dart' as http;
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'services/push_notification_service.dart';
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+}
 
 
 void main() async {
@@ -31,6 +43,11 @@ void main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
       
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       // Инициализируем сервисы, которые не работают в вебе, только для мобильных платформ
       if (!kIsWeb) {
         await NotificationService().init();
