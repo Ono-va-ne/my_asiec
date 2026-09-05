@@ -27,7 +27,9 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
   bool _isAuthChecked = false;
   late Future<List<Chat>> _chatsFuture;
   WebSocketChannel? _notifChannel;
+  StreamSubscription<dynamic>? _notifSubscription;
   Timer? _notifReconnectTimer;
+  int _notifConnectionId = 0;
   final String _wsBaseUrl = 'ws://$apiBackendUrl:$apiBackendPort';
 
   @override
@@ -44,15 +46,12 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
         return;
       }
 
-      _notifChannel?.sink.close();
-      _notifChannel = null;
       _connectNotifications(userId);
     });
   }
 
   Future<void> _handleAppResume() async {
-    _notifChannel?.sink.close();
-    _notifChannel = null;
+    await _disconnectNotifications();
 
     final userId = _currentUserId;
     if (userId != null && userId > 0) {
@@ -66,6 +65,9 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _handleAppResume();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _disconnectNotifications();
     }
   }
 
@@ -97,11 +99,17 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
   }
 
   void _connectNotifications(int userId) {
+    if (!mounted || _notifChannel != null || userId <= 0) {
+      return;
+    }
+
     try {
       final wsUrl = Uri.parse('$_wsBaseUrl/ws/notifications/$userId');
-      _notifChannel = WebSocketChannel.connect(wsUrl);
+      final connectionId = ++_notifConnectionId;
+      final channel = WebSocketChannel.connect(wsUrl);
+      _notifChannel = channel;
 
-      _notifChannel!.stream.listen((data) {
+      _notifSubscription = channel.stream.listen((data) {
         final notif = jsonDecode(data);
 
         if (notif['type'] == 'new_message') {
@@ -127,20 +135,38 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
         }
       }, onDone: () {
         print('WS уведомлений закрыт');
-        if (mounted) {
+        if (mounted && connectionId == _notifConnectionId) {
           _notifChannel = null;
+          _notifSubscription = null;
           _scheduleNotifReconnect(userId);
         }
       }, onError: (e) {
         print('Ошибка WS уведомлений: $e');
-        if (mounted) {
+        if (mounted && connectionId == _notifConnectionId) {
           _notifChannel = null;
+          _notifSubscription = null;
+          channel.sink.close();
           _scheduleNotifReconnect(userId);
         }
-      });
+      }, cancelOnError: true);
     } catch (e) {
       print('Ошибка подключения уведомлений: $e');
     }
+  }
+
+  Future<void> _disconnectNotifications() async {
+    _notifReconnectTimer?.cancel();
+    _notifReconnectTimer = null;
+
+    // Invalidate callbacks from this socket before closing it.
+    _notifConnectionId++;
+    final subscription = _notifSubscription;
+    final channel = _notifChannel;
+    _notifSubscription = null;
+    _notifChannel = null;
+
+    await subscription?.cancel();
+    await channel?.sink.close();
   }
 
   // Отображение последнего сообщения или названия файла
@@ -228,9 +254,7 @@ class _ChatListScreenState extends State<ChatListScreen> with WidgetsBindingObse
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _notifReconnectTimer?.cancel();
-    _notifChannel?.sink.close();
-    _notifChannel = null;
+    _disconnectNotifications();
     super.dispose();
   }
 
