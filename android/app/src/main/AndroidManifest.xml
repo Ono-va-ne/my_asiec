@@ -126,6 +126,45 @@
             </intent-filter>
         </activity-alias>
 
+        <activity-alias
+            android:name=".MainActivity.asiec"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_asiec"
+            android:label="МойАПЭК"
+            android:enabled="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivity.glass"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_glass"
+            android:label="МойАПЭК"
+            android:enabled="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivity.scam"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_scam"
+            android:label="МойАПЭК"
+            android:enabled="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity-alias>
+
         <!-- Объявление ресивера для нашего виджета -->
         <receiver android:name="PomodoroWidgetProvider"
             android:exported="false"

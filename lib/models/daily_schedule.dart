@@ -110,7 +110,7 @@ List<DailySchedule> parseScheduleHtmlMultiDay(String htmlString) {
         final group = cells[2].text.trim();
         final discipline = cells[1].text.trim();
         final teacher = cells[3].text.trim();
-        final room = cells[4].text.trim();
+        final room = cells[4].text.trim().replaceAll(RegExp(r'\s*[\r\n]+\s*'), ', ').replaceAll('"', '?').trim();
         final timeParts = _parseTime(
           timeString,
         ); // Используем старый хелпер _parseTime

@@ -344,10 +344,16 @@ abstract class AppLocalizations {
   /// **'Настройки применены'**
   String get presetApplied;
 
+  /// No description provided for @taskActiveEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет активных заданий. Ура!'**
+  String get taskActiveEmpty;
+
   /// No description provided for @taskEmpty.
   ///
   /// In ru, this message translates to:
-  /// **'Заданий нет'**
+  /// **'Нет выполненных заданий'**
   String get taskEmpty;
 
   /// No description provided for @taskCreate.
@@ -590,6 +596,24 @@ abstract class AppLocalizations {
   /// **'Показывать перерывы'**
   String get settingShowBreaks;
 
+  /// No description provided for @settingCardAppearance.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отображение занятий'**
+  String get settingCardAppearance;
+
+  /// No description provided for @settingCardComfortable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Просторно'**
+  String get settingCardComfortable;
+
+  /// No description provided for @settingCardCompact.
+  ///
+  /// In ru, this message translates to:
+  /// **'Компактно'**
+  String get settingCardCompact;
+
   /// No description provided for @settingAppearance.
   ///
   /// In ru, this message translates to:
@@ -617,7 +641,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingThemeMaterialYou.
   ///
   /// In ru, this message translates to:
-  /// **'Динамические цвета'**
+  /// **'Monet тема'**
   String get settingThemeMaterialYou;
 
   /// No description provided for @settingThemeMaterialYouDescription.
@@ -637,6 +661,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Обычная'**
   String get iconDefault;
+
+  /// No description provided for @iconAsiec.
+  ///
+  /// In ru, this message translates to:
+  /// **'АПЭК'**
+  String get iconAsiec;
+
+  /// No description provided for @iconGlass.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стекло'**
+  String get iconGlass;
 
   /// No description provided for @iconFlow.
   ///
@@ -667,6 +703,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Барракуда'**
   String get iconBarracuda;
+
+  /// No description provided for @iconScam.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скам'**
+  String get iconScam;
 
   /// No description provided for @settingLanguage.
   ///

@@ -222,7 +222,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
               );
             },
           ),
-          Divider(),
+          _buildSectionHeader(l10n.settingCardAppearance),
+          ValueListenableBuilder<ScheduleCardLayout>(
+            valueListenable: settingsService.scheduleCardLayoutNotifier,
+            builder: (context, selectedLayout, _) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: ScheduleCardLayout.values.map((layout) => Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: layout == ScheduleCardLayout.detailed ? 8 : 0,
+                    ),
+                    child: _buildCardLayoutOption(
+                      layout: layout,
+                      selected: layout == selectedLayout,
+                      onTap: () => settingsService.setScheduleCardLayout(layout),
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ),
+          ),
+          SizedBox(height: 8),
+          Divider(indent: MediaQuery.of(context).size.width*0.025, endIndent: MediaQuery.of(context).size.width*0.025),
           // --- Секция: Тема ---
           _buildSectionHeader(l10n.settingAppearance),
           // Выбор режима темы
@@ -333,6 +355,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     _buildIconOption(
                       context: context,
+                      iconAsset: 'assets/icons/asiec.png',
+                      label: l10n.iconAsiec,
+                      iconName: 'asiec',
+                    ),
+                    _buildIconOption(
+                      context: context,
+                      iconAsset: 'assets/icons/glass.png',
+                      label: l10n.iconGlass,
+                      iconName: 'glass',
+                    ),
+                    _buildIconOption(
+                      context: context,
                       iconAsset: 'assets/icons/flow.png',
                       label: l10n.iconFlow,
                       iconName: 'flow',
@@ -362,12 +396,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         label: l10n.iconBarracuda,
                         iconName: 'barracuda',
                       ),
+                    if (DateTime.now().month == 4)
+                      _buildIconOption(
+                        context: context,
+                        iconAsset: 'assets/icons/scam.png',
+                        label: l10n.iconScam,
+                        iconName: 'scam',
+                      ),
                   ],
                 ),
               ],
             ),
           )
         ],
+      ),
+    );
+  }
+
+  Widget _buildCardLayoutOption({
+    required ScheduleCardLayout layout,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    final colors = Theme.of(context).colorScheme;
+    final isCompact = layout == ScheduleCardLayout.compact;
+    final label = isCompact ? l10n.settingCardCompact : l10n.settingCardComfortable;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: selected ? colors.secondaryContainer : colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? colors.primary : colors.outlineVariant,
+              width: selected ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              _CardLayoutPreview(compact: isCompact),
+              const SizedBox(height: 8),
+              Text(label, style: Theme.of(context).textTheme.labelMedium),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -407,7 +487,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               border: Border.all(color: borderColor, width: 2.5),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(8),
               child: Image.asset(iconAsset, width: 48, height: 48),
             ),
           ),
@@ -439,6 +519,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
           letterSpacing: 0.8,
         ),
       ),
+    );
+  }
+}
+
+class _CardLayoutPreview extends StatelessWidget {
+  const _CardLayoutPreview({required this.compact});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+
+    final colors = Theme.of(context).colorScheme;
+    return LayoutBuilder(
+      builder:(context, constraints) {
+        final cardWidth = constraints.maxWidth;
+
+        final titleWidth = cardWidth * (compact ? 0.9 : 0.7);
+        final subtitleWidth = cardWidth * 0.5;
+        final badgeWidth = cardWidth * (compact ? 0.475 : 0.18);
+        return SizedBox(
+          height: 58,
+          child: Card(
+            margin: EdgeInsets.zero,
+            elevation: 1,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            child: Padding(
+              padding: compact ? EdgeInsets.all(4) : EdgeInsets.all(8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(height: 5, width: titleWidth*0.95,decoration: BoxDecoration(color: colors.onSurface, borderRadius: BorderRadius.circular(4))),
+                        const SizedBox(height: 3),
+                        Container(height: 5, width: compact ? titleWidth*0.5 : titleWidth, decoration: BoxDecoration(color: colors.onSurface, borderRadius: BorderRadius.circular(4))),
+                        if (!compact) ...[
+                          const SizedBox(height: 3),
+                          Container(height: 5, width: titleWidth*0.7, decoration: BoxDecoration(color: colors.onSurface, borderRadius: BorderRadius.circular(4))),
+                        ],
+                        if (compact) ...[
+                          const SizedBox(height: 4),
+                          Container(height: 5, width: badgeWidth, decoration: BoxDecoration(color: colors.primary, borderRadius: BorderRadius.circular(4))),
+                        ],
+                        const SizedBox(height: 3),
+                        Container(height: 3, width: subtitleWidth, decoration: BoxDecoration(color: colors.outline, borderRadius: BorderRadius.circular(4))),
+                      ],
+                    ),
+                  ),
+                  if (!compact) ...[
+                    Container(height: 30, width: 25, decoration: BoxDecoration(color: colors.primary, borderRadius: BorderRadius.circular(4))),
+                  ]
+                ],
+              ),
+            ),
+          ),
+        );
+      }
     );
   }
 }

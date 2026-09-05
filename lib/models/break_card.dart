@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
+import '../services/settings_service.dart';
 
 class BreakCard extends StatefulWidget {
   final Duration duration;
@@ -54,6 +55,7 @@ class _BreakCardState extends State<BreakCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = settingsService.scheduleCardLayoutNotifier.value == ScheduleCardLayout.compact;
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final breakMinutes = widget.duration.inMinutes;
@@ -87,7 +89,7 @@ class _BreakCardState extends State<BreakCard> {
     }
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0),
+      margin: EdgeInsets.symmetric(horizontal: isCompact ? 8.0 : 16.0),
       elevation: 0,
       clipBehavior: Clip.antiAlias, // Важно для правильного отображения фона
       shape: RoundedRectangleBorder(

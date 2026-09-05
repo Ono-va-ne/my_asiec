@@ -134,6 +134,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get presetApplied => 'Preset applied';
 
   @override
+  String get taskActiveEmpty => 'All tasks done. Yay!';
+
+  @override
   String get taskEmpty => 'There is no tasks';
 
   @override
@@ -266,6 +269,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingShowBreaks => 'Show breaks';
 
   @override
+  String get settingCardAppearance => 'Card appearance';
+
+  @override
+  String get settingCardComfortable => 'Comfortable';
+
+  @override
+  String get settingCardCompact => 'Compact';
+
+  @override
   String get settingAppearance => 'Appearance';
 
   @override
@@ -278,17 +290,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingThemeDark => 'Dark';
 
   @override
-  String get settingThemeMaterialYou => 'Material You colors';
+  String get settingThemeMaterialYou => 'Monet theme';
 
   @override
   String get settingThemeMaterialYouDescription =>
-      'Use Material You colors (Android 12+)';
+      'Use dynamic theming (Android 12+)';
 
   @override
   String get settingIcons => 'App Icon';
 
   @override
   String get iconDefault => 'Default';
+
+  @override
+  String get iconAsiec => 'ASIEC';
+
+  @override
+  String get iconGlass => 'Glass';
 
   @override
   String get iconFlow => 'Flow';
@@ -304,6 +322,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get iconBarracuda => 'Barracuda';
+
+  @override
+  String get iconScam => 'Scam';
 
   @override
   String get settingLanguage => 'Language';

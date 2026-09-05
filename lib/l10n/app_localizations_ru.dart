@@ -134,7 +134,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get presetApplied => 'Настройки применены';
 
   @override
-  String get taskEmpty => 'Заданий нет';
+  String get taskActiveEmpty => 'Нет активных заданий. Ура!';
+
+  @override
+  String get taskEmpty => 'Нет выполненных заданий';
 
   @override
   String get taskCreate => 'Добавить задание';
@@ -266,6 +269,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingShowBreaks => 'Показывать перерывы';
 
   @override
+  String get settingCardAppearance => 'Отображение занятий';
+
+  @override
+  String get settingCardComfortable => 'Просторно';
+
+  @override
+  String get settingCardCompact => 'Компактно';
+
+  @override
   String get settingAppearance => 'Внешний вид';
 
   @override
@@ -278,7 +290,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settingThemeDark => 'Тёмная';
 
   @override
-  String get settingThemeMaterialYou => 'Динамические цвета';
+  String get settingThemeMaterialYou => 'Monet тема';
 
   @override
   String get settingThemeMaterialYouDescription =>
@@ -289,6 +301,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get iconDefault => 'Обычная';
+
+  @override
+  String get iconAsiec => 'АПЭК';
+
+  @override
+  String get iconGlass => 'Стекло';
 
   @override
   String get iconFlow => 'Поток';
@@ -304,6 +322,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get iconBarracuda => 'Барракуда';
+
+  @override
+  String get iconScam => 'Скам';
 
   @override
   String get settingLanguage => 'Язык';

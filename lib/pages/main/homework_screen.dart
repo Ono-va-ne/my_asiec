@@ -210,18 +210,19 @@ class HomeworkScreenState extends State<HomeworkScreen> {
                   _HomeworkSectionCard(
                     title: 'Активные',
                     homeworks: pending,
-                    emptyMessage: 'Ура! Все задачи выполнены.',
+                    emptyMessage: l10n.taskActiveEmpty,
                     l10n: l10n,
                     isHappy: true,
                   ),
                   const SizedBox(height: 16),
-                  _HomeworkSectionCard(
-                    title: 'Выполненные',
-                    homeworks: completed,
-                    emptyMessage: 'Нет выполненных заданий.',
-                    l10n: l10n,
-                    isHappy: false,
-                  ),
+                  if(completed.isNotEmpty)
+                    _HomeworkSectionCard(
+                      title: 'Выполненные',
+                      homeworks: completed,
+                      emptyMessage: 'Нет выполненных заданий.',
+                      l10n: l10n,
+                      isHappy: false,
+                    ),
                 ],
               ),
             );

@@ -6,6 +6,7 @@ import 'package:material_color_utilities/material_color_utilities.dart';
 import '../models/homework.dart'; // Импорт модели Homework
 import 'package:collection/collection.dart';
 import '../pages/homework_view_screen.dart';
+import '../services/settings_service.dart';
 
 // import '../models/daily_schedule.dart';
 // import '../pages/schedule_screen.dart';
@@ -42,6 +43,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
   @override
   void initState() {
     super.initState();
+    settingsService.scheduleCardLayoutNotifier.addListener(_onCardLayoutChanged);
     // Обновляем прогресс каждые 15 секунд чтобы индикатор плавно шёл
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (mounted) setState(() {});
@@ -51,7 +53,12 @@ class _ScheduleCardState extends State<ScheduleCard> {
   @override
   void dispose() {
     _timer?.cancel();
+    settingsService.scheduleCardLayoutNotifier.removeListener(_onCardLayoutChanged);
     super.dispose();
+  }
+
+  void _onCardLayoutChanged() {
+    if (mounted) setState(() {});
   }
 
   // --- НОВЫЙ МЕТОД: Определение статуса пары ---
@@ -280,6 +287,8 @@ class _ScheduleCardState extends State<ScheduleCard> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
+    final isCompact = settingsService.scheduleCardLayoutNotifier.value ==
+        ScheduleCardLayout.compact;
 
     final bool hasFilterMatch = widget.filterText.isNotEmpty &&
         (widget.entry.discipline
@@ -363,7 +372,10 @@ class _ScheduleCardState extends State<ScheduleCard> {
       child: Stack(
         children: [
           Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            margin: EdgeInsets.symmetric(
+              horizontal: isCompact ? 8.0 : 16.0,
+              vertical: 8.0,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12.0),
               side:
@@ -408,7 +420,7 @@ class _ScheduleCardState extends State<ScheduleCard> {
                     ),
                   ],
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: isCompact ? EdgeInsets.all(8.0) : EdgeInsets.all(16.0),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -419,60 +431,79 @@ class _ScheduleCardState extends State<ScheduleCard> {
                               Text(
                                 widget.entry.discipline,
                                 style: TextStyle(
-                                  fontWeight: FontWeight.bold,
+                                  // fontWeight: FontWeight.bold,
                                   fontSize: 16.0,
+                                  fontVariations: [FontVariation('wdth', 125), FontVariation('wght', 900)]
                                 ),
                               ),
-                              SizedBox(height: 4.0),
+                              if (isCompact) ...[
+                                const SizedBox(height: 4.0),
+                                Text(
+                                  '${widget.entry.startTime} - ${widget.entry.endTime} | ${widget.entry.group} | ${widget.entry.room}',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.onSurface.withAlpha(222),
+                                    fontVariations: [
+                                      FontVariation('wdth', 110),
+                                      FontVariation('wght', 650)
+                                    ],
+                                  ),
+                                ),
+                              ],
                               Text(
                                 widget.entry.teacher,
                                 style: TextStyle(
                                   fontSize: 14.0,
                                   color: Theme.of(context).colorScheme.outline,
+                                  fontVariations: [
+                                    FontVariation('wdth', 150),
+                                    FontVariation('XTRA', 500)
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
                         SizedBox(width: 16.0),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '${widget.entry.startTime} - ${widget.entry.endTime}',
-                              style: TextStyle(
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.bold,
+                        if (!isCompact) ...[
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${widget.entry.startTime} - ${widget.entry.endTime}',
+                                style: TextStyle(
+                                  fontSize: isCompact ? 13.0 : 14.0,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.right,
                               ),
-                              textAlign: TextAlign.right,
-                            ),
-                            SizedBox(height: 4.0),
-                            Text(
-                              widget.entry.group,
-                              style: TextStyle(
-                                fontSize: 14.0,
-                                fontWeight: FontWeight.w400,
-                                color: Theme.of(context).colorScheme.onSurface,
+                              SizedBox(height: 4.0),
+                              Text(
+                                widget.entry.group,
+                                style: TextStyle(
+                                  fontSize: 14.0,
+                                  fontWeight: FontWeight.w400,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                                textAlign: TextAlign.right,
                               ),
-                              textAlign: TextAlign.right,
-                            ),
-                            SizedBox(height: 4.0),
-                            Text(
-                              widget.entry.room,
-                              style: TextStyle(
-                                fontSize: 14.0,
-                                color: Theme.of(context).colorScheme.outline,
+                              SizedBox(height: 4.0),
+                              Text(
+                                widget.entry.room,
+                                style: TextStyle(
+                                  fontSize: 14.0,
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                                textAlign: TextAlign.right,
                               ),
-                              textAlign: TextAlign.right,
-                            ),
-                            SizedBox(height: 8.0),
-                            if (hasHomework)
-                              Icon(
-                                Icons.assignment,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                          ],
-                        ),
+                              SizedBox(height: 8.0),
+                              if (hasHomework)
+                                Icon(
+                                  Icons.assignment,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                            ],
+                          ),
+                        ]
                       ],
                     ),
                   ),

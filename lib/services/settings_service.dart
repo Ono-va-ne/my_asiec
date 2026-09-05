@@ -16,6 +16,9 @@ const String _pomodoroShortBreakDurationKey = 'pomodoro_short_break_duration';
 const String _scheduleFiltersKey = 'schedule_filters';
 const String _pomodoroLongBreakDurationKey = 'pomodoro_long_break_duration';
 const String _favoriteHandbookTagsKey = 'favorite_handbook_tags';
+const String _scheduleCardLayoutKey = 'schedule_card_layout';
+
+enum ScheduleCardLayout { detailed, compact }
 
 
 class SettingsService {
@@ -30,6 +33,8 @@ class SettingsService {
   final ValueNotifier<bool> materialYouNotifier = ValueNotifier(false);
   final ValueNotifier<bool> showBreaksInScheduleNotifier = ValueNotifier(true); // По умолчанию показываем
   final ValueNotifier<Locale?> localeNotifier = ValueNotifier(null);
+  final ValueNotifier<ScheduleCardLayout> scheduleCardLayoutNotifier =
+      ValueNotifier(ScheduleCardLayout.detailed);
   // Notifiers для Pomodoro (в минутах)
   final ValueNotifier<String?> defaultGroupIdNotifier = ValueNotifier(null);
   final ValueNotifier<int> pomodoroWorkDurationNotifier = ValueNotifier(25);
@@ -64,6 +69,12 @@ class SettingsService {
         _prefs?.getBool(_showBreaksInScheduleKey) ?? true; // По умолчанию true
 
     // Загрузка языка
+    final cardLayoutIndex = _prefs?.getInt(_scheduleCardLayoutKey) ??
+        ScheduleCardLayout.detailed.index;
+    scheduleCardLayoutNotifier.value = ScheduleCardLayout.values[
+      cardLayoutIndex.clamp(0, ScheduleCardLayout.values.length - 1).toInt()
+    ];
+
     final localeCode = _prefs?.getString(_localeKey);
     if (localeCode != null) {
       localeNotifier.value = Locale(localeCode);
@@ -127,6 +138,12 @@ class SettingsService {
       await _prefs?.remove(_localeKey); // Удаляем ключ для системного языка
     }
     localeNotifier.value = locale;
+  }
+
+  Future<void> setScheduleCardLayout(ScheduleCardLayout layout) async {
+    if (_prefs == null) await loadSettings();
+    await _prefs?.setInt(_scheduleCardLayoutKey, layout.index);
+    scheduleCardLayoutNotifier.value = layout;
   }
 
   Future<void> setPomodoroWorkDuration(int minutes) async {

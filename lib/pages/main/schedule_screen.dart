@@ -633,6 +633,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = settingsService.scheduleCardLayoutNotifier.value == ScheduleCardLayout.compact;
     return SafeArea(
       child: Scaffold(
         body: OrientationBuilder(
@@ -643,9 +644,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 children: [
                   // Кликабельный заголовок с диапазоном дат
                   Padding(
-                    padding: const EdgeInsets.symmetric(
+                    padding: EdgeInsets.symmetric(
                       horizontal: 16.0,
-                      vertical: 8.0,
+                      vertical: isCompact ? 0.0 : 8.0,
                     ),
                     child: InkWell(
                       onTap: _isLoading
@@ -785,6 +786,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _buildBody(List<Homework> allHomeworks) {
+    final isCompact = settingsService.scheduleCardLayoutNotifier.value == ScheduleCardLayout.compact;
     if (_isLoading) {
       return Center(child: CircularProgressIndicator());
     }
@@ -925,10 +927,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             children: [
               // --- Заголовок дня ---
               Padding(
-                padding: const EdgeInsets.only(
-                  left: 16.0,
-                  right: 16.0,
-                  top: 16.0,
+                padding: EdgeInsets.only(
+                  left: isCompact ? 8.0 : 16.0,
+                  right: isCompact ? 8.0 : 16.0,
+                  top: isCompact ? 8.0 : 16.0,
                   bottom: 4.0,
                 ),
                 child: Builder(builder: (context) {
@@ -1032,8 +1034,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 Divider(
                   height: 24.0,
                   thickness: 1.0,
-                  indent: 16.0,
-                  endIndent: 16.0,
+                  indent: isCompact ? 8.0 : 16.0,
+                  endIndent: isCompact ? 8.0 : 16.0,
                 ),
             ],
           );

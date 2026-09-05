@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import 'dart:io';
 import '../models/homework.dart';
 import '../services/local_homework_service.dart';
+import '../l10n/app_localizations.dart';
 // groups data now comes from Supabase via GroupsService
 import '../services/settings_service.dart'; // Импортируем SettingsService
 
@@ -26,7 +27,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
   final _disciplineController = TextEditingController();
   final _subgroupController = TextEditingController();
   final _taskController = TextEditingController();
-  DateTime _selecteddue_date = DateTime.now();
+  DateTime _selectedDueDate = DateTime.now();
   bool _saveLocally = false;
   final _formKey = GlobalKey<FormState>();
   List<XFile> _selectedPhotos = [];
@@ -45,8 +46,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
       _selectedGroupId = widget.homeworkEntry!.group_id;
       _subgroupController.text = widget.homeworkEntry!.subgroup ?? '';
       _taskController.text = widget.homeworkEntry!.task;
-      _selecteddue_date = widget.homeworkEntry!.due_date;
-      // TODO: Обработать фото, если они есть
+      _selectedDueDate = widget.homeworkEntry!.due_date;
     } else {
       // Если это добавление новой домашки, проверяем настройки
       final defaultGroupId = settingsService.getDefaultGroupId();
@@ -79,16 +79,16 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
   }
 
   // --- Метод для выбора даты сдачи ---
-  Future<void> _selectdue_date(BuildContext context) async {
+  Future<void> _selectDueDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selecteddue_date, // Начальная дата - текущая выбранная
+      initialDate: _selectedDueDate, // Начальная дата - текущая выбранная
       firstDate: DateTime.now(), // Нельзя выбрать дату в прошлом
       lastDate: DateTime(2101), // Достаточно далеко в будущем
     );
-    if (picked != null && picked != _selecteddue_date) {
+    if (picked != null && picked != _selectedDueDate) {
       setState(() {
-        _selecteddue_date = picked;
+        _selectedDueDate = picked;
       });
     }
   }
@@ -210,7 +210,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
                 : _subgroupController.text
                     .trim(), // Если поле подгруппы пустое, сохраняем null
         task: _taskController.text.trim(),
-        due_date: _selecteddue_date,
+        due_date: _selectedDueDate,
         date_added:
           widget.homeworkEntry?.date_added ??
           DateTime.now(), // Если редактируем, сохраняем старую дату добавления, иначе - текущую
@@ -340,12 +340,13 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
   @override
   Widget build(BuildContext context) {
     final isAdding = widget.homeworkEntry == null;
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
         title: Text(
           widget.homeworkEntry == null
-              ? 'Добавить домашнее задание'
-              : 'Редактировать домашнее задание',
+              ? l10n.taskCreate
+              : l10n.taskEdit,
         ),
       ),
       body: Padding(
@@ -359,7 +360,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
               // --- Поле для ввода предмета ---
               TextFormField(
                 controller: _disciplineController,
-                decoration: const InputDecoration(labelText: 'Предмет'),
+                decoration: InputDecoration(labelText: l10n.taskSubject),
                 validator: (value) {
                   // Добавляем валидацию (обязательное поле)
                   if (value == null || value.isEmpty) {
@@ -372,7 +373,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
               // --- Выпадающий список для выбора группы ---
               DropdownButtonFormField<String>(
                 initialValue: _selectedGroupName,
-                decoration: const InputDecoration(labelText: 'Группа'),
+                decoration: InputDecoration(labelText: l10n.group),
                 items:
                     _groups.map((Map<String, dynamic> group) {
                       return DropdownMenuItem<String>(
@@ -404,8 +405,8 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
               // --- Поле для ввода подгруппы (опционально) ---
               TextFormField(
                 controller: _subgroupController,
-                decoration: const InputDecoration(
-                  labelText: 'Подгруппа (опционально)',
+                decoration: InputDecoration(
+                  labelText: '${l10n.taskSubgroup} (${l10n.optional})',
                 ),
                 // Валидация не нужна, т.к. поле опциональное
               ),
@@ -414,7 +415,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
               // --- Поле для ввода текста задания (TextArea) ---
               TextFormField(
                 controller: _taskController,
-                decoration: const InputDecoration(labelText: 'Текст задания'),
+                decoration: InputDecoration(labelText: l10n.taskTask),
                 maxLines: null, // Позволяет тексту занимать несколько строк
                 keyboardType:
                     TextInputType
@@ -429,14 +430,14 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
               const SizedBox(height: 12.0),
 
               ListTile(
-                title: const Text('Срок сдачи'),
+                title: Text(l10n.taskDueDate),
                 subtitle: Text(
-                  '${_selecteddue_date.day}.${_selecteddue_date.month}.${_selecteddue_date.year}', // Форматируем дату для отображения
+                  '${_selectedDueDate.day}.${_selectedDueDate.month}.${_selectedDueDate.year}', // Форматируем дату для отображения
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 trailing: const Icon(Icons.calendar_today),
                 onTap:
-                    () => _selectdue_date(
+                    () => _selectDueDate(
                       context,
                     ), // При нажатии открываем DatePicker
               ),
@@ -445,12 +446,12 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Фото (опционально)'),
+                  Text('${l10n.taskPhoto} (${l10n.optional})'),
                   ElevatedButton.icon(
                     onPressed:
                         _pickImages, // При нажатии вызываем метод выбора фото
                     icon: const Icon(Icons.add_photo_alternate),
-                    label: const Text('Добавить'),
+                    label: Text(l10n.add),
                   ),
                 ],
               ),
@@ -494,7 +495,7 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
               if (isAdding)
                 Row(
                   children: [
-                    Text('Сохранить локально'),
+                    Text(l10n.taskSaveLocally),
                     Switch(
                       value: _saveLocally,
                       onChanged: (bool? value) {
@@ -516,8 +517,8 @@ class _HomeworkEditScreenState extends State<HomeworkEditScreen> {
                     _saveHomework, // При нажатии вызываем метод сохранения
                 child: Text(
                   widget.homeworkEntry == null
-                      ? 'Добавить'
-                      : 'Сохранить изменения',
+                      ? l10n.taskCreate
+                      : l10n.taskSaveChanges,
                 ),
               ),
             ],
