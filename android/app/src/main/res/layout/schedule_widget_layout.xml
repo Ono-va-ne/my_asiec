@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/schedule_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/schedule_widget_background"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/schedule_widget_heading"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Сегодня"
+        android:textColor="@color/schedule_widget_primary"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/schedule_widget_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@color/schedule_widget_on_surface"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/schedule_widget_entries"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="10dp"
+        android:ellipsize="end"
+        android:gravity="top"
+        android:maxLines="6"
+        android:textColor="@color/schedule_widget_on_surface"
+        android:textSize="14sp" />
+</LinearLayout>

@@ -21,6 +21,7 @@ import '../../services/groups_service.dart';
 import '../../services/teachers_service.dart';
 import '../../services/local_homework_service.dart';
 import '../../services/schedule_service.dart';
+import '../../services/schedule_widget_service.dart';
 import '../../models/schedule_filter.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/homework.dart';
@@ -167,8 +168,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
     // Инициализация выбора и загрузка расписания после загрузки данных
     _initializeScheduleObjects();
-    if (_selectedGroup != null) {
-      _loadScheduleData(_startDate, _endDate, _rasType, _selectedGroup);
+    final selected = _selectedObjectForType(_rasType);
+    if (selected != null) {
+      _loadScheduleData(_startDate, _endDate, _rasType, selected);
     } else {
       setState(() {
         _isLoading = false;
@@ -306,6 +308,87 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     print(
       "Инициализация ScheduleScreen. Группа: $_selectedGroup, Преподаватель: $_selectedTeacher, Аудитория: $_selectedRoom",
     );
+
+    // The active schedule is independent from the three defaults in Settings.
+    // Restore it last, after the reference lists have been loaded.
+    final lastSelection = settingsService.getLastScheduleSelection();
+    if (lastSelection == null) return;
+    switch (lastSelection.type) {
+      case 'grup':
+        final group = _findById(_availableGroups, lastSelection.objectId);
+        if (group != null) {
+          _rasType = ScheduleType.grup;
+          _selectedGroup = group;
+        }
+        break;
+      case 'prep':
+        final teacher = _findById(_availableTeachers, lastSelection.objectId);
+        if (teacher != null) {
+          _rasType = ScheduleType.prep;
+          _selectedTeacher = teacher;
+        }
+        break;
+      case 'aud':
+        final room = _findById(_availableRooms, lastSelection.objectId);
+        if (room != null) {
+          _rasType = ScheduleType.aud;
+          _selectedRoom = room;
+        }
+        break;
+    }
+  }
+
+  T? _findById<T>(List<T> values, String id) {
+    for (final value in values) {
+      final valueId = switch (value) {
+        GroupInfo group => group.id,
+        TeacherInfo teacher => teacher.id,
+        RoomInfo room => room.id,
+        _ => null,
+      };
+      if (valueId == id) return value;
+    }
+    return null;
+  }
+
+  dynamic _selectedObjectForType(ScheduleType type) => switch (type) {
+        ScheduleType.grup => _selectedGroup,
+        ScheduleType.prep => _selectedTeacher,
+        ScheduleType.aud => _selectedRoom,
+      };
+
+  String _selectionName(dynamic selection) => switch (selection) {
+        GroupInfo group => group.name,
+        TeacherInfo teacher => teacher.name,
+        RoomInfo room => room.name,
+        _ => '',
+      };
+
+  String _selectionId(dynamic selection) => switch (selection) {
+        GroupInfo group => group.id,
+        TeacherInfo teacher => teacher.id,
+        RoomInfo room => room.id,
+        _ => '',
+      };
+
+  Future<void> _rememberSelection(ScheduleType type, dynamic selection) {
+    return settingsService.setLastScheduleSelection(
+      type: type.name,
+      objectId: _selectionId(selection),
+      objectName: _selectionName(selection),
+    );
+  }
+
+  Future<void> _updateScheduleWidget(
+    ScheduleType type,
+    dynamic selection,
+    List<DailySchedule> schedules,
+  ) {
+    return ScheduleWidgetService.updateToday(
+      selectionName: _selectionName(selection),
+      selectionType: type.name,
+      schedules: schedules,
+    );
   }
 
   Future<void> _selectDateRange(BuildContext context) async {
@@ -407,7 +490,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       endDateString,
     );
 
-    ScheduleService.instance.removeCached(cacheKey);
+    await ScheduleService.instance.removeCached(cacheKey);
 
     await _loadScheduleData(_startDate, _endDate, _rasType, selected);
   }
@@ -476,7 +559,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       startDateString,
       endDateString,
     );
-    final cached = ScheduleService.instance.getCached(cacheKey);
+    final cached = await ScheduleService.instance.getCached(cacheKey);
     if (cached != null) {
       if (!mounted) return;
       setState(() {
@@ -488,6 +571,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         _isLoading = false;
         _errorMessage = null;
       });
+      await _updateScheduleWidget(scheduleType, selectedObject, cached);
       return; // Данные из кеша, не делаем запрос
     }
 
@@ -513,7 +597,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
         // Сохраняем в кеш
         try {
-          ScheduleService.instance.setCached(cacheKey, parsedData);
+          await ScheduleService.instance.setCached(cacheKey, parsedData);
         } catch (e) {
           // игноринуем ошибки
         }
@@ -528,6 +612,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           _isLoading = false;
           _errorMessage = null;
         });
+        await _updateScheduleWidget(scheduleType, selectedObject, parsedData);
         // Загружено из сети
       } else {
         if (!mounted) return;
@@ -625,6 +710,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       });
 
       if (selectedObject != null) {
+        await _rememberSelection(newRasType, selectedObject);
         _loadScheduleData(_startDate, _endDate, newRasType, selectedObject);
       }
     }

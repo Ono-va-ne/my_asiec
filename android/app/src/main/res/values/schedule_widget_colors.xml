@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="schedule_widget_surface">#F6F3FA</color>
+    <color name="schedule_widget_primary">#5E4B7A</color>
+    <color name="schedule_widget_on_surface">#1D1B20</color>
+</resources>

@@ -17,8 +17,23 @@ const String _scheduleFiltersKey = 'schedule_filters';
 const String _pomodoroLongBreakDurationKey = 'pomodoro_long_break_duration';
 const String _favoriteHandbookTagsKey = 'favorite_handbook_tags';
 const String _scheduleCardLayoutKey = 'schedule_card_layout';
+const String _lastScheduleTypeKey = 'last_schedule_type';
+const String _lastScheduleObjectIdKey = 'last_schedule_object_id';
+const String _lastScheduleObjectNameKey = 'last_schedule_object_name';
 
 enum ScheduleCardLayout { detailed, compact }
+
+class LastScheduleSelection {
+  const LastScheduleSelection({
+    required this.type,
+    required this.objectId,
+    required this.objectName,
+  });
+
+  final String type;
+  final String objectId;
+  final String objectName;
+}
 
 
 class SettingsService {
@@ -204,6 +219,28 @@ class SettingsService {
   String? getDefaultGroupId() {
     // Возвращаем сразу из SharedPreferences (можно кэшировать, если надо)
     return defaultGroupIdNotifier.value;
+  }
+
+  LastScheduleSelection? getLastScheduleSelection() {
+    final type = _prefs?.getString(_lastScheduleTypeKey);
+    final objectId = _prefs?.getString(_lastScheduleObjectIdKey);
+    if (type == null || objectId == null || objectId.isEmpty) return null;
+    return LastScheduleSelection(
+      type: type,
+      objectId: objectId,
+      objectName: _prefs?.getString(_lastScheduleObjectNameKey) ?? '',
+    );
+  }
+
+  Future<void> setLastScheduleSelection({
+    required String type,
+    required String objectId,
+    required String objectName,
+  }) async {
+    if (_prefs == null) await loadSettings();
+    await _prefs?.setString(_lastScheduleTypeKey, type);
+    await _prefs?.setString(_lastScheduleObjectIdKey, objectId);
+    await _prefs?.setString(_lastScheduleObjectNameKey, objectName);
   }
 
   // --- Методы для управления фильтрами расписания ---

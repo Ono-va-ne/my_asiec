@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
     id("kotlin-android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -38,6 +39,8 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("com.google.android.material:material:1.12.0")
 }
 
 flutter {

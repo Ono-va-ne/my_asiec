@@ -11,6 +11,19 @@ class DailySchedule {
   final List<ScheduleEntry> entries;
 
   DailySchedule({required this.date, required this.entries});
+
+  Map<String, dynamic> toJson() => {
+        'date': date.toIso8601String(),
+        'entries': entries.map((entry) => entry.toJson()).toList(),
+      };
+
+  factory DailySchedule.fromJson(Map<String, dynamic> json) => DailySchedule(
+        date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
+        entries: ((json['entries'] as List<dynamic>?) ?? const [])
+            .whereType<Map>()
+            .map((entry) => ScheduleEntry.fromJson(Map<String, dynamic>.from(entry)))
+            .toList(),
+      );
 }
 
 DateTime? _parseDateFromHtml(String? htmlDateString) {
